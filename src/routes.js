@@ -104,6 +104,8 @@ export function createApp({ store, llm, log, config, publicDir = 'public' }) {
 
   // eslint-disable-next-line no-unused-vars
   app.use((err, req, res, next) => {
+    // body-parser errors (bad JSON, too large) are the client's fault, not ours
+    if (err.status >= 400 && err.status < 500) return fail(res, err.status, err.type === 'entity.too.large' ? 'Request body too large' : 'Request body was not valid JSON');
     log('server', 'error', err.message);
     fail(res, 500, 'Something went wrong on our side');
   });

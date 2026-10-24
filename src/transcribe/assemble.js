@@ -45,7 +45,13 @@ export function createTurnAssembler() {
           open.text = event.transcript ?? '';
           return partial();
         case 'speaker':
-          if (!open) return null;
+          // The label covers the span *before* it, so it can land just after speechComplete.
+          // The browser already has that turn; the corrected label goes out with `done`.
+          if (!open) {
+            const last = done.at(-1);
+            if (last && last.speaker === 'unknown' && event.label) last.speaker = event.label;
+            return null;
+          }
           open.speaker = event.label || null;
           return open.text ? partial() : null;
         case 'speechEnd':

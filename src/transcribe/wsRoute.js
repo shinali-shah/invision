@@ -37,10 +37,6 @@ export function attachTranscribeSocket({ server, store, log, config, openStream 
       const out = assembler.push(event);
       if (out?.kind === 'partial') send({ type: 'partial', turnId: out.turnId, text: out.text, speaker: out.speaker });
       else if (out?.kind === 'turn') send({ type: 'turn', turn: out.turn });
-      else if (event.type === 'error') {
-        log('transcribe', 'error', `Muse: ${event.message}`);
-        send({ type: 'error', message: event.message });
-      }
     };
 
     // a socket close from Muse before we asked to end still keeps whatever turns came through
@@ -52,7 +48,31 @@ export function attachTranscribeSocket({ server, store, log, config, openStream 
       finish();
     };
 
+    // Frames that arrive while the Muse handshake is still in flight wait here.
+    // An early "end" waits for the handshake too, otherwise those frames would be lost
+    // and the Muse session would be opened after we'd already given up on it.
     const pending = [];
+    const opening = openStream({
+      apiKey: config.apiKey,
+      model: config.asrModel,
+      languages: config.languages,
+      onEvent,
+      onError: err => {
+        log('transcribe', 'error', err.message);
+        send({ type: 'error', message: 'The transcriber hit a problem. Keeping what we heard.' });
+      },
+      onClose,
+    }).then(s => {
+      stream = s;
+      for (const chunk of pending.splice(0)) s.sendAudio(chunk);
+      return s;
+    }, err => {
+      log('transcribe', 'error', `could not open Muse stream: ${err.message}`);
+      send({ type: 'error', message: 'Could not reach the transcription service' });
+      ws.close(1011);
+      return null;
+    });
+
     ws.on('message', async (data, isBinary) => {
       if (isBinary) {
         if (stream) stream.sendAudio(data);
@@ -62,33 +82,21 @@ export function attachTranscribeSocket({ server, store, log, config, openStream 
       let msg;
       try { msg = JSON.parse(data.toString()); } catch { return; }
       if (msg.type === 'end') {
-        try { await stream?.end(); } catch (err) { log('transcribe', 'warn', `end failed: ${err.message}`); }
+        const s = await opening;
+        try { await s?.end(); } catch (err) { log('transcribe', 'warn', `end failed: ${err.message}`); }
         finish();
       }
     });
 
     ws.on('close', () => {
       pending.length = 0;
-      if (!finished) stream?.end().catch(() => {});
+      // still end the Muse side if the browser vanished mid-handshake
+      opening.then(s => { if (s && !finished) s.end().catch(() => {}); });
     });
 
-    try {
-      stream = await openStream({
-        apiKey: config.apiKey,
-        model: config.asrModel,
-        languages: config.languages,
-        onEvent,
-        onError: err => log('transcribe', 'error', err.message),
-        onClose,
-      });
-    } catch (err) {
-      log('transcribe', 'error', `could not open Muse stream: ${err.message}`);
-      send({ type: 'error', message: 'Could not reach the transcription service' });
-      return ws.close(1011);
-    }
-
+    const s = await opening;
+    if (!s || finished || ws.readyState !== ws.OPEN) return;
     log('transcribe', 'info', `stream open for ${conversationId.slice(0, 8)}${config.mock ? ' (mock)' : ''}`);
-    for (const chunk of pending.splice(0)) stream.sendAudio(chunk);
     send({ type: 'ready', mock: config.mock });
   }
 

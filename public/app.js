@@ -1,5 +1,5 @@
 import { api, transcribeSocketUrl } from './api.js';
-import { downsampleTo24k, micErrorMessage } from './mic.js';
+import { createResampler, micErrorMessage } from './mic.js';
 
 // Spec copy, verbatim. Mirrors src/agents/context.js TAG_FOCUS.
 const TAG_FOCUS = {
@@ -25,6 +25,12 @@ const state = {
 function showView(name) {
   for (const v of document.querySelectorAll('.view')) v.hidden = v.id !== `view-${name}`;
   window.scrollTo(0, 0);
+}
+
+// True while this conversation is still the one on screen in that view, so a
+// slow response doesn't yank the user back after they've moved on.
+function stillOn(view, id) {
+  return !$(`view-${view}`).hidden && state.convo && state.convo.id === id;
 }
 
 function showError(id, err) {
@@ -213,6 +219,8 @@ function beginCapture(convo, ctx, stream) {
     finished: false,
     resolveDone: null,
     turns: [],
+    lastError: null,    // server's own words, so the label view can repeat them
+    resample: createResampler(ctx.sampleRate),
   };
   state.rec = rec;
 
@@ -230,8 +238,21 @@ function beginCapture(convo, ctx, stream) {
 
   node.port.onmessage = (e) => {
     if (rec.stopping) return;
-    pushSamples(rec, downsampleTo24k(e.data, ctx.sampleRate));
+    pushSamples(rec, rec.resample(e.data));
   };
+
+  // iOS suspends the context on screen lock, a phone call or Siri, and the
+  // mic just goes quiet. Try to pick back up and say so instead of failing silently.
+  ctx.onstatechange = () => {
+    if (rec.stopping || ctx.state === 'running' || ctx.state === 'closed') return;
+    showError('rec-error', 'Audio paused (screen lock or a call?). Keep the screen on. Trying to resume…');
+    ctx.resume().then(() => {
+      if (!rec.stopping && ctx.state === 'running') showError('rec-error', null);
+    }).catch(() => {});
+  };
+  // The permission sheet on first use can leave the context suspended even
+  // though we resumed it in the tap. Once the mic is live iOS lets us resume.
+  if (ctx.state === 'suspended') ctx.resume().catch(() => {});
 
   ws.onopen = () => {
     for (const f of rec.queue) ws.send(f);
@@ -336,7 +357,8 @@ function handleSocketMessage(rec, msg) {
       finishRecording(rec, Array.isArray(msg.turns) ? msg.turns : rec.turns);
       break;
     case 'error':
-      showError('rec-error', msg.message || 'The transcriber hit a problem. Whatever was heard so far is kept.');
+      rec.lastError = msg.message || 'The transcriber hit a problem. Whatever was heard so far is kept.';
+      showError('rec-error', rec.lastError);
       break;
     default:
       break;
@@ -344,6 +366,7 @@ function handleSocketMessage(rec, msg) {
 }
 
 function releaseAudio(rec) {
+  try { rec.ctx.onstatechange = null; } catch { /* ignore */ }
   try { rec.node && (rec.node.port.onmessage = null); } catch { /* ignore */ }
   try { rec.source && rec.source.disconnect(); } catch { /* ignore */ }
   rec.stream.getTracks().forEach((t) => t.stop());
@@ -387,7 +410,7 @@ function finishRecording(rec, turns, { keepError = false } = {}) {
     // Socket died mid-recording. Stop the mic so the indicator goes away.
     rec.stopping = true;
     releaseAudio(rec);
-    if (!keepError) showError('label-error', 'The transcriber disconnected early. Here is what it caught.');
+    if (!keepError) showError('label-error', rec.lastError || 'The transcriber disconnected early. Here is what it caught.');
     keepError = true;
   }
   try { if (rec.ws.readyState <= WebSocket.OPEN) rec.ws.close(1000); } catch { /* ignore */ }
@@ -421,8 +444,10 @@ async function pickLabel(label) {
   showError('label-error', null);
   const buttons = $('label-transcript').querySelectorAll('button');
   buttons.forEach((b) => { b.disabled = true; });
+  const id = state.convo.id;
   try {
-    const updated = await api.setUserLabel(state.convo.id, label);
+    const updated = await api.setUserLabel(id, label);
+    if (!stillOn('label', id)) return; // they left this conversation meanwhile
     state.convo = { ...state.convo, ...updated, turns: updated.turns || state.convo.turns };
     showLabelView();
     $('reflection').focus({ preventScroll: true });
@@ -438,9 +463,10 @@ async function getCoaching() {
   showError('coach-error', null);
   btn.disabled = true;
   btn.textContent = 'Reading the conversation…';
+  const id = state.convo.id;
   try {
-    const convo = await api.process(state.convo.id, $('reflection').value.trim());
-    state.convo = convo;
+    const convo = await api.process(id, $('reflection').value.trim());
+    if (!stillOn('label', id)) return; // they left this conversation meanwhile
     showCoaching(convo);
   } catch (err) {
     showError('coach-error', err);
@@ -501,15 +527,22 @@ async function retag(tag) {
   const convo = state.convo;
   if (!convo || tag === convo.tag) return;
   const group = $('tag-retag');
+  // One re-coach at a time, otherwise two quick taps race and the older
+  // response can land last and show the wrong tag's note.
+  group.disabled = true;
   group.setAttribute('aria-busy', 'true');
   showError('coaching-error', null);
   try {
     const updated = await api.retag(convo.id, tag);
+    if (!stillOn('coaching', convo.id)) return;
     showCoaching(updated);
   } catch (err) {
-    setCheckedTag('tag-retag', convo.tag);
-    showError('coaching-error', err);
+    if (stillOn('coaching', convo.id)) {
+      setCheckedTag('tag-retag', convo.tag);
+      showError('coaching-error', err);
+    }
   } finally {
+    group.disabled = false;
     group.removeAttribute('aria-busy');
   }
 }

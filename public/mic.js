@@ -13,12 +13,44 @@ export function downsampleTo24k(input, inRate) {
     const lo = Math.floor(pos);
     const hi = Math.min(lo + 1, input.length - 1);
     const frac = pos - lo;
-    let s = input[lo] + (input[hi] - input[lo]) * frac;
-    if (s > 1) s = 1;
-    else if (s < -1) s = -1;
-    out[i] = s < 0 ? Math.round(s * 32768) : Math.round(s * 32767);
+    out[i] = toInt16(input[lo] + (input[hi] - input[lo]) * frac);
   }
   return out;
+}
+
+function toInt16(s) {
+  if (s > 1) s = 1;
+  else if (s < -1) s = -1;
+  return s < 0 ? Math.round(s * 32768) : Math.round(s * 32767);
+}
+
+// Same interpolation, but for a live stream fed in worklet-sized chunks.
+// downsampleTo24k restarts its phase at 0 on every call and can't see the next
+// chunk's first sample, so at 44.1 kHz it drops ~0.5 samples per chunk and
+// puts a small step at every boundary (a ~21 Hz tick). This keeps the read
+// position and the last sample across calls.
+export function createResampler(inRate) {
+  const ratio = inRate / TARGET_RATE;
+  let pos = 0;   // where the next output sample sits, relative to the chunk start; -1..0 means between prev and input[0]
+  let prev = 0;
+  return function resample(input) {
+    const n = input.length;
+    if (!n) return new Int16Array(0);
+    const out = new Int16Array(Math.max(0, Math.ceil((n - 1 - pos) / ratio)));
+    let i = 0;
+    let p = pos;
+    // stop short of the last sample so interpolation never needs input[n]; the next call picks it up
+    while (p < n - 1 && i < out.length) {
+      const lo = Math.floor(p);
+      const a = lo < 0 ? prev : input[lo];
+      const b = input[lo + 1];
+      out[i++] = toInt16(a + (b - a) * (p - lo));
+      p += ratio;
+    }
+    pos = p - n;
+    prev = input[n - 1];
+    return i === out.length ? out : out.subarray(0, i);
+  };
 }
 
 export function micErrorMessage(err, { isSecureContext } = {}) {

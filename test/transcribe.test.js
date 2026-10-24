@@ -210,3 +210,52 @@ test('SEED_CONVERSATIONS are two earlier calls with Abuela', () => {
     assert.equal(c.signals.userTurns, c.turns.filter(t => t.speaker === 'A').length);
   }
 });
+
+test('a speaker label that lands after speechComplete still labels that turn', () => {
+  const a = createTurnAssembler();
+  a.push({ type: 'speechStart', turnId: 1, audioProcessedMs: 0 });
+  a.push({ type: 'transcript', transcript: 'hola', final: false, audioProcessedMs: 400 });
+  a.push({ type: 'speechComplete', turnId: 1, transcript: 'hola', audioProcessedMs: 600 });
+  a.push({ type: 'speaker', label: 'B', audioProcessedMs: 600 });
+  assert.equal(a.flush()[0].speaker, 'B');
+});
+
+test('end sent before the Muse handshake finishes keeps the buffered audio and ends the stream', async () => {
+  const http = await import('node:http');
+  const { WebSocket } = await import('ws');
+  const { attachTranscribeSocket } = await import('../src/transcribe/wsRoute.js');
+
+  const saved = {};
+  const store = { getConversation: () => ({ id: 'c1' }), updateConversation: (id, patch) => Object.assign(saved, patch) };
+  const got = [];
+  let ended = false;
+  const openStream = ({ onEvent, onClose }) => new Promise(res => setTimeout(() => res({
+    sendAudio: buf => got.push(buf.length),
+    async end() {
+      ended = true;
+      onEvent({ type: 'speechStart', turnId: 1, audioProcessedMs: 0 });
+      onEvent({ type: 'speechComplete', turnId: 1, transcript: 'hi grandma', audioProcessedMs: 800 });
+      onClose(1000);
+    },
+  }), 50));
+
+  const server = http.createServer();
+  attachTranscribeSocket({ server, store, log: () => {}, config: { mock: false }, openStream });
+  await new Promise(r => server.listen(0, r));
+  const ws = new WebSocket(`ws://localhost:${server.address().port}/ws/transcribe?conversationId=c1`);
+  const done = await new Promise((resolve, reject) => {
+    ws.on('open', () => {
+      ws.send(Buffer.alloc(3840));
+      ws.send(Buffer.alloc(3840));
+      ws.send(JSON.stringify({ type: 'end' }));
+    });
+    ws.on('message', raw => { const m = JSON.parse(raw.toString()); if (m.type === 'done') resolve(m); });
+    ws.on('error', reject);
+  });
+  server.close();
+
+  assert.deepEqual(got, [3840, 3840]);
+  assert.equal(ended, true);
+  assert.equal(done.turns.length, 1);
+  assert.equal(saved.turns.length, 1);
+});

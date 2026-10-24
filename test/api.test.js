@@ -121,3 +121,8 @@ test('a one-turn conversation processes with a too_short note', async () => {
   assert.equal(res.body.note.reason, 'too_short');
   await api('DELETE', `/api/conversations/${convo.id}`);
 });
+
+test('malformed JSON body is a 400, not a 500', async () => {
+  const res = await fetch(`${base}/api/conversations`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{nope' });
+  assert.equal(res.status, 400);
+});
