@@ -47,9 +47,10 @@ test('coach suggestion depends on the tag', () => {
   const turns = demoTurns();
   const fam = responders.coach({ tag: 'family', signals: demoSignals, turns, userLabel: 'A' });
   const net = responders.coach({ tag: 'networking', signals: demoSignals, turns, userLabel: 'A' });
-  assert.notEqual(fam.text, net.text);
+  assert.notEqual(fam.suggestion, net.suggestion);
   assert.match(net.suggestion, /follow-up message/i);
-  assert.match(net.text, /follow-up message/i);
+  // the card renders text and suggestion separately, so text must not repeat it
+  assert.ok(!fam.text.includes(fam.suggestion));
 });
 
 test('coach is defensive about missing fields', () => {
@@ -76,6 +77,7 @@ test('nextStep returns a goal string', () => {
   const { goal } = responders.nextStep({ pattern, tag: 'family', statedGoal: null });
   assert.equal(typeof goal, 'string');
   assert.ok(goal.length > 10);
-  assert.match(responders.nextStep({ pattern, tag: 'family', statedGoal: 'ask about her recipes' }).goal, /recipes/);
+  assert.match(goal, /4 follow-up questions/);
+  assert.doesNotMatch(responders.nextStep({ pattern, tag: 'family', statedGoal: 'ask about her recipes' }).goal, /recipes/);
   assert.equal(typeof responders.nextStep({}).goal, 'string');
 });

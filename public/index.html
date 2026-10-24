@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" content="#e8ede6" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#141c18" media="(prefers-color-scheme: dark)">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>Playback</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E%3Ccircle cx=%2211%22 cy=%2216%22 r=%227%22 fill=%22none%22 stroke=%22%23417460%22 stroke-width=%223%22/%3E%3Ccircle cx=%2221%22 cy=%2216%22 r=%227%22 fill=%22none%22 stroke=%22%23bb7a16%22 stroke-width=%223%22/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,600;1,7..72,400&display=swap">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="bar">
+    <button type="button" class="brand" id="go-home" aria-label="New conversation">Playback</button>
+    <span class="mock-badge" id="mock-badge" hidden>Demo audio</span>
+    <nav class="bar-actions">
+      <button type="button" class="link-btn" id="go-memory">Memory</button>
+      <button type="button" class="link-btn" id="open-logs">Logs</button>
+    </nav>
+  </header>
+
+  <main>
+    <!-- 1. Start -->
+    <section class="view" id="view-start" aria-labelledby="start-title">
+      <h1 id="start-title" class="title">Who are you talking with?</h1>
+
+      <fieldset class="segmented" id="tag-start">
+        <legend class="sr-only">Kind of conversation</legend>
+        <label><input type="radio" name="tag-start" value="family" checked><span>Family</span></label>
+        <label><input type="radio" name="tag-start" value="friend"><span>Friend</span></label>
+        <label><input type="radio" name="tag-start" value="networking"><span>Networking</span></label>
+      </fieldset>
+      <p class="focus" id="tag-focus"></p>
+
+      <label class="field">
+        <span class="field-label">Their name</span>
+        <input type="text" id="other-name" autocomplete="off" autocapitalize="words" enterkeyhint="done" maxlength="60" placeholder="Abuela, Sam, Dr. Okafor">
+      </label>
+
+      <label class="consent">
+        <input type="checkbox" id="consent">
+        <span>I told them I'm recording</span>
+      </label>
+
+      <div class="record-wrap">
+        <button type="button" class="disc" id="record-btn" disabled>
+          <span class="disc-label">Record</span>
+        </button>
+        <p class="hint" id="record-hint">Tick the box once they know, then tap to start.</p>
+      </div>
+      <p class="error" id="start-error" role="alert" hidden></p>
+    </section>
+
+    <!-- 2. Recording -->
+    <section class="view" id="view-recording" hidden aria-labelledby="rec-title">
+      <div class="rec-status">
+        <span class="rec-dot" aria-hidden="true"></span>
+        <h1 id="rec-title" class="rec-word">Recording</h1>
+        <span class="rec-timer" id="rec-timer">0:00</span>
+      </div>
+      <p class="hint" id="rec-with"></p>
+      <ol class="transcript live" id="live-transcript" aria-live="polite"></ol>
+      <p class="error" id="rec-error" role="alert" hidden></p>
+      <div class="sticky-action">
+        <button type="button" class="disc disc-stop" id="stop-btn">
+          <span class="disc-label">Stop</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- 3. Who are you? -->
+    <section class="view" id="view-label" hidden aria-labelledby="label-title">
+      <h1 id="label-title" class="title">Which voice is yours?</h1>
+      <p class="hint" id="label-hint">Tap one of your own lines.</p>
+      <ol class="transcript pickable" id="label-transcript"></ol>
+      <p class="error" id="label-error" role="alert" hidden></p>
+
+      <div id="reflect-block" hidden>
+        <label class="field">
+          <span class="field-label">How did it feel? What do you want to do better?</span>
+          <textarea id="reflection" rows="4" maxlength="1000"></textarea>
+        </label>
+        <button type="button" class="primary" id="coach-btn">Get coaching</button>
+        <p class="error" id="coach-error" role="alert" hidden></p>
+      </div>
+    </section>
+
+    <!-- 4. Coaching -->
+    <section class="view" id="view-coaching" hidden aria-labelledby="coach-title">
+      <h1 id="coach-title" class="title" tabindex="-1"></h1>
+      <p class="hint" id="coach-meta"></p>
+
+      <article class="note" id="note-card" hidden>
+        <p class="note-text" id="note-text"></p>
+        <p class="note-suggestion" id="note-suggestion"></p>
+      </article>
+      <p class="dropped" id="note-dropped" hidden></p>
+
+      <h2 class="subtitle">Your counts</h2>
+      <ul class="chips" id="chips"></ul>
+
+      <h2 class="subtitle">Conversation</h2>
+      <ol class="transcript" id="coach-transcript"></ol>
+
+      <h2 class="subtitle">Wrong kind of conversation?</h2>
+      <fieldset class="segmented" id="tag-retag">
+        <legend class="sr-only">Change the conversation type</legend>
+        <label><input type="radio" name="tag-retag" value="family"><span>Family</span></label>
+        <label><input type="radio" name="tag-retag" value="friend"><span>Friend</span></label>
+        <label><input type="radio" name="tag-retag" value="networking"><span>Networking</span></label>
+      </fieldset>
+      <p class="error" id="coaching-error" role="alert" hidden></p>
+
+      <div class="row-actions">
+        <button type="button" class="primary" id="to-memory-btn">See memory</button>
+        <button type="button" class="quiet danger" id="delete-btn">Delete conversation</button>
+      </div>
+    </section>
+
+    <!-- 5. Memory -->
+    <section class="view" id="view-memory" hidden aria-labelledby="memory-title">
+      <h1 id="memory-title" class="title" tabindex="-1">Over time</h1>
+      <p class="error" id="memory-error" role="alert" hidden></p>
+
+      <div id="pattern-block"></div>
+
+      <div id="next-step-block"></div>
+
+      <h2 class="subtitle">Conversations</h2>
+      <ul class="convo-list" id="convo-list"></ul>
+
+      <button type="button" class="primary" id="new-convo-btn">New conversation</button>
+    </section>
+  </main>
+
+  <dialog class="drawer" id="logs-drawer" aria-labelledby="logs-title">
+    <div class="drawer-head">
+      <h2 id="logs-title" class="subtitle">Logs</h2>
+      <button type="button" class="link-btn" id="close-logs">Close</button>
+    </div>
+    <p class="error" id="logs-error" role="alert" hidden></p>
+    <ol class="logs" id="logs-list"></ol>
+  </dialog>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>

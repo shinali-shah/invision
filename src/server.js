@@ -1,6 +1,6 @@
 import http from 'node:http';
 import { fileURLToPath } from 'node:url';
-import { dirname, join } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import config from './config.js';
 import { openStore } from './db.js';
 import { createLogger } from './log.js';
@@ -14,7 +14,7 @@ import { openMockStream } from './transcribe/mockStream.js';
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 
 export function createServer({ config: cfg = config, quiet = false, mockSpeed = 1 } = {}) {
-  const store = openStore(cfg.dbPath === ':memory:' ? ':memory:' : join(root, cfg.dbPath));
+  const store = openStore(cfg.dbPath === ':memory:' ? ':memory:' : resolve(root, cfg.dbPath));
   const log = createLogger(store, { quiet });
   const llm = createLlm({ apiKey: cfg.apiKey, mock: cfg.mock, model: cfg.sparkModel });
   seedDemo(store);

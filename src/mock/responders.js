@@ -112,7 +112,6 @@ function coach({ tag, signals, turns, userLabel, lastNotes } = {}) {
   const avoid = (Array.isArray(lastNotes) ? lastNotes : [])
     .flatMap(n => words(typeof n === 'string' ? n : `${n?.text ?? ''} ${n?.suggestion ?? ''}`));
   const suggestion = (SUGGESTIONS[tag] ?? SUGGESTIONS.friend)(topicFrom(ts, userLabel, avoid));
-  sentences.push(suggestion);
 
   const known = new Set(ts.map(t => t.turnId));
   let cited = (Array.isArray(s.questions) ? s.questions : []).filter(x => x.isFollowUp).map(x => x.turnId);
@@ -148,11 +147,8 @@ const GOAL_TAIL = {
   networking: 'before pitching anything, and send a follow-up message within a day.',
 };
 
-function nextStep({ pattern: p, tag, statedGoal } = {}) {
-  if (typeof statedGoal === 'string' && statedGoal.trim()) {
-    const g = statedGoal.trim().replace(/[.!]+$/, '');
-    return { goal: `${g[0].toUpperCase()}${g.slice(1)}: try it in at least one conversation this week.` };
-  }
+// statedGoal is free text from the reflection box; echoing it back reads badly, so the mock sticks to the pattern
+function nextStep({ pattern: p, tag } = {}) {
   const tail = GOAL_TAIL[tag] ?? GOAL_TAIL.family;
   const last = Array.isArray(p?.counts) ? p.counts.at(-1) : null;
   if (p?.metric === 'followUps' && Number.isFinite(last)) {
