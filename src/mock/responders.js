@@ -1,2 +1,164 @@
-// Filled in by Task 4: one responder per agent name, each returning that agent's schema shape.
-export default {};
+// Offline stand-ins for Muse Spark, one per agent name. They read the same payload
+// the real model gets and derive something plausible from it, so mock mode still
+// reacts to what was actually said instead of returning canned text.
+
+const STOPWORDS = new Set([
+  // English
+  'about', 'also', 'been', 'from', 'good', 'have', 'just', 'like', 'really', 'that', 'than', 'then',
+  'their', 'them', 'there', 'they', 'this', 'very', 'week', 'were', 'what', 'when', 'where', 'which',
+  'with', 'would', 'your', 'yeah', 'okay', 'doing', 'going', 'today', 'abuela',
+  // Spanish
+  'como', 'cómo', 'cuando', 'donde', 'dónde', 'esta', 'está', 'este', 'esto', 'mucho', 'otra', 'otro',
+  'para', 'pero', 'porque', 'pues', 'tiene', 'todo', 'toda', 'todos', 'también', 'bueno', 'entonces',
+  'mija', 'mijo', 'gracias', 'hola',
+]);
+
+const words = text => (String(text ?? '').toLowerCase().match(/\p{L}+/gu) ?? []);
+const contentWords = text => new Set(words(text).filter(w => w.length >= 4 && !STOPWORDS.has(w)));
+const wordCount = text => String(text ?? '').trim().split(/\s+/).filter(Boolean).length;
+const isQuestion = text => /[?¿]/.test(String(text ?? ''));
+const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+
+// Long replies read as a story/anecdote for mock purposes
+const STORY_MIN_WORDS = 15;
+
+function sharesWord(a, b) {
+  const bw = contentWords(b);
+  for (const w of contentWords(a)) if (bw.has(w)) return true;
+  return false;
+}
+
+function classify({ userLabel, turns, questions } = {}) {
+  const ts = Array.isArray(turns) ? turns : [];
+  const out = [];
+  for (const turnId of Array.isArray(questions) ? questions : []) {
+    const i = ts.findIndex(t => t.turnId === turnId);
+    if (i === -1) continue;
+    const prevOther = ts.slice(0, i).reverse().find(t => t.speaker !== userLabel);
+    const reply = ts[i + 1] && ts[i + 1].speaker !== userLabel ? ts[i + 1] : null;
+    out.push({
+      turnId,
+      isFollowUp: !!prevOther && sharesWord(ts[i].text, prevOther.text),
+      storyShared: !!reply && wordCount(reply.text) >= STORY_MIN_WORDS,
+    });
+  }
+
+  // A reflection: a non-question user line that picks up a word from what was just said
+  let reflections = 0;
+  ts.forEach((t, i) => {
+    if (t.speaker !== userLabel || isQuestion(t.text) || i === 0) return;
+    const prev = ts[i - 1];
+    if (prev.speaker !== userLabel && sharesWord(t.text, prev.text)) reflections++;
+  });
+
+  return { questions: out, reflections };
+}
+
+// Most-mentioned capitalized word the other person said mid-sentence: usually a place or a name.
+function topicFrom(turns, userLabel, avoid) {
+  const counts = new Map();
+  const bump = w => counts.set(w, (counts.get(w) ?? 0) + 1);
+  const others = turns.filter(t => t.speaker !== userLabel);
+
+  for (const t of others) {
+    const tokens = String(t.text ?? '').split(/\s+/);
+    tokens.forEach((raw, i) => {
+      const w = raw.replace(/^[^\p{L}]+|[^\p{L}]+$/gu, '');
+      const sentenceStart = i === 0 || /[.!?]["')]?$/.test(tokens[i - 1]);
+      if (!sentenceStart && w.length >= 4 && /^\p{Lu}/u.test(w) && !STOPWORDS.has(w.toLowerCase())) bump(w);
+    });
+  }
+  // Nothing capitalized? Fall back to the longest repeated-ish content word.
+  if (!counts.size) for (const t of others) for (const w of contentWords(t.text)) if (w.length >= 5) bump(w);
+
+  let best = null;
+  for (const [w, n] of counts) {
+    if (avoid.includes(w.toLowerCase())) continue;
+    if (!best || n > counts.get(best)) best = w;
+  }
+  return best;
+}
+
+const SUGGESTIONS = {
+  family: topic => topic
+    ? `Next call, try asking more about ${topic} and add any new words from it to your vocab list.`
+    : 'Next call, try asking about a place or a word that came up, and add it to your vocab list.',
+  friend: topic => topic
+    ? `Next time, check back in about ${topic} and ask how it went.`
+    : 'Next time, follow up on something that matters to them and ask how it went.',
+  networking: topic => topic
+    ? `Send a short follow-up message today that mentions ${topic}.`
+    : 'Send a short follow-up message today that mentions something they told you.',
+};
+
+function coach({ tag, signals, turns, userLabel, lastNotes } = {}) {
+  const s = signals ?? {};
+  const ts = Array.isArray(turns) ? turns : [];
+  const q = Number.isFinite(s.userQuestions) ? s.userQuestions : 0;
+  const f = s.followUps;
+  const stories = s.storiesAfterQuestions;
+
+  let first = `You asked ${plural(q, 'question', 'questions')}`;
+  if (Number.isFinite(f)) first += ` and ${f} ${f === 1 ? 'was a follow-up' : 'were follow-ups'}`;
+  const sentences = [`${first}.`];
+
+  if (Number.isFinite(stories) && stories > 0) {
+    sentences.push(`You heard ${plural(stories, 'story', 'stories')} after your questions.`);
+  } else if (s.otherAvgAnswerWords > 0) {
+    sentences.push(`Answers to your questions ran about ${s.otherAvgAnswerWords} words.`);
+  }
+
+  // Don't keep suggesting the same topic as the last few notes did
+  const avoid = (Array.isArray(lastNotes) ? lastNotes : [])
+    .flatMap(n => words(typeof n === 'string' ? n : `${n?.text ?? ''} ${n?.suggestion ?? ''}`));
+  const suggestion = (SUGGESTIONS[tag] ?? SUGGESTIONS.friend)(topicFrom(ts, userLabel, avoid));
+  sentences.push(suggestion);
+
+  const known = new Set(ts.map(t => t.turnId));
+  let cited = (Array.isArray(s.questions) ? s.questions : []).filter(x => x.isFollowUp).map(x => x.turnId);
+  if (!cited.length) cited = ts.filter(t => t.speaker === userLabel && isQuestion(t.text)).map(t => t.turnId);
+
+  return { text: sentences.join(' '), suggestion, citedTurnIds: cited.filter(id => known.has(id)).slice(0, 3) };
+}
+
+function review(payload = {}) {
+  const note = payload.note ?? payload;
+  return { verdict: 'pass', text: note.text ?? '', suggestion: note.suggestion ?? '' };
+}
+
+const METRIC_LABELS = {
+  followUps: 'follow-up questions',
+  userQuestions: 'questions',
+  otherAvgAnswerWords: 'average answer length after your questions',
+  userTalkShare: 'share of the talking',
+};
+
+function pattern({ metric, counts } = {}) {
+  const c = Array.isArray(counts) && counts.length ? counts : [0];
+  const first = c[0];
+  const last = c.at(-1);
+  const dir = last > first ? 'rose' : last < first ? 'fell' : 'held steady';
+  const label = METRIC_LABELS[metric] ?? 'numbers';
+  return { statement: `Your ${label} ${dir} from ${first} to ${last} per conversation over your last ${plural(c.length, 'conversation', 'conversations')}.` };
+}
+
+const GOAL_TAIL = {
+  family: 'about something they mentioned, in each call this week.',
+  friend: 'about something that matters to them, each time you talk this week.',
+  networking: 'before pitching anything, and send a follow-up message within a day.',
+};
+
+function nextStep({ pattern: p, tag, statedGoal } = {}) {
+  if (typeof statedGoal === 'string' && statedGoal.trim()) {
+    const g = statedGoal.trim().replace(/[.!]+$/, '');
+    return { goal: `${g[0].toUpperCase()}${g.slice(1)}: try it in at least one conversation this week.` };
+  }
+  const tail = GOAL_TAIL[tag] ?? GOAL_TAIL.family;
+  const last = Array.isArray(p?.counts) ? p.counts.at(-1) : null;
+  if (p?.metric === 'followUps' && Number.isFinite(last)) {
+    return { goal: `Ask at least ${plural(Math.round(last) + 1, 'follow-up question', 'follow-up questions')} ${tail}` };
+  }
+  return { goal: `Ask at least one follow-up question ${tail}` };
+}
+
+export default { classify, coach, review, pattern, nextStep };
