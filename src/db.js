@@ -32,6 +32,12 @@ const COLUMNS = {
 
 const parse = v => (v == null ? null : JSON.parse(v));
 
+// Every log line lands in the logs table, and a demo day writes thousands an hour. Keep the
+// newest MAX_LOGS and sweep the rest every PRUNE_EVERY inserts (one range delete on the primary
+// key, cheap), so the file stops growing instead of swallowing the disk by the evening.
+const MAX_LOGS = 5000;
+const PRUNE_EVERY = 250;
+
 function toConversation(row) {
   if (!row) return null;
   return {
@@ -67,6 +73,10 @@ export function openStore(path = ':memory:') {
   for (const col of ['hooks', 'follow_up', 'recording', 'behavior', 'insight']) if (!have.has(col)) db.exec(`ALTER TABLE conversations ADD COLUMN ${col} TEXT`);
   // Demo rows made by src/synthetic are marked so nothing mistakes them for a real recording.
   if (!have.has('synthetic')) db.exec('ALTER TABLE conversations ADD COLUMN synthetic INTEGER NOT NULL DEFAULT 0');
+
+  const pruneLogs = db.prepare('DELETE FROM logs WHERE id <= (SELECT MAX(id) FROM logs) - ?');
+  pruneLogs.run(MAX_LOGS); // a database from before the cap shrinks on boot
+  let sinceSweep = 0;
 
   const getConversation = id => toConversation(db.prepare('SELECT * FROM conversations WHERE id = ?').get(id));
   const getStep = id => toStep(db.prepare('SELECT * FROM next_steps WHERE id = ?').get(id));
@@ -146,6 +156,11 @@ export function openStore(path = ':memory:') {
     addLog({ agent, level, message, data }) {
       db.prepare('INSERT INTO logs (ts, agent, level, message, data) VALUES (?, ?, ?, ?, ?)')
         .run(new Date().toISOString(), agent, level, message, data == null ? null : JSON.stringify(data));
+      if (++sinceSweep >= PRUNE_EVERY) { sinceSweep = 0; pruneLogs.run(MAX_LOGS); }
+    },
+
+    countLogs() {
+      return db.prepare('SELECT COUNT(*) AS n FROM logs').get().n;
     },
 
     listLogs(limit = 100) {

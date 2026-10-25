@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="light">
+  <meta name="theme-color" content="#0d110f">
+  <title>Terms, privacy and consent · Playback</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 56 35%22 fill=%22none%22%3E%3Cpath d=%22M28 17.5C21 6 7 4 5 17.5c2 13.5 16 11.5 23 0Z%22 stroke=%22%23f4a51c%22 stroke-width=%225.5%22 stroke-linejoin=%22round%22 opacity=%22.55%22/%3E%3Cpath d=%22M28 17.5C35 6 49 4 51 17.5c-2 13.5-16 11.5-23 0Z%22 stroke=%22%23f4a51c%22 stroke-width=%225.5%22 stroke-linejoin=%22round%22/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="legal.css">
+</head>
+<body>
+  <header class="bar">
+    <a class="brand" href="/" aria-label="Playback home"><svg class="brand-mark" viewBox="0 0 56 35" fill="none" aria-hidden="true"><path d="M28 17.5C21 6 7 4 5 17.5c2 13.5 16 11.5 23 0Z" stroke="#f4a51c" stroke-width="5.5" stroke-linejoin="round" opacity=".55"/><path d="M28 17.5C35 6 49 4 51 17.5c-2 13.5-16 11.5-23 0Z" stroke="#f4a51c" stroke-width="5.5" stroke-linejoin="round"/><path d="M20.5 18.5 27 13h5.5l4.5 3.5-3 5-6.5 4-3-2.5-3.5 1Z" fill="#0d110f"/><path d="M22 17.5 27.5 13H32l3.5 3.5" stroke="#f4a51c" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><path d="m23 21.5 2.5 2.5M26 20l2.5 2.5M29 18.5l2.5 2.5" stroke="#f4a51c" stroke-width="1.8" stroke-linecap="round"/></svg><span>Playback</span></a>
+    <a class="back" href="/" id="back">Back</a>
+  </header>
+
+  <main>
+    <span class="eyebrow">Last updated <time datetime="2026-10-25">25 October 2026</time></span>
+    <h1>Terms, privacy and consent</h1>
+
+    <p class="intro">Playback records a real conversation through a mic on your glasses and, if you turn the camera on, your phone. It writes down what was said, measures how you listened, and has a language model turn that into one piece of coaching. Recording people is a serious thing to do, so this page says plainly what is captured, where it goes, what stays on your machine, and what you are taking on when you press Record.</p>
+    <p class="intro">Playback is a hackathon prototype built at HackTX 2026. It is not a finished product and it is not a company.</p>
+
+    <nav class="contents" aria-label="Sections">
+      <span class="eyebrow">On this page</span>
+      <ol>
+        <li><a href="#records">What Playback records</a></li>
+        <li><a href="#goes">Where it goes</a></li>
+        <li><a href="#kept">What is kept, and for how long</a></li>
+        <li><a href="#consent">Consent and the law</a></li>
+        <li><a href="#delete">Deleting your data</a></li>
+        <li><a href="#coaching">Automated coaching</a></li>
+        <li><a href="#third">Third parties</a></li>
+        <li><a href="#prototype">Prototype, no warranty</a></li>
+        <li><a href="#contact">Contact</a></li>
+      </ol>
+    </nav>
+
+    <section id="records" aria-labelledby="h-records">
+      <h2 id="h-records">What Playback records</h2>
+      <ul>
+        <li><b>Audio.</b> The mic runs from the moment you tap Record until you tap Stop. Everything within earshot is picked up, including people in the background.</li>
+        <li><b>Video, only if Camera is on.</b> The phone records what its camera sees, with the same levelled audio track, in one file. With Camera off there is no video at all.</li>
+        <li><b>Face cues.</b> While the camera is on, a face landmarker (MediaPipe) runs in the phone's browser, and runs again on the Mac when a saved video is replayed. It reduces each frame to a few numbers: how much the mouth is moving, a smile score, how open the jaw is, brow raise, head yaw and pitch, and whether a face is in view at all. Those numbers are what is kept. No face images are stored and no face template is made. They are used to tell whose mouth was moving and how someone reacted to a line, never to work out who someone is.</li>
+        <li><b>What you type.</b> The kind of conversation (family, friend or networking), the other person's name if you add one, and the reflection you write afterwards.</li>
+        <li><b>What the transcript says.</b> A name heard in the conversation ("Hi Abuela", "I'm Priya") is picked up and attached to the record, and the line where you said your own name is used to tell which voice is yours.</li>
+      </ul>
+    </section>
+
+    <section id="goes" aria-labelledby="h-goes">
+      <h2 id="h-goes">Where it goes</h2>
+      <p><b>Transcription.</b> The phone streams the mic audio to the Playback server (normally your own Mac), which forwards it to Meta's Muse Voice Transcribe over an encrypted connection to get the words and to tell the voices apart. The server only passes that audio through memory. It never writes the audio stream to disk, and once the transcript is in, the audio is gone. What comes back is text, one line at a time, each with a speaker letter.</p>
+      <p><b>Video.</b> The video stays with you. It is uploaded from the phone to the Playback server and saved in that machine's recordings folder. It is not sent to Meta or to anyone else, and nothing in Playback looks at it except the face landmarker running in your own browser.</p>
+      <p><b>Coaching.</b> To write the coaching note, the three takeaways, the follow-up draft and the replay insight, the server sends Meta's Muse Spark the transcript text with "you" and "them" marked, the other person's name, the measurements (questions, follow-ups, talk share, answer length, topics, promises, missed moments), the per-line face cue numbers, and your typed reflection. No audio and no video are ever sent to Spark.</p>
+      <p><b>At Meta.</b> What Meta does with the audio and text it receives is governed by Meta's own developer terms, which Playback does not control. In demo mode (no Meta key set), nothing is sent to Meta at all: the transcript is scripted and every model answer is canned.</p>
+    </section>
+
+    <section id="kept" aria-labelledby="h-kept">
+      <h2 id="h-kept">What is kept, and for how long</h2>
+      <p>Everything lives on the machine that runs the Playback server. There are no accounts and there is no cloud copy. A local SQLite database holds, for each conversation: the transcript text with its speaker letters, names typed or heard, the measurements, the coaching note, the follow-up draft and whether you sent it, the aligned face cues, the replay insight, and the pattern and weekly step worked out across your conversations. Next to the database, in the recordings folder, sit the video file (if there was one), the raw per-frame face numbers from the Mac, and the lip cues from the phone.</p>
+      <p>Nothing expires on its own. A conversation stays until you delete it. Anyone who can open that machine, or who holds the tunnel link while the server is up, can read what is there, so treat the Mac running Playback as you would treat a notebook of private conversations.</p>
+    </section>
+
+    <section id="consent" aria-labelledby="h-consent">
+      <h2 id="h-consent">Consent and the law</h2>
+      <div class="callout">
+        <span class="eyebrow">Before every recording</span>
+        <p>The phone asks you to tick a box that reads <q>I told them I'm recording</q>, or <q>I told them I'm recording audio and video</q> when the camera is on. The server refuses to start a conversation until that box is ticked.</p>
+      </div>
+      <p>Ticking the box is your statement that the people you are about to record know they are being recorded and have agreed to it. Playback cannot check that for you.</p>
+      <p>Recording laws differ from place to place. Some places allow a recording when one person in the conversation agrees; many require every person's consent, and some treat video differently from audio. You are responsible for telling everyone you record, for getting their agreement, and for following the law where you are, including when you travel.</p>
+      <p>Do not use Playback to record people who have not agreed to it. If someone asks you to stop, stop and delete the conversation. Do not point the camera at people who are not part of the conversation.</p>
+    </section>
+
+    <section id="delete" aria-labelledby="h-delete">
+      <h2 id="h-delete">Deleting your data</h2>
+      <p><b>Delete conversation</b>, at the bottom of the coaching screen on the phone, removes the conversation's row from the database (transcript, measurements, note, follow-up, face cues and insight), the video file, the face frames file and the lip cues file, and then recomputes the pattern without it.</p>
+      <p>One thing it does not remove: log lines. The server writes a short line for each step it takes into a logs table in the same database, and those lines stay after the conversation is deleted. They can include the other person's name, the first eight characters of the conversation's id, the topics picked out of the conversation, and the single line in which you said your own name. They do not include the rest of the transcript. You can read them in the phone's Logs drawer.</p>
+      <p>To start completely clean, stop the server and delete its <code>data</code> folder. Two sample conversations with "Abuela" are made-up demo data and come back every time the server starts.</p>
+    </section>
+
+    <section id="coaching" aria-labelledby="h-coaching">
+      <h2 id="h-coaching">Automated coaching</h2>
+      <p>The counts are deterministic: questions, follow-ups, talk share and answer length are measured from the words and the timing, and the same conversation always gives the same numbers. The sentences around them are written by a language model and checked against those numbers before you see them. They can still be wrong, miss context, misread a joke, a culture or a relationship, or single out the wrong moment.</p>
+      <p>The face cues describe visible movement: how much someone smiled, whether they were facing the camera, when they nodded. They say nothing about what the person felt or meant. Any wording that claims otherwise is thrown out and replaced with the numbers.</p>
+      <p>Treat the coaching as one opinion from a prototype, not a verdict on you or on anyone you talked to. It is not medical, psychological, relationship or professional advice. If a conversation left you worried about someone, talk to a person.</p>
+    </section>
+
+    <section id="third" aria-labelledby="h-third">
+      <h2 id="h-third">Third parties</h2>
+      <ul>
+        <li><b>Meta Muse.</b> Muse Voice Transcribe receives the live audio and returns text. Muse Spark receives transcript text, measurements and face cue numbers and returns the written coaching. Both at <code>api.meta.ai</code>, both under Meta's terms.</li>
+        <li><b>ngrok,</b> if you use it to reach the Mac from the phone (Safari needs https for the mic). Everything between the phone and the server, the audio stream and the video upload included, passes through ngrok's servers over TLS on its way to your Mac.</li>
+        <li><b>Google Fonts.</b> Playback's pages load two typefaces from Google, so your browser makes a request to Google when a page opens. Nothing about your conversations is in that request.</li>
+        <li><b>MediaPipe Face Landmarker.</b> Served from the Playback server itself and run entirely inside your browser. No frame leaves the device for it and nothing is fetched from Google to run it.</li>
+      </ul>
+      <p class="muted">That is the full list. There is no analytics, no crash reporting and no advertising code in Playback.</p>
+    </section>
+
+    <section id="prototype" aria-labelledby="h-prototype">
+      <h2 id="h-prototype">Prototype, no warranty</h2>
+      <p>Playback was built in a weekend at HackTX 2026. It is provided as is, without warranty of any kind, express or implied. Things will break. A recording can fail partway, an upload can be lost, a transcript can be wrong, and a database can be corrupted. Use it at your own risk and do not rely on it to keep anything.</p>
+      <p>Playback is not meant for children under 13, and should not be used to record them without a parent's or guardian's agreement.</p>
+      <p>By using Playback you accept these terms and take responsibility for how you record other people.</p>
+    </section>
+
+    <section id="contact" aria-labelledby="h-contact">
+      <h2 id="h-contact">Contact</h2>
+      <p>Questions, worries, or something on this page that does not match what the app does? Find the team at the HackTX table. We would rather hear it than have it be wrong.</p>
+    </section>
+  </main>
+
+  <footer>Playback · HackTX 2026 · Last updated 25 October 2026</footer>
+
+  <script>
+    // "Back" goes to where you came from when that was a Playback page; otherwise to the phone app.
+    document.getElementById('back').addEventListener('click', e => {
+      let from = null;
+      try { from = document.referrer && new URL(document.referrer); } catch { from = null; }
+      if (from && from.origin === location.origin && history.length > 1) {
+        e.preventDefault();
+        history.back();
+      }
+    });
+  </script>
+</body>
+</html>

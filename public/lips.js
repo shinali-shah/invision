@@ -160,12 +160,18 @@ export function startLipLock({ video, timeBase, send, onState, fps = FPS }) {
     raf = requestAnimationFrame(step);
     if (now - lastRun < 1000 / fps) return;
     lastRun = now;
+    // Before loadedmetadata the element is 0×0 and there's nothing to draw yet.
     if (!landmarker || video.readyState < 2 || !video.videoWidth) return;
+    // iOS swaps the track's width and height when the phone turns; a canvas cut for the old
+    // shape would squash the face and the model would start missing it.
+    const h = Math.max(1, Math.round((WIDTH * video.videoHeight) / video.videoWidth));
     if (!canvas) {
       canvas = document.createElement('canvas');
       canvas.width = WIDTH;
-      canvas.height = Math.max(1, Math.round((WIDTH * video.videoHeight) / video.videoWidth));
+      canvas.height = h;
       ctx2d = canvas.getContext('2d', { willReadFrequently: false });
+    } else if (canvas.height !== h) {
+      canvas.height = h;
     }
     let res;
     try {

@@ -800,6 +800,15 @@ function handle(msg) {
     }
     case 'done': {
       if (!id) break;
+      // A stream handing over to another on the same conversation (the phone reconnected): the
+      // mic is still on and the lines so far are the start of what's coming. Keep the wall as is;
+      // the real `done` follows when the phone stops.
+      if (msg.continued) {
+        const c = state.convos.get(id);
+        if (c && Array.isArray(msg.turns)) c.turns = msg.turns;
+        if (id === state.convoId) render();
+        break;
+      }
       stopTimer(id);
       const turns = Array.isArray(msg.turns) ? msg.turns : turnsFor(id);
       state.doneTurns.set(id, turns);

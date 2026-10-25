@@ -56,7 +56,16 @@ test('anything else includes the original message', () => {
   );
 });
 
-import { createLeveler, rmsOf, toDb, TARGET_DB, createResampler, pickRecorderMime } from '../public/mic.js';
+import { createLeveler, rmsOf, toDb, TARGET_DB, createResampler, pickRecorderMime, videoTooLarge, MAX_VIDEO_BYTES } from '../public/mic.js';
+
+test('a 3-minute recording is nowhere near the upload limit; past it the message says so', () => {
+  assert.equal(MAX_VIDEO_BYTES, 200 * 1024 * 1024); // src/routes.js MAX_VIDEO
+  assert.equal(videoTooLarge(25e6), null);
+  assert.equal(videoTooLarge(0), null);
+  assert.equal(videoTooLarge(NaN), null);
+  assert.equal(videoTooLarge(MAX_VIDEO_BYTES), null);
+  assert.match(videoTooLarge(MAX_VIDEO_BYTES + 1), /too large to upload \(201 MB; the limit is 200 MB\)/);
+});
 
 test('leveler lifts a quiet mic to speech level and leaves a normal one alone', () => {
   const quiet = createLeveler();

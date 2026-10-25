@@ -11,9 +11,10 @@ before you talk to someone again and a before/after once you have. There are two
 
 - **The phone** (iPhone Safari over https): records, transcribes live, asks which voice is yours, shows the
   coaching, the comparison with last time, what was picked up, and a drafted follow-up you can send.
-- **The Mac** (`/mac`): one page with three tabs. **Home** is the dashboard (a direct port of the team's Figma
-  Make design). **Live** mirrors the phone on a projector. **Replay** plays the video with face cues lined up
-  against the transcript and the three takeaways.
+- **The Mac** (`/mac`): one page with two tabs. **Home** is the dashboard (a direct port of the team's Figma
+  Make design) and shows the live transcript while the phone records. **Replay** plays the video with face
+  cues lined up against the transcript and the three takeaways. The projector view (`/stage.html`) is a
+  separate page, linked from Home's recording card.
 
 ## 2. Stack and constraints
 
@@ -29,29 +30,16 @@ before you talk to someone again and a before/after once you have. There are two
   wrappers used by the phone), `mic.js` and `pcm-worklet.js` (audio capture helpers), `tokens.css` (design
   tokens, loaded by every page).
 
-## 3. Design system (the Figma is the source of truth)
+## 3. Design system
 
-The look is the team's Figma Make design, "Playback". Its CSS is used verbatim on Home, and every other
-screen copies its components rather than inventing new ones. Tokens live in `public/tokens.css`:
+The look is the team's Figma Make design, version 2 (night / paper / marigold). Its tokens, type, shapes and the
+components every screen reuses are listed in `playback-ui.md` next to this file; `public/tokens.css` holds the
+values and `public/home.*` is a direct port. The rules that don't change between versions:
 
-- Colours: ink `#292d2c`, paper `#f7f7f5`, accent teal `#397d74` (hover `#2f6b63`), rec red `#c8372d`,
-  status-red `#a4504a`, status-amber `#b5832a`, sage `#8fae98`; ink-2 / ink-3 / line / tint are ink at
-  72% / 50% / 12% / 6%; card border `#dedfda`; row rule `#e5e6e1`; the hero wash is
-  `linear-gradient(105deg, #dbe7df 0%, #e9ebe1 45%, #f6e5da 100%)`.
-- Type: **Fraunces** for the page hero only, **Newsreader** for headings and for words someone actually said
-  (transcript lines, quotes, the "try instead" line), **Inter** for interface text, **JetBrains Mono** for
-  times, dates, durations and counts. Labels are 9–11px, 700, `.14em` tracking, uppercase, ink-2.
-- Shape: cards are white, 1px `#dedfda`, 10px radius, no shadow. Inside a stacked panel, cards lose their
-  radius and are separated by a 1px rule. Buttons are 6px radius. The modal is the one thing with a shadow.
-- Components reused everywhere: `.card`, `.label`, `.button` / `.ghost` / `.stop-button`, `.status-pill`
-  (99px pill, white, 1px border, 11px 600), `.person-avatar` (36px, 7px radius, tint background, initials),
-  `.check-row` + `.checkbox` + `.progress`, `.line` (time | who | text grid), `.live-transcript` (ruled
-  top and bottom, Newsreader 15px lines, blinking teal caret on the open line), `.recording-card`
-  (`.live-label` with `.pulse` and the "REC" tag, 40px mono elapsed timer, "Private to you"), `.consent-step`
-  (tint background, 1px line, 20px checkbox), `.modal`, the month grid with green / yellow / red day states.
-- Colour meaning is fixed across screens: **you = accent teal**, **them = `#747a77`**, **awkward = rec /
-  status-red**, **missed moment = status-amber**, **went well = accent**. Colour never carries meaning alone;
-  each state also has a label or icon.
+- Start from a Figma component; don't invent a new card, label or button style.
+- Colour meaning is fixed across screens: **you** = the green "you" token, **them** = grey, **awkward** = red,
+  **missed moment** = marigold, **went well** = green. Colour never carries meaning alone; each state also has a
+  label or icon.
 - Motion: the Figma's own animations only (drifting clouds behind the hero, card-in on panels, the REC pulse,
   the caret blink, today-glow and save-pop on the calendar). Everything respects `prefers-reduced-motion`.
 - Dark: the Figma is light only. `?theme=dark` is supported through token overrides for projectors that wash
@@ -61,12 +49,13 @@ screen copies its components rather than inventing new ones. Tokens live in `pub
 
 ## 4. The Mac shell (`/mac`, `public/studio.html`)
 
-- A sticky 68px header in the Figma style: logo + "Playback" on the left, the three tabs centred as
+- A sticky 72px header in the Figma style: logo + "Playback" on the left, the two tabs centred as
   `.status-pill` buttons (selected = ink background, white text), then "Open Replay when a video is ready"
   (checkbox, persisted in localStorage, on by default), a phone-status pill, and the "PS" avatar.
-- Home, Live and Replay are three iframes that stay loaded, so switching is instant and Live keeps following
-  the phone in the background. Keys `1` / `2` / `3` and arrow keys switch tabs. The hash mirrors the state
-  (`#home`, `#live`, `#replay=<conversationId>`).
+- Home and Replay are two iframes that stay loaded, so switching is instant. Keys `1` / `2` and arrow keys
+  switch tabs. The hash mirrors the state (`#home`, `#replay=<conversationId>`); an unknown hash, including
+  the old `#live`, lands on Home. The Live tab was dropped because Home's recording card already carries
+  the live transcript; `stage.html` stays as the standalone projector page.
 - The shell subscribes to `/ws/stage`. The phone-status pill reads "Waiting for your phone", "Phone
   connected", "Recording on your phone" (red pulsing dot) or "Reconnecting to this Mac". When a conversation
   arrives with both a recording and a note, the shell shows "Video ready" and, if the checkbox is on, jumps

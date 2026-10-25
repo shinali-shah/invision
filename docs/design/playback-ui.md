@@ -36,7 +36,7 @@ punch holes, `.live-label`, `.rec-tag`, `.live-transcript`, `.elapsed`), `.conse
 - **Home** (`/mac`, first tab): the Figma dashboard, with real data. Greeting hero on the night band, planner
   (calendar + streak, goals, pending tasks), the recording ticket mirroring the phone, recent conversations,
   the transcript page (takeaways, score strip, timeline, heat words, privacy box), the follow-up modal.
-- **Live**: the projector view, same components at projector scale.
+- **Projector view** (`/stage.html`, its own page, not a tab): same components at projector scale.
 - **Replay**: the Figma transcript page plus the video, face-cue lanes and the voice picker.
 - **Phone**: the recorder; the same cards, pills and the night ticket while recording, at touch sizes.
 

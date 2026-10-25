@@ -31,6 +31,8 @@ body {
 
 button, input, textarea { font: inherit; color: inherit; }
 button { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+/* Record then Stop in quick succession is a double tap to iOS, which would zoom the page instead. */
+button, label, input, textarea, a, .segmented span { touch-action: manipulation; }
 :focus-visible { outline: 2.5px solid var(--marigold); outline-offset: 3px; border-radius: 4px; }
 
 .sr-only {
@@ -531,7 +533,7 @@ button.hook-chip:hover { background: var(--ink); color: var(--white); border-col
   padding: 14px 16px;
   border: 1.5px solid var(--ink); border-radius: 14px;
   background: var(--paper); color: var(--ink);
-  font: 400 15px/1.6 var(--font-serif);
+  font: 400 16px/1.6 var(--font-serif); /* under 16px iOS zooms the page when the box is tapped */
 }
 .follow-text:focus { border-color: var(--marigold); outline: none; box-shadow: inset 0 0 0 1px var(--marigold); }
 .follow-text:disabled { opacity: .6; }
@@ -588,7 +590,7 @@ button.hook-chip:hover { background: var(--ink); color: var(--white); border-col
   width: 100%; margin-top: 12px; min-height: 90px;
   padding: 14px 16px;
   border: 1.5px solid var(--ink); border-radius: 14px;
-  background: var(--paper); font: 400 15px/1.6 var(--font-serif);
+  background: var(--paper); font: 400 16px/1.6 var(--font-serif); /* 16px: no zoom on focus */
 }
 .next-step textarea:focus { outline: none; border-color: var(--marigold); box-shadow: inset 0 0 0 1px var(--marigold); }
 

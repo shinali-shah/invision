@@ -53,11 +53,17 @@ export function createServer({ config: cfg = config, quiet = false, mockSpeed = 
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const { server } = createServer();
+  // The one boot failure people actually hit deserves a sentence, not a stack trace.
+  server.on('error', err => {
+    if (err.code !== 'EADDRINUSE') throw err;
+    console.error(`Port ${config.port} is already taken. Stop whatever is on it, or start this one with PORT=3001 npm start.`);
+    process.exit(1);
+  });
   server.listen(config.port, () => {
-    console.log(`Playback on http://localhost:${config.port}`);
+    console.log(`Playback on http://localhost:${config.port}  (Mac: http://localhost:${config.port}/mac)`);
     console.log(config.mock
-      ? 'Mock mode: no MODEL_API_KEY, Muse calls are scripted.'
+      ? `Mock mode (${config.apiKey ? 'MOCK is set' : 'no MODEL_API_KEY'}): the transcript is scripted and every Muse call is canned.`
       : `Live Muse mode: ${config.sparkModel} + ${config.asrModel}, languages ${config.languages.join('/')}`);
-    console.log('iPhone needs https for the mic: run `ngrok http ' + config.port + '` and open the https link.');
+    console.log('iPhone needs https for the mic: run `ngrok http ' + config.port + '` and open the https link on the phone.');
   });
 }

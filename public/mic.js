@@ -86,6 +86,18 @@ export function pickRecorderMime(isTypeSupported) {
   return '';
 }
 
+// Mirrors MAX_VIDEO in src/routes.js. The server answers 413 from the Content-Length before
+// reading a byte, but there's no point pushing a file through the tunnel to hear that, and
+// "retry" would only fail the same way. Three minutes at the 1 Mbps we ask for is ~25 MB;
+// Safari ignores the bitrate hint and lands nearer 60 MB, still well under.
+export const MAX_VIDEO_BYTES = 200 * 1024 * 1024;
+
+export function videoTooLarge(bytes) {
+  if (!(bytes > MAX_VIDEO_BYTES)) return null;
+  const mb = (b) => Math.ceil(b / (1024 * 1024));
+  return `Video is too large to upload (${mb(bytes)} MB; the limit is ${mb(MAX_VIDEO_BYTES)} MB).`;
+}
+
 // ---------- level ----------
 // External mics on iOS can arrive ~30 dB under normal speech (and on one side of a stereo pair)
 // once the phone's own voice processing is off. We bring speech up to a sensible level ourselves.
