@@ -55,7 +55,7 @@ test('vocatives at the start or end of a line, English and Spanish', () => {
 });
 
 test('greetings, fillers, kin slang, days and lowercase words are not names', () => {
-  for (const text of ['Hi there!', 'Okay, so what happened?', "I'm Sorry about that.", 'See you Monday.', 'Hi Mija!', 'hi abuela', 'Hey Bro, what up', 'Thanks, Dude.', "I'm Good, you?", 'Hola, Buenos días.', 'Hi, Hey!', 'Oaxaca? Did you grow tomatoes there too?', 'Pancha.']) {
+  for (const text of ['Hi there!', 'Okay, so what happened?', "I'm Sorry about that.", 'See you Monday.', 'Hi Mija!', 'Hey Bro, what up', 'Thanks, Dude.', "I'm Good, you?", 'Hola, Buenos días.', 'Hi, Hey!', 'Oaxaca? Did you grow tomatoes there too?', 'Pancha.']) {
     const { other } = detectPeople(lines([['A', text]]), { userName: 'Parth' });
     assert.equal(other, null, text);
   }
@@ -118,4 +118,37 @@ test('nothing to go on gives nulls and never throws', () => {
   assert.deepEqual(detectPeople([], { userName: 'Parth' }), { other: null, self: null });
   assert.deepEqual(detectPeople(null, {}), { other: null, self: null });
   assert.deepEqual(detectPeople([{ turnId: 1, speaker: 'A' }], {}), { other: null, self: null });
+});
+
+// ---- family words: a closed list, so they count anywhere in the line and in any case ----
+
+test('a family word said to someone is a name wherever it lands and however it is cased', () => {
+  const yes = { 'How are you doing Grandpa?': 'Grandpa', "okay Grandpa I'm going to talk to you later now": 'Grandpa', 'how are you doing grandpa?': 'Grandpa', 'Love you, Nani.': 'Nani', 'hi abuela': 'Abuela', 'Dadaji, how is your knee?': 'Dadaji' };
+  for (const [text, name] of Object.entries(yes)) {
+    const { other } = detectPeople(lines([['A', text]]), { userName: 'Parth' });
+    assert.ok(other, text);
+    assert.equal(other.name, name, text);
+    assert.equal(other.confidence, 0.7);
+  }
+  // talked about, not talked to
+  for (const text of ['Grandma really misses you as well.', 'My grandpa is coming on Sunday.', 'Grandpa said he would call.', 'I went to see my abuela.']) {
+    assert.equal(detectPeople(lines([['A', text]]), { userName: 'Parth' }).other, null, text);
+  }
+});
+
+test('the grandpa recording that came back as Someone', () => {
+  const turns = lines([
+    ['A', "i like I think I'm doing good. How are you doing Grandpa?"],
+    ['B', "I'm doing great. I really missed you. Nice talking to you."],
+    ['A', 'Yeah'],
+    ['B', 'How has school been?'],
+    ['A', "Um it's been okay I think yeah"],
+    ['B', 'So I really miss you and I really want you to come to my house and because Grandma really misses you as well and we can have a lot of fun together.'],
+    ['A', "Yeah yeah for sure I'll definitely drop by someday okay Grandpa I'm going to talk to you later now"],
+    ['B', 'thank you it was nice meeting you'],
+  ]);
+  const { other } = detectPeople(turns, { userName: 'Parth', userLabel: 'A' });
+  assert.equal(other.name, 'Grandpa');
+  assert.equal(other.turnId, 1);
+  assert.equal(other.confidence, 0.7, 'Grandma was talked about, not to: no rival name');
 });
