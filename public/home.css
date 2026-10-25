@@ -503,3 +503,6 @@ svg { display: block; vertical-align: middle; }
 .uncoached-hero p { max-width:62ch; color:var(--bone-2); font-size:15px; line-height:1.55; }
 .uncoached-hero .button { margin-top:4px; }
 @media (max-width:1000px) { .uncoached { margin-left:0; } }
+
+/* The brief moves under the live lines once the phone has heard who it is. */
+.recording-card.is-recording .brief { margin:4px 0 14px; border-bottom:0; }

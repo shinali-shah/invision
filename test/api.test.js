@@ -8,7 +8,7 @@ let base;
 
 const config = Object.freeze({
   apiKey: null, mock: true, port: 0, languages: ['English', 'Spanish'],
-  sparkModel: 'muse-spark-1.3', asrModel: 'muse-voice-transcribe-1.0', dbPath: ':memory:',
+  sparkModel: 'muse-spark-1.3', asrModel: 'muse-voice-transcribe-1.0', dbPath: ':memory:', userName: 'Parth',
 });
 
 before(async () => {
@@ -275,4 +275,41 @@ test('a video upload keeps the lip-lock cues; deleting the conversation removes 
   } finally {
     server.close();
   }
+});
+
+test('/api/me says who is holding the phone', async () => {
+  const { status, body } = await api('GET', '/api/me');
+  assert.equal(status, 200);
+  assert.deepEqual(body, { name: 'Parth' });
+});
+
+test('a conversation can start without a name and be named later', async () => {
+  const made = await api('POST', '/api/conversations', { tag: 'friend', consentConfirmed: true });
+  assert.equal(made.status, 201);
+  assert.equal(made.body.otherName, 'them');
+  const id = made.body.id;
+
+  const named = await api('PATCH', `/api/conversations/${id}`, { otherName: '  Priya Nair  ' });
+  assert.equal(named.status, 200);
+  assert.equal(named.body.otherName, 'Priya Nair');
+  assert.equal(named.body.tag, 'friend');
+  assert.equal((await api('GET', `/api/conversations/${id}`)).body.otherName, 'Priya Nair');
+
+  const long = await api('PATCH', `/api/conversations/${id}`, { otherName: 'x'.repeat(100) });
+  assert.equal(long.body.otherName.length, 80);
+  // clearing it goes back to nobody in particular
+  assert.equal((await api('PATCH', `/api/conversations/${id}`, { otherName: '   ' })).body.otherName, 'them');
+  assert.equal((await api('PATCH', `/api/conversations/${id}`, {})).status, 400);
+  assert.equal((await api('PATCH', `/api/conversations/${id}`, { otherName: 42 })).status, 400);
+  await api('DELETE', `/api/conversations/${id}`);
+});
+
+test('a name heard in the mock stream is on the conversation when the stream ends', async () => {
+  const { body: convo } = await api('POST', '/api/conversations', { tag: 'family', consentConfirmed: true });
+  const msgs = await streamMockConversation(convo.id);
+  const person = msgs.find(m => m.type === 'person');
+  assert.equal(person?.name, 'Abuela');
+  assert.equal(person.turnId, 1);
+  assert.equal((await api('GET', `/api/conversations/${convo.id}`)).body.otherName, 'Abuela');
+  await api('DELETE', `/api/conversations/${convo.id}`);
 });

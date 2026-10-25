@@ -49,7 +49,9 @@ export const api = {
   health: () => request('GET', '/api/health'),
   createConversation: ({ tag, otherName }) =>
     request('POST', '/api/conversations', { tag, otherName, consentConfirmed: true }),
+  me: () => request('GET', '/api/me'),
   setUserLabel: (id, label) => request('POST', `/api/conversations/${enc(id)}/user-label`, { label }),
+  setOtherName: (id, otherName) => request('PATCH', `/api/conversations/${enc(id)}`, { otherName }),
   process: (id, reflection) => request('POST', `/api/conversations/${enc(id)}/process`, { reflection }),
   retag: (id, tag) => request('PATCH', `/api/conversations/${enc(id)}`, { tag }),
   remove: (id) => request('DELETE', `/api/conversations/${enc(id)}`),

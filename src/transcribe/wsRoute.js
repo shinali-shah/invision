@@ -3,8 +3,13 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { createTurnAssembler } from './assemble.js';
 import { labelTurns, inferLabels } from './crowd.js';
+import { detectPeople } from '../nlp/person.js';
 
 const MAX_CUES = 120000; // ~4 h at 8 fps; past that the phone has been left running
+const MIN_NAME_CONF = 0.7; // a lone vocative is enough; a vocative with a rival name is not
+
+const unnamed = convo => !convo.otherName || convo.otherName === 'them';
+const realLabel = s => s && s !== 'unknown';
 
 // Lip-lock cue samples ride the same socket as the audio, as small JSON frames.
 // Keep only well-formed samples; a flaky phone must never take the stream down.
@@ -39,20 +44,50 @@ export function attachTranscribeSocket({ server, store, log, config, openStream,
     let browserGone = false; // the phone dropped the socket without sending "end"
     let stream;
 
+    // Names heard so far: who they are (while the conversation still says 'them') and, from the
+    // user's own "I'm Parth", which voice is theirs. A typed or already-picked name is left alone.
+    const peoplePatch = (turns, convo, userLabel = convo.userLabel ?? null) => {
+      const { other, self } = detectPeople(turns, { userName: config.userName, userLabel });
+      const patch = {};
+      if (!userLabel && realLabel(self?.speaker)) patch.userLabel = self.speaker;
+      let person = null;
+      if (other && other.confidence >= MIN_NAME_CONF && unnamed(convo)) {
+        patch.otherName = other.name;
+        person = { type: 'person', name: other.name, turnId: other.turnId, confidence: other.confidence };
+        log('names', 'info', `they are ${other.name}: ${other.how}`);
+      }
+      if (patch.userLabel) log('names', 'info', `your voice is ${patch.userLabel}: you said "${turns.find(t => t.turnId === self.turnId)?.text}"`);
+      return { patch, person };
+    };
+
+    const noteNames = () => {
+      const convo = store.getConversation(conversationId);
+      if (!convo) return;
+      const { patch, person } = peoplePatch(assembler.turns(), convo);
+      if (!Object.keys(patch).length) return;
+      const updated = store.updateConversation(conversationId, patch);
+      if (person) send(person);
+      stage.publish({ type: 'conversation', conversation: updated });
+    };
+
     const finish = () => {
       if (finished) return;
       finished = true;
       const turns = labelTurns(assembler.flush(), cues);
       // The phone deletes the conversation when the user walks out of a recording;
       // what Muse heard after that isn't ours to keep or show on the stage.
-      if (!store.getConversation(conversationId)) {
+      const convo = store.getConversation(conversationId);
+      if (!convo) {
         log('transcribe', 'info', `conversation ${conversationId.slice(0, 8)} was deleted mid-stream; ${turns.length} turns dropped`);
         return ws.close(1000);
       }
       const crowdTurns = turns.filter(t => t.source === 'crowd').length;
       // The camera and the mic agree on whose voice is whose: no need to ask.
       const picked = cues.length ? inferLabels(turns) : null;
-      store.updateConversation(conversationId, { turns, ...(picked ? { userLabel: picked.userLabel } : {}) });
+      const { patch, person } = peoplePatch(turns, convo, picked?.userLabel ?? convo.userLabel ?? null);
+      if (picked) patch.userLabel = picked.userLabel;
+      const updated = store.updateConversation(conversationId, { turns, ...patch });
+      if (person) send(person);
       if (cues.length && recordingsDir) {
         try {
           mkdirSync(recordingsDir, { recursive: true });
@@ -63,7 +98,8 @@ export function attachTranscribeSocket({ server, store, log, config, openStream,
       if (cues.length) {
         log('lips', 'info', `lip lock: ${cues.length} cues, ${crowdTurns} background line${crowdTurns === 1 ? '' : 's'}${picked ? `, your voice is ${picked.userLabel} (${Math.round(picked.agreement * 100)}% of ${picked.n} lines agree)` : ', could not pick your voice'}`);
       }
-      const done = { type: 'done', turns, userLabel: picked?.userLabel ?? null, crowdTurns };
+      const userLabel = picked?.userLabel ?? patch.userLabel ?? convo.userLabel ?? null;
+      const done = { type: 'done', turns, userLabel, crowdTurns, otherName: patch.otherName ?? convo.otherName ?? null };
       send(done);
       stage.publish({ ...done, conversationId });
       ws.close(1000);
@@ -79,6 +115,7 @@ export function attachTranscribeSocket({ server, store, log, config, openStream,
       } else if (out?.kind === 'turn') {
         send({ type: 'turn', turn: out.turn });
         stage.publish({ type: 'turn', conversationId, turn: out.turn });
+        noteNames();
       }
     };
 

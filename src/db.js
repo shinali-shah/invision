@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS logs (id INTEGER PRIMARY KEY, ts TEXT NOT NULL, agent
 // patch key -> [column, is it stored as JSON]
 const COLUMNS = {
   tag: ['tag', false],
+  otherName: ['other_name', false],
   turns: ['turns', true],
   userLabel: ['user_label', false],
   reflection: ['reflection', false],
