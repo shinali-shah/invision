@@ -65,7 +65,7 @@ export async function generateNote({ llm, tag, signals, turns, userLabel, reflec
   return {
     text: out.text.trim(),
     suggestion: typeof out.suggestion === 'string' && out.suggestion.trim() ? out.suggestion.trim() : null,
-    citedTurnIds: (out.citedTurnIds ?? []).filter(id => known.has(id)),
+    citedTurnIds: (Array.isArray(out.citedTurnIds) ? out.citedTurnIds : []).filter(id => known.has(id)),
     status: 'shown',
     source: 'muse-spark',
   };

@@ -259,3 +259,40 @@ test('end sent before the Muse handshake finishes keeps the buffered audio and e
   assert.equal(done.turns.length, 1);
   assert.equal(saved.turns.length, 1);
 });
+
+test('a conversation deleted while its stream is open is not written back or announced', async () => {
+  const http = await import('node:http');
+  const { WebSocket } = await import('ws');
+  const { attachTranscribeSocket } = await import('../src/transcribe/wsRoute.js');
+
+  let exists = true;
+  const updates = [];
+  const store = { getConversation: () => (exists ? { id: 'c1' } : undefined), updateConversation: (id, patch) => updates.push(patch) };
+  const published = [];
+  let streamEnd;
+  const openStream = ({ onEvent, onClose }) => Promise.resolve({
+    sendAudio() {},
+    async end() {
+      onEvent({ type: 'speechStart', turnId: 1, audioProcessedMs: 0 });
+      onEvent({ type: 'speechComplete', turnId: 1, transcript: 'hi grandma', audioProcessedMs: 800 });
+      onClose(1000);
+    },
+  });
+
+  const server = http.createServer();
+  attachTranscribeSocket({ server, store, log: () => {}, config: { mock: false }, openStream, stage: { publish: m => published.push(m) } });
+  await new Promise(r => server.listen(0, r));
+  const ws = new WebSocket(`ws://localhost:${server.address().port}/ws/transcribe?conversationId=c1`);
+  await new Promise((resolve, reject) => {
+    ws.on('message', raw => { if (JSON.parse(raw.toString()).type === 'ready') resolve(); });
+    ws.on('error', reject);
+  });
+  // the phone abandons: it deletes the conversation and drops the socket without an "end"
+  exists = false;
+  ws.close();
+  await new Promise(r => setTimeout(r, 50));
+  server.close();
+
+  assert.deepEqual(updates, []);
+  assert.deepEqual(published, []);
+});

@@ -50,7 +50,7 @@ function openStage() {
 
 test('hub sends hello with the last focus and fans out to every subscriber', () => {
   const hub = createStageHub({ mock: true });
-  const sent = [[], []];
+  const sent = [[], [], []];
   const fake = i => ({ readyState: 1, OPEN: 1, send: s => sent[i].push(JSON.parse(s)), on() {} });
   hub.subscribe(fake(0));
   hub.focus({ view: 'recording', conversationId: 'c1' });
@@ -58,9 +58,18 @@ test('hub sends hello with the last focus and fans out to every subscriber', () 
   hub.publish({ type: 'memory' });
 
   assert.deepEqual(sent[0][0], { type: 'hello', mock: true, focus: null });
-  assert.deepEqual(sent[1][0], { type: 'hello', mock: true, focus: { view: 'recording', conversationId: 'c1', otherName: null } });
+  const remembered = sent[1][0];
+  assert.ok(Number.isFinite(remembered.focus.at));
+  delete remembered.focus.at;
+  assert.deepEqual(remembered, { type: 'hello', mock: true, focus: { view: 'recording', conversationId: 'c1', otherName: null } });
+
   assert.deepEqual(sent[0].at(-1), { type: 'memory' });
   assert.deepEqual(sent[1].at(-1), { type: 'memory' });
+
+  // The stream ending demotes a remembered "recording" focus, so late joiners don't see a ghost recording
+  hub.publish({ type: 'done', conversationId: 'c1', turns: [] });
+  hub.subscribe(fake(2));
+  assert.equal(sent[2][0].focus.view, 'label');
 });
 
 test('focus endpoint validates the view and broadcasts it', async () => {
@@ -69,6 +78,8 @@ test('focus endpoint validates the view and broadcasts it', async () => {
   assert.equal((await post('/api/stage/focus', { view: 'nope' })).status, 400);
   assert.equal((await post('/api/stage/focus', { view: 'memory', conversationId: null })).status, 204);
   const focus = await stage.waitFor(m => m.type === 'focus');
+  assert.ok(Number.isFinite(focus.at));
+  delete focus.at;
   assert.deepEqual(focus, { type: 'focus', view: 'memory', conversationId: null, otherName: null });
   stage.ws.close();
 });

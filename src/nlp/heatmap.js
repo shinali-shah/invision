@@ -22,6 +22,14 @@ export const LEGEND = [
 
 const bare = raw => raw.toLowerCase().replace(/^[^\p{L}]+|[^\p{L}]+$/gu, '');
 
+// Index where `phrase` appears as consecutive words in `words`, or -1.
+function findPhrase(words, phrase) {
+  for (let i = 0; i + phrase.length <= words.length; i++) {
+    if (phrase.every((w, k) => words[i + k] === w)) return i;
+  }
+  return -1;
+}
+
 // Smile at a moment, from the closest face frame within 400 ms.
 function smileAt(frames, t) {
   let best = null;
@@ -43,16 +51,24 @@ export function buildHeatmap({ turns, userLabel, hooks, signals, behavior, frame
   const cues = new Map((behavior?.turns ?? []).map(b => [b.turnId, b]));
   const baseline = behavior?.baseline?.smile ?? null;
   // Words inside a flagged phrase ("that's what I heard") carry the flag's reason.
-  const awkwardWords = new Map(); // turnId -> [{ words: Set, why }]
+  const awkwardSpans = new Map(); // turnId -> [{ words: string[], why }]
   for (const f of hooks?.awkward?.flags ?? []) {
     if (f.who !== 'you' || !['gossip', 'undersell', 'cut-in'].includes(f.kind)) continue;
-    const quoted = /“([^”]+)”/.exec(f.evidence)?.[1];
-    const seam = (hooks.awkward.seams ?? []).find(x => x.turnId === f.turnId);
-    const span = quoted ?? (seam ? seam.yours.split(/\s+/).slice(0, 3).join(' ') : null);
-    if (!span) continue;
-    const list = awkwardWords.get(f.turnId) ?? [];
-    list.push({ words: new Set(span.toLowerCase().split(/\s+/).map(bare).filter(w => w.length >= 4 || /['’]/.test(w))), why: `${f.label}: ${f.evidence}` });
-    awkwardWords.set(f.turnId, list);
+    let span;
+    if (f.kind === 'cut-in') {
+      // The evidence quotes where *their* sentence broke off; the awkward bit is how yours started.
+      const seam = (hooks.awkward.seams ?? []).find(x => x.turnId === f.turnId);
+      const turn = ts.find(t => t.turnId === f.turnId);
+      const yours = seam ? seam.yours : turn?.speaker === userLabel ? String(turn.text ?? '') : '';
+      span = yours.split(/\s+/).slice(0, 3).join(' ');
+    } else {
+      span = /“([^”]+)”/.exec(f.evidence)?.[1];
+    }
+    const words = String(span ?? '').toLowerCase().split(/\s+/).map(bare).filter(Boolean);
+    if (!words.length) continue;
+    const list = awkwardSpans.get(f.turnId) ?? [];
+    list.push({ words, why: `${f.label}: ${f.evidence}` });
+    awkwardSpans.set(f.turnId, list);
   }
 
   // Words the user later echoed back from their lines: the threads they actually pulled on.
@@ -76,12 +92,24 @@ export function buildHeatmap({ turns, userLabel, hooks, signals, behavior, frame
       const bid = missed.get(t.turnId);
       const bidStems = bid ? contentWords(bid.cue) : new Set();
 
+      // A flagged phrase is marked where it actually sits in the line, so "I'm" in "just I'm
+      // bored" doesn't light up every other "I'm" she said. Only if the phrase can't be found
+      // whole do its longer words get marked wherever they appear.
+      const bares = raw.map(bare);
+      const awkAt = new Map(); // word index -> why
+      for (const span of awkwardSpans.get(t.turnId) ?? []) {
+        const at = findPhrase(bares, span.words);
+        const idx = at >= 0
+          ? span.words.map((_, k) => at + k)
+          : bares.map((b, k) => (span.words.includes(b) && (b.length >= 4 || /['’]/.test(b)) ? k : -1)).filter(k => k >= 0);
+        for (const k of idx) if (!awkAt.has(k)) awkAt.set(k, span.why);
+      }
+
       const words = raw.map((w, i) => {
         const b = bare(w);
         const s = b.length >= 4 ? stem(b) : b;
         const mark = (score, kind, why) => ({ w, score, kind, why });
-        const awk = awkwardWords.get(t.turnId)?.find(a => a.words.has(b));
-        if (awk) return mark(-0.9, 'awkward', awk.why);
+        if (awkAt.has(i)) return mark(-0.9, 'awkward', awkAt.get(i));
 
         if (you) {
           if (FILLERS.has(b)) return mark(-0.35, 'filler', 'Filler word');
@@ -109,10 +137,11 @@ export function buildHeatmap({ turns, userLabel, hooks, signals, behavior, frame
         return mark(0, null, null);
       });
 
-      // A few strong colours per line read as advice; a wall of tints reads as noise.
-      const keep = new Set(words.map((w, i) => [Math.abs(w.score), i]).filter(([v]) => v > 0)
+      // A few strong colours per line read as advice; a wall of tints reads as noise. Flagged
+      // phrases stay whole though: "that's what I heard" cut down to "that's" says nothing.
+      const keep = new Set(words.map((w, i) => [Math.abs(w.score), i]).filter(([v], i) => v > 0 && words[i].kind !== 'awkward')
         .sort((a, b) => b[0] - a[0]).slice(0, MAX_PER_LINE).map(([, i]) => i));
-      words.forEach((w, i) => { if (!keep.has(i)) Object.assign(w, { score: 0, kind: null, why: null }); });
+      words.forEach((w, i) => { if (!keep.has(i) && w.kind !== 'awkward') Object.assign(w, { score: 0, kind: null, why: null }); });
 
       return {
         turnId: t.turnId,

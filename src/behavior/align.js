@@ -5,8 +5,13 @@ import { tokens } from '../nlp/text.js';
 
 const REACTION_MS = 2500;
 const FACING_DEG = 25;
-const NOD_DEG = 5;
-const NOD_MS = 1500;
+// Nod thresholds are shared with public/replay.js (findNods), so the ticks match the counts.
+// 8° because a phone held in a hand wobbles the measured pitch by 5-7° between frames at 5 fps
+// (p90 on real footage), and real nods on the same footage were 9-20°.
+const NOD_DEG = 8;
+const NOD_MAX_MS = 1500;
+const NOD_REF_MS = 1000;
+const NOD_GAP_MS = 500;
 const MAX_FRAMES = 20000;
 
 const round = (n, dp = 2) => (n == null || !Number.isFinite(n) ? null : Math.round(n * 10 ** dp) / 10 ** dp);
@@ -38,42 +43,72 @@ export function cleanFrames(frames) {
 }
 
 // How much the face is moving: change in the expression scores from one frame to the next.
+// Also `steady`: the smile with one-frame blips taken out (talking makes the score jump for a
+// single frame), the median of each face frame with its neighbours.
 function withMotion(frames) {
+  const faces = frames.filter(f => f.face);
+  const at = new Map(faces.map((f, i) => [f, i]));
   let prev = null;
   return frames.map(f => {
     const motion = f.face && prev?.face
       ? Math.abs(f.smile - prev.smile) + Math.abs(f.jawOpen - prev.jawOpen) + Math.abs(f.browUp - prev.browUp)
       : null;
     prev = f;
-    return { ...f, motion };
+    let steady = f.smile;
+    if (f.face) {
+      const i = at.get(f);
+      const before = faces[i - 1];
+      const after = faces[i + 1];
+      if (before && after && f.t - before.t <= NOD_GAP_MS && after.t - f.t <= NOD_GAP_MS) {
+        steady = [before.smile, f.smile, after.smile].sort((a, b) => a - b)[1];
+      }
+    }
+    return { ...f, motion, steady };
   });
 }
 
 const facing = f => f.face && Math.abs(f.yaw) < FACING_DEG && Math.abs(f.pitch) < FACING_DEG;
 
-// A nod is the head pitching one way by a few degrees and coming back, within a second and a half.
-export function countNods(frames) {
+// Median pitch over the second before frame i, only across frames with no gap between them:
+// the pose the model settles on after re-finding a face isn't comparable to the one before.
+function refPitch(pts, i) {
+  const t = pts[i].t;
+  const win = [];
+  for (let j = i - 1; j >= 0 && pts[j].t >= t - NOD_REF_MS && pts[j + 1].t - pts[j].t <= NOD_GAP_MS; j--) win.push(pts[j].pitch);
+  if (win.length < 2) return null;
+  win.sort((a, b) => a - b);
+  return win[Math.floor(win.length / 2)];
+}
+
+// A nod: pitch swings at least NOD_DEG away from where it was a moment ago (either way) and
+// comes back within NOD_MAX_MS. Returns transcript ms of the furthest point of each one.
+// Keep in step with findNods in public/replay.js (a test checks they agree).
+export function nodTimes(frames) {
+  const out = [];
   const pts = frames.filter(f => f.face);
-  let nods = 0;
-  let i = 0;
-  while (i < pts.length) {
-    const start = pts[i];
-    let j = i + 1;
-    let far = null;
-    for (; j < pts.length && pts[j].t - start.t <= NOD_MS; j++) {
-      const d = pts[j].pitch - start.pitch;
-      if (!far && Math.abs(d) >= NOD_DEG) far = Math.sign(d);
-      if (far && Math.abs(pts[j].pitch - start.pitch) < NOD_DEG / 2) break;
+  let dip = null;
+  for (let i = 0; i < pts.length; i++) {
+    const f = pts[i];
+    if (dip && f.t - dip.lastT > NOD_GAP_MS) dip = null; // lost the face mid-dip
+    if (!dip) {
+      const ref = refPitch(pts, i);
+      if (ref !== null && Math.abs(f.pitch - ref) >= NOD_DEG) dip = { ref, start: f.t, peakT: f.t, max: Math.abs(f.pitch - ref), lastT: f.t };
+      continue;
     }
-    if (far && j < pts.length && pts[j].t - start.t <= NOD_MS) {
-      nods++;
-      i = j + 1;
-    } else {
-      i++;
+    dip.lastT = f.t;
+    const off = Math.abs(f.pitch - dip.ref);
+    if (off > dip.max) { dip.max = off; dip.peakT = f.t; }
+    if (off < NOD_DEG / 2) {
+      if (f.t - dip.start <= NOD_MAX_MS) out.push(dip.peakT);
+      dip = null;
+    } else if (f.t - dip.start > NOD_MAX_MS) {
+      dip = null; // a held tilt, not a nod
     }
   }
-  return nods;
+  return out;
 }
+
+export const countNods = frames => nodTimes(frames).length;
 
 function windowStats(frames, from, to) {
   const inside = frames.filter(f => f.t >= from && f.t <= to);
@@ -81,7 +116,7 @@ function windowStats(frames, from, to) {
   if (!faces.length) return null;
   return {
     smile: mean(faces.map(f => f.smile)),
-    smilePeak: Math.max(...faces.map(f => f.smile)),
+    smilePeak: Math.max(...faces.map(f => f.steady)),
     facingPct: inside.length ? inside.filter(facing).length / inside.length : null,
     nods: countNods(inside),
     animation: mean(faces.map(f => f.motion).filter(m => m != null)),
@@ -131,9 +166,12 @@ function summarize(list) {
 export function alignBehavior({ model, fps, frames, turns, userLabel, signals, hooks }) {
   const fs = withMotion(cleanFrames(frames));
   const faces = fs.filter(f => f.face);
+  // Means, like the per-window numbers they get compared with. The smile score is skewed (mostly
+  // low, with blips while talking), so a median here sat 6-8 points under every window's mean on
+  // real footage and made every reaction read as a smile.
   const baseline = {
-    smile: round(median(faces.map(f => f.smile))),
-    animation: round(median(faces.map(f => f.motion).filter(m => m != null)), 3),
+    smile: round(mean(faces.map(f => f.smile))),
+    animation: round(mean(faces.map(f => f.motion).filter(m => m != null)), 3),
   };
 
   const rows = (turns ?? []).map(t => {

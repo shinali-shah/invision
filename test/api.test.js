@@ -207,3 +207,19 @@ test('unnamed conversations are never "the same person"', async () => {
   assert.equal(samePerson('María  José', 'maria jose'), true);
   assert.equal(normName('  Priya   Shah '), 'priya shah');
 });
+
+test('two taps on Get coaching share one run', async () => {
+  const { body: convo } = await api('POST', '/api/conversations', { tag: 'friend', otherName: 'Sam', consentConfirmed: true });
+  await streamMockConversation(convo.id);
+  await api('POST', `/api/conversations/${convo.id}/user-label`, { label: 'A' });
+  const [a, b] = await Promise.all([
+    api('POST', `/api/conversations/${convo.id}/process`, { reflection: '' }),
+    api('POST', `/api/conversations/${convo.id}/process`, { reflection: '' }),
+  ]);
+  assert.equal(a.status, 200);
+  assert.equal(b.status, 200);
+  assert.equal(a.body.note.text, b.body.note.text);
+  const logs = (await api('GET', '/api/logs')).body.filter(l => l.agent === 'coach' && /drafted/.test(l.message));
+  assert.ok(logs.length >= 1);
+  await api('DELETE', `/api/conversations/${convo.id}`);
+});

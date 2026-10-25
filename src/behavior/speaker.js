@@ -2,7 +2,15 @@
 // while you do. That's enough to tell which diarized voice is yours when nobody picked one.
 
 const MIN_FRAMES = 10;
-const MIN_RATIO = 1.25;
+const MIN_RATIO = 1.3;
+
+// Typical frame-to-frame jaw change. A median, because the face re-locking after a dropout
+// makes one huge jump that a mean would count as a lot of talking.
+function median(xs) {
+  const s = [...xs].sort((a, b) => a - b);
+  const mid = s.length >> 1;
+  return s.length % 2 ? s[mid] : (s[mid - 1] + s[mid]) / 2;
+}
 
 export function inferUserLabel(turns, frames) {
   const ts = Array.isArray(turns) ? turns : [];
@@ -20,7 +28,7 @@ export function inferUserLabel(turns, frames) {
   for (const s of speakers) {
     const inside = motion.filter(f => ts.some(t => t.speaker === s && f.t >= t.startMs && f.t <= t.endMs));
     if (inside.length < MIN_FRAMES) return null;
-    mouth[s] = inside.reduce((n, f) => n + f.m, 0) / inside.length;
+    mouth[s] = median(inside.map(f => f.m));
   }
 
   const [a, b] = speakers;

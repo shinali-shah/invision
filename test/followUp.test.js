@@ -94,3 +94,30 @@ test('a Muse draft that quotes something they said counts as grounded', async ()
   const out = await draftFollowUp({ llm, tag: 'family', otherName: 'Abuela', hooks, turns: story, userLabel: 'A' });
   assert.equal(out.source, 'muse-spark');
 });
+
+test('a draft that repeats your own flagged line (the rumour, "just bored") is thrown out', async () => {
+  // Live Muse draft for a chat whose only topic was a rumour: nothing to ground on, so it was accepted.
+  const bare = { topics: [], events: [], commitments: [], missedBids: [], highlights: [], followUpDetector: [],
+    awkward: { flags: [
+      { turnId: 5, who: 'you', kind: 'gossip', label: 'Gossip about someone else', evidence: '“cheated on her”: a story about someone who isn\'t here', weight: 4 },
+      { turnId: 8, who: 'you', kind: 'undersell', label: 'Undersold yourself', evidence: '“just bored” is what they\'ll remember about you', weight: 2 },
+    ], score: 60, seams: [], worst: null } };
+  const chat = [
+    { turnId: 4, speaker: 'A', text: 'Wait, what do you do right now?' },
+    { turnId: 5, speaker: 'B', text: "Um I'm a wait aren't you the roommate that the girl cheated on her boyfriend with from Purdue?" },
+    { turnId: 8, speaker: 'A', text: "I do CS at UTD but I'm low-key just bored" },
+  ];
+  for (const text of [
+    "Hey Shanali, nice meeting you. I'm usually bored doing CS at UTD so hit me up if you wanna chat again.",
+    "Still laughing about that Purdue cheating story. Let's chat again!",
+  ]) {
+    const llm = llmReturning({ text, hooksUsed: [] });
+    const out = await draftFollowUp({ llm, tag: 'friend', otherName: 'Shanali', hooks: bare, turns: chat, userLabel: 'A' });
+    assert.equal(out.source, 'template', text);
+    assert.doesNotMatch(out.text, /bored|cheat|Purdue/i);
+    // ...and the model was told what to stay away from.
+    assert.deepEqual(llm.calls[0].user.avoid, ['cheated on her', 'just bored']);
+  }
+  const fine = await draftFollowUp({ llm: llmReturning({ text: 'Hey Shanali, nice meeting you today. Good luck with the semester!', hooksUsed: [] }), tag: 'friend', otherName: 'Shanali', hooks: bare, turns: chat, userLabel: 'A' });
+  assert.equal(fine.source, 'muse-spark');
+});

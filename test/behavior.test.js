@@ -38,7 +38,7 @@ test('cleanFrames drops junk, clamps scores and sorts by time', () => {
 });
 
 test('a dip-and-return in pitch is one nod; a slow drift is none', () => {
-  const nod = [0, -3, -7, -6, -1, 0].map((pitch, i) => ({ t: i * 200, face: true, pitch }));
+  const nod = [0, 0, 0, -3, -10, -9, -1, 0].map((pitch, i) => ({ t: i * 200, face: true, pitch }));
   assert.equal(countNods(nod), 1);
   const drift = Array.from({ length: 20 }, (_, i) => ({ t: i * 500, face: true, pitch: -i }));
   assert.equal(countNods(drift), 0);
@@ -54,7 +54,7 @@ test('alignBehavior: reactions after follow-ups vs other lines, baseline, facing
   const hooks = extractHooks(turns, 'A');
   const b = alignBehavior({ model: 'test', fps: 5, frames: frames(), turns, userLabel: 'A', signals, hooks });
   assert.equal(b.faceSeenPct, 1);
-  assert.equal(b.baseline.smile, 0.15);
+  assert.equal(b.baseline.smile, 0.23); // mean over the whole video, warm stretch included
   const t3 = b.turns.find(r => r.turnId === 3);
   assert.ok(t3.reaction.smileDelta > 0.4, 'smiled after the follow-up');
   assert.equal(t3.reaction.nods, 1);
@@ -327,4 +327,68 @@ test('the voice whose lines move the face on camera is theirs, so the other one 
   assert.equal(inferUserLabel(shinali, frames).label, 'A');
   const still = frames.map(f => ({ ...f, jawOpen: 0.1 }));
   assert.equal(inferUserLabel(shinali, still), null, 'no difference, no guess');
+  // One face re-lock during your lines (a 0.6 jump) must not read as you being the one on camera.
+  const relock = still.map((f, i) => ({ ...f, jawOpen: i === 44 ? 0.7 : 0.1 }));
+  assert.equal(inferUserLabel(shinali, relock), null, 'a single jump is not talking');
+  const close = frames.map((f, i) => (f.jawOpen === 0.3 ? { ...f, jawOpen: 0.09 } : f)); // 0.04 vs 0.02 is 2x
+  assert.equal(inferUserLabel(shinali, close).label, 'A');
+});
+
+// ---------- pose cues on real phone footage (5 fps, handheld) ----------
+
+import { readFileSync } from 'node:fs';
+import { nodTimes } from '../src/behavior/align.js';
+
+// Pitch readings copied from a real recording while the other person stood still and listened:
+// the frame-to-frame wobble of a handheld phone, with a mouth-open blip at the end.
+const STILL_PITCH = [-0.9, -0.6, -0.7, 0.2, -1.1, -0.7, -1.4, -0.6, -0.5, -3.8, -4.4, -2.9, -0.1, 3.4, -0.3, -4.8, -1.3, 5.6, 2.5, -1.7];
+const seq = (pitches, jaw = 0.02) => pitches.map((pitch, i) => ({ t: i * 200, face: true, pitch, smile: 0.1, jawOpen: jaw, browUp: 0.1, yaw: 0 }));
+
+test('handheld jitter of a few degrees is not a nod; a real dip and return is', () => {
+  assert.equal(countNods(seq(STILL_PITCH)), 0, 'wobble around ±5° should not count');
+  const nod = seq([-2, -1, -2, -1, -12, -10, -3, -1, -2]);
+  assert.equal(countNods(nod), 1);
+  // the same dip with the face lost for a second right before it: nothing to compare against
+  const gap = nod.map((f, i) => (i === 2 || i === 3 ? { ...f, face: false } : f));
+  assert.equal(countNods(gap), 0);
+});
+
+test('the replay page finds the same nods as the server', () => {
+  const src = readFileSync(new URL('../public/replay.js', import.meta.url), 'utf8');
+  const fn = name => src.match(new RegExp(`^function ${name}\\([^)]*\\) \\{[\\s\\S]*?^\\}`, 'm'))?.[0];
+  assert.ok(fn('findNods') && fn('refPitch'), 'replay.js still defines findNods/refPitch');
+  const consts = src.match(/^const (NOD_DEG|NOD_MAX_MS|NOD_REF_MS|NOD_GAP_MS) = .*$/gm).join('\n');
+  const findNods = new Function(`${consts}\n${fn('refPitch')}\n${fn('findNods')}\nreturn findNods;`)();
+  const mixed = seq([...STILL_PITCH, -2, -1, -12, -11, -2, -1, ...STILL_PITCH, 1, 2, 14, 12, 3, 1]);
+  const lost = mixed.map((f, i) => (i % 17 === 0 ? { ...f, face: false } : f));
+  for (const frames of [mixed, lost, seq(STILL_PITCH)]) {
+    assert.deepEqual(findNods(frames), nodTimes(frames));
+  }
+  assert.equal(nodTimes(mixed).length, 2);
+});
+
+test('a smile that is spiky but no different from usual is not a reaction', () => {
+  // Talking makes the smile score blip for one frame at a time; that happens all conversation long.
+  const spiky = [];
+  for (let t = 0; t <= 20000; t += 200) spiky.push({ t, face: true, smile: (t / 200) % 5 === 0 ? 0.8 : 0.1, jawOpen: 0.1, browUp: 0.1, yaw: 0, pitch: 0 });
+  const b = alignBehavior({ model: 'x', fps: 5, frames: spiky, turns, userLabel: 'A', signals, hooks: null });
+  for (const r of b.turns.filter(r => r.reaction)) {
+    assert.ok(Math.abs(r.reaction.smileDelta) < 0.05, `turn ${r.turnId} read a reaction of ${r.reaction.smileDelta} out of nothing`);
+  }
+  assert.ok(Math.abs(b.stats.afterOther.smileDelta) < 0.05);
+  // one-frame blips don't make a line "lit" either: "so fun!" over a face like this is not a match
+  assert.notEqual(b.turns.find(r => r.turnId === 2).congruence, 'match');
+  assert.ok(b.turns.find(r => r.turnId === 2).smilePeak < 0.4, 'peak is the sustained smile, not a blip');
+});
+
+test('heatmap colours your side of a cut-in, as a phrase, and never truncates a flagged phrase', () => {
+  const hooks = extractHooks(shinali, 'A');
+  const map = buildHeatmap({ turns: shinali, userLabel: 'A', hooks, signals: null, behavior: null });
+  const awk = id => map.turns.find(t => t.turnId === id).words.filter(w => w.kind === 'awkward').map(w => w.w);
+  // Turn 5 is her line with you merged in. "Um I'm a" is hers; the cut-in starts at "wait aren't you".
+  assert.ok(!awk(5).includes("I'm"), 'her words are not your awkward moment');
+  assert.deepEqual(awk(5).slice(0, 3), ['wait', "aren't", 'you']);
+  // "just bored" and "that's what I heard" both stay whole, past the usual three-per-line cap.
+  assert.deepEqual(awk(8), ['just', 'bored', "that's", 'what', 'I', 'heard']);
+  for (const t of map.turns) assert.ok(t.words.filter(w => w.kind && w.kind !== 'awkward').length <= 3, `turn ${t.turnId}`);
 });

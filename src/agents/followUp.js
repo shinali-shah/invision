@@ -28,6 +28,7 @@ function systemPrompt(tag) {
     '- If the user made a commitment, follow through on it or say when they will.',
     '- If something is coming up for them (an interview, a trip), wish them well on it.',
     '- Only use facts from `hooks` and `turns`. Do not invent plans, links, places or details.',
+    '- Never bring up a rumour or anyone who was not there, and never repeat anything in `avoid`: those are lines of the user\'s that went badly.',
     '- No emojis unless they used them. No "Great chatting!" filler as the whole message.',
     `- Tone: ${VOICE[tag] ?? VOICE.friend}.`,
     '- `hooksUsed` lists the exact hook terms or texts you referenced.',
@@ -56,6 +57,20 @@ function echoesThem(text, turns, userLabel, otherName) {
   for (const n of contentWords(otherName ?? '')) words.delete(n);
   return (turns ?? []).some(t => t.speaker !== userLabel && [...contentWords(t.text)].some(w => words.has(w)));
 }
+
+// The phrases the awkward detector quoted from the user's own lines: "just bored", "cheated on her".
+function flaggedPhrases(hooks) {
+  const out = [];
+  for (const f of hooks?.awkward?.flags ?? []) {
+    const quoted = f.who === 'you' ? /“([^”]+)”/.exec(f.evidence ?? '')?.[1] : null;
+    if (quoted && !out.includes(quoted)) out.push(quoted);
+  }
+  return out;
+}
+
+// A message that goes back to the rumour, or sells the user short again, is worse than the template.
+const SORE = /\b(?:bored|boring|rumou?rs?|cheat\w*|gossip|hooked up|broke up)\b/i;
+const echoesFlag = (text, avoid) => SORE.test(text) || avoid.some(p => text.toLowerCase().includes(p.toLowerCase()));
 
 const SPANISH_WHEN = /^(?:el|la|este|esta|mañana|pronto)\b/i;
 export function eventLine(event) {
@@ -95,6 +110,7 @@ export function templateFollowUp({ hooks, otherName, tag }) {
 
 export async function draftFollowUp({ llm, tag, otherName, hooks, turns, userLabel }) {
   const fallback = () => templateFollowUp({ hooks, otherName, tag });
+  const avoid = flaggedPhrases(hooks);
   let out;
   try {
     out = await llm.json({
@@ -105,6 +121,7 @@ export async function draftFollowUp({ llm, tag, otherName, hooks, turns, userLab
         tag,
         otherName: otherName && otherName !== 'them' ? otherName : null,
         hooks: { topics: hooks?.topics ?? [], events: hooks?.events ?? [], commitments: hooks?.commitments ?? [] },
+        avoid,
         turns: (turns ?? []).map(t => ({ speaker: t.speaker === userLabel ? 'you' : 'them', text: t.text })),
       },
       effort: 'low',
@@ -114,7 +131,7 @@ export async function draftFollowUp({ llm, tag, otherName, hooks, turns, userLab
   }
 
   const text = typeof out?.text === 'string' ? out.text.trim() : '';
-  if (!text || text.length > MAX_CHARS) return fallback();
+  if (!text || text.length > MAX_CHARS || echoesFlag(text, avoid)) return fallback();
   // Don't trust the model's own hooksUsed; check the words actually landed in the message.
   const used = groundedIn(text, hooks);
   if (hookTerms(hooks).length && !used.length && !echoesThem(text, turns, userLabel, otherName)) return fallback();

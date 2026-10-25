@@ -68,14 +68,32 @@ export function createApp({ store, llm, log, config, publicDir = 'public', stage
     res.json(updated);
   });
 
+  // One coaching run per conversation at a time: a double tap joins the run already going instead of
+  // paying Muse twice and racing on the result.
+  const inFlight = new Map();
+
   app.post('/api/conversations/:id/process', async (req, res, next) => {
     try {
       const convo = findConvo(req, res);
       if (!convo) return;
-      if ((convo.turns ?? []).length >= 2 && !convo.userLabel) return fail(res, 400, 'Tap one of your own lines first');
+      if (inFlight.has(convo.id)) return res.json(await inFlight.get(convo.id));
+      // Labelling only means something when diarization actually told two voices apart.
+      const voices = new Set((convo.turns ?? []).map(t => t.speaker).filter(s => s && s !== 'unknown')).size;
+      if ((convo.turns ?? []).length >= 2 && voices >= 2 && !convo.userLabel) return fail(res, 400, 'Tap one of your own lines first');
       const reflection = typeof req.body?.reflection === 'string' ? req.body.reflection.slice(0, 2000) : '';
       stage.publish({ type: 'processing', conversationId: convo.id });
-      const done = await processConversation({ store, llm, log, id: convo.id, reflection });
+      const run = processConversation({ store, llm, log, id: convo.id, reflection });
+      inFlight.set(convo.id, run);
+      let done;
+      try {
+        done = await run;
+      } catch (err) {
+        // Give the screens a terminal message instead of leaving them on a spinner.
+        stage.publish({ type: 'processing', conversationId: convo.id, failed: true });
+        throw err;
+      } finally {
+        inFlight.delete(convo.id);
+      }
       stage.publish({ type: 'conversation', conversation: done });
       stage.publish({ type: 'memory' });
       res.json(done);
@@ -88,8 +106,15 @@ export function createApp({ store, llm, log, config, publicDir = 'public', stage
       if (!convo) return;
       const { tag } = req.body ?? {};
       if (!TAGS.includes(tag)) return fail(res, 400, `tag must be one of ${TAGS.join(', ')}`);
+      if (inFlight.has(convo.id)) return fail(res, 409, 'Coaching is still running; change the tag when it finishes');
       stage.publish({ type: 'processing', conversationId: convo.id });
-      const done = await recoach({ store, llm, log, id: convo.id, tag });
+      let done;
+      try {
+        done = await recoach({ store, llm, log, id: convo.id, tag });
+      } catch (err) {
+        stage.publish({ type: 'processing', conversationId: convo.id, failed: true });
+        throw err;
+      }
       stage.publish({ type: 'conversation', conversation: done });
       stage.publish({ type: 'memory' });
       res.json(done);

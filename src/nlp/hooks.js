@@ -75,6 +75,7 @@ const NOT_TOPICS = new Set([
   'people', 'work', 'working', 'honestly', 'kinda', 'sorta', 'alright', 'dunno', 'sometime', 'stuff',
   'someone', 'busy', 'super', 'crazy', 'place', 'start', 'point', 'guys', 'folks', 'nope', 'yep',
   'thing', 'things', 'today', 'cooked', 'feel', 'feels', 'siento',
+  'name', 'names', 'wait', 'dude', 'wanna', 'gotcha', 'anyways', 'sort', 'lowkey',
 ]);
 
 // Words that look like adverbs or verb forms but are fine topics.
@@ -93,7 +94,8 @@ function topicWord(word, proper) {
 }
 
 // "I'm Priya", "my name is Priya", "me llamo Priya": a name is who someone is, not what they talked about.
-const INTRO = /(?:i['’]m|i am|my name['’]?s|my name is|call me|me llamo|soy)\s+(\p{Lu}\p{L}+)/gu;
+// No `i` flag, since that would make \p{Lu} match lowercase too; the openers spell out both cases instead.
+const INTRO = /(?:[Ii]['’]m|[Ii] am|[Mm]y name['’]?s|[Mm]y name is|[Cc]all me|[Mm]e llamo|[Ss]oy)\s+(\p{Lu}\p{L}+)/gu;
 
 function introducedNames(ts, otherName) {
   const names = new Set();
@@ -115,7 +117,8 @@ function properNouns(text) {
 }
 
 // stem -> { stem, forms: Map(word -> count), turnIds: Set, mentions, proper, echoed }
-function termStats(ts, userLabel, names = new Set()) {
+// `skip` holds turns whose words must not become topics (a rumour is not something to bring up again).
+function termStats(ts, userLabel, names = new Set(), skip = new Set()) {
   const stats = new Map();
   const userStems = new Set();
   for (const t of ts) {
@@ -123,6 +126,7 @@ function termStats(ts, userLabel, names = new Set()) {
       for (const s of contentWords(textOf(t))) userStems.add(s);
       continue;
     }
+    if (skip.has(t.turnId)) continue;
     const proper = properNouns(textOf(t));
     for (const { word, stem } of contentTokens(textOf(t))) {
       if (names.has(word) || !topicWord(word, proper.has(word))) continue;
@@ -335,7 +339,9 @@ function highlightsFrom(ts, userLabel) {
 
 export function extractHooks(turns, userLabel, { otherName } = {}) {
   const ts = asList(turns);
-  const stats = termStats(ts, userLabel, introducedNames(ts, otherName));
+  const awkward = detectAwkward(ts, userLabel);
+  const rumours = new Set(awkward.flags.filter(f => f.kind === 'gossip').map(f => f.turnId));
+  const stats = termStats(ts, userLabel, introducedNames(ts, otherName), rumours);
   return {
     topics: topicsFrom(stats),
     events: eventsFrom(ts, userLabel),
@@ -343,6 +349,6 @@ export function extractHooks(turns, userLabel, { otherName } = {}) {
     missedBids: missedBidsFrom(ts, userLabel, stats),
     highlights: highlightsFrom(ts, userLabel),
     followUpDetector: detectFollowUps(ts, userLabel),
-    awkward: detectAwkward(ts, userLabel),
+    awkward,
   };
 }

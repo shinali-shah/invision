@@ -75,7 +75,9 @@ export function isCameraError(err) {
 }
 
 // iOS only records mp4; Chrome and Firefox want webm. First one supported wins.
-export const RECORDER_MIMES = ['video/mp4;codecs=avc1', 'video/mp4', 'video/webm;codecs=vp8,opus', 'video/webm'];
+// Ask for AAC audio explicitly: given just avc1, Chrome muxes Opus into the mp4, which
+// Safari on the Mac won't play on the Replay page.
+export const RECORDER_MIMES = ['video/mp4;codecs=avc1,mp4a.40.2', 'video/mp4;codecs=avc1', 'video/mp4', 'video/webm;codecs=vp8,opus', 'video/webm'];
 
 export function pickRecorderMime(isTypeSupported) {
   for (const m of RECORDER_MIMES) {
@@ -91,7 +93,7 @@ export function pickRecorderMime(isTypeSupported) {
 export const TARGET_DB = -22;   // where speech should sit, RMS
 const GATE_DB = -75;            // quieter than this is room tone, not speech; don't chase it
 const MAX_GAIN = 80;            // +38 dB, enough for the quietest mic we've seen
-const MIN_GAIN = 1;
+const MIN_GAIN = 0.25;          // -12 dB; a hot mic gets brought down rather than living on the limiter
 
 export const toDb = (rms) => (rms > 0 ? 20 * Math.log10(rms) : -Infinity);
 

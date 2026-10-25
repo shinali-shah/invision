@@ -541,3 +541,122 @@ test('"Oh cool. Um" after they say who they are is a missed bid; answering their
   const h = extractHooks(intro, 'A', { otherName: 'Priya' });
   assert.deepEqual(h.missedBids.map(b => [b.turnId, b.replyTurnId]), [[5, 6]]);
 });
+
+// ---- regressions from the live-transcript debugging pass ----
+
+import { detectAwkward } from '../src/nlp/awkward.js';
+
+const timed = rows => rows.map(([speaker, text, startMs, endMs], i) => ({ turnId: i + 1, speaker, text, startMs, endMs }));
+
+test('isQuestion: a question tacked onto an unpunctuated ASR line still counts', () => {
+  // Both straight from a live networking transcript: three questions asked, one counted.
+  assert.equal(isQuestion("Nice to meet you, bro. I'm doing good bro like what's what are you doing here like what's your major"), true);
+  assert.equal(isQuestion("Um oh nice well I'm like low key doing CS too at UT Dallas and I mean yeah so like what else do you do"), true);
+  assert.equal(isQuestion('Wait honestly are you enjoying like the hackathon so far'), true);
+  // ...while statements that happen to open with a question word or auxiliary do not.
+  assert.equal(isQuestion('have a good one'), false);
+  assert.equal(isQuestion('when i was in oaxaca we had a garden'), false);
+  assert.equal(isQuestion('do it tomorrow if you can'), false);
+  assert.equal(isQuestion('I know what you mean'), false);
+  assert.equal(isQuestion('and what I liked about it was the market'), false);
+  assert.equal(isQuestion("can't wait to see you"), false);
+});
+
+test('"My name is X" and "I\'m X" at the start of a sentence are introductions, not topics', () => {
+  const h = extractHooks(lines([
+    ['A', 'Hi, what is your name?'],
+    ['B', 'My name is Pradamish. How are you doing?'],
+    ['A', 'Nice to meet you.'],
+    ['B', "I'm Pradamish. Pradamish from Austin, I love Austin."],
+  ]), 'A');
+  const terms = h.topics.map(t => t.term.toLowerCase());
+  assert.ok(!terms.includes('pradamish'), terms.join(','));
+  assert.ok(!terms.includes('name'), terms.join(','));
+  assert.ok(terms.includes('austin'));
+});
+
+test('a rumour\'s words are not topics, so the follow-up and brief never bring it back up', () => {
+  const h = extractHooks(timed([
+    ['A', "Wait, what do you do right now?", 0, 2000],
+    ['B', "Um I'm a wait aren't you the same roommate that like the girl cheated on her boyfriend with from Purdue? Um I'm not sure.", 2200, 9000],
+    ['A', 'Wait are you sure?', 9100, 10000],
+    ['B', "Yeah, I'm sure. I'm not sure. Anyway I'm in a robotics lab, robotics all day.", 10200, 14000],
+  ]), 'A');
+  const terms = h.topics.map(t => t.term.toLowerCase());
+  assert.ok(!terms.includes('purdue'), terms.join(','));
+  assert.ok(!terms.includes('wait'), terms.join(','));
+  assert.ok(terms.includes('robotics'));
+});
+
+test('awkward: "I\'m actually…" and "I\'m a wait, no, …" are not seams where you cut in', () => {
+  const kinds = rows => detectAwkward(timed(rows), 'A').flags.map(f => `${f.turnId} ${f.who} ${f.kind}`);
+  assert.deepEqual(kinds([
+    ['A', 'So what year are you?', 0, 1500],
+    ['B', "I'm actually a sophomore, what about you?", 1900, 4000],
+  ]), []);
+  assert.deepEqual(kinds([
+    ['A', 'So what year are you?', 0, 1500],
+    ['B', "I'm a wait, no, a sophomore. What about you?", 1900, 4000],
+  ]), []);
+  // The real seam still reads as yours.
+  const merged = detectAwkward(timed([
+    ['A', 'What do you do?', 0, 1500],
+    ['B', "Um I'm a wait aren't you the same roommate from Purdue? Um I'm not sure.", 1900, 6000],
+  ]), 'A');
+  assert.ok(merged.flags.some(f => f.turnId === 2 && f.who === 'you' && f.kind === 'cut-in'));
+  assert.equal(merged.seams[0].theirs, "Um I'm a");
+});
+
+test('awkward: hearsay about a song, a hackathon or the person you are talking to is not gossip', () => {
+  const gossip = rows => detectAwkward(timed(rows), 'A').flags.filter(f => f.kind === 'gossip').map(f => `${f.turnId} ${f.who}`);
+  assert.deepEqual(gossip([['B', 'Have you heard the new album?', 0, 1500], ['A', 'Yeah I heard that song on the radio yesterday', 1900, 4000]]), []);
+  assert.deepEqual(gossip([['B', 'The hackathon is next week', 0, 1500], ['A', "Yeah that's what I heard about the hackathon too", 1900, 4000]]), []);
+  assert.deepEqual(gossip([['B', 'Hey!', 0, 500], ['A', 'I heard you got the job, congrats', 900, 2500]]), []);
+  assert.deepEqual(gossip([['B', 'What do you do outside class?', 0, 1500], ['A', "I'm in the drama club and I do a little theater", 1900, 4000]]), []);
+  assert.deepEqual(gossip([['A', 'How have you been?', 0, 1500], ['B', 'Honestly rough, my parents are going through a divorce', 1900, 4500]]), []);
+  // Real rumours about a third person still are.
+  assert.deepEqual(gossip([['B', 'Do you know Sam?', 0, 1000], ['A', 'I heard that she cheated on her boyfriend', 1200, 3000]]), ['2 you']);
+  assert.deepEqual(gossip([['B', 'Do you know Sam?', 0, 1000], ['A', 'Apparently he hooked up with half the dorm', 1200, 3000]]), ['2 you']);
+  // "That's what I heard" is gossip once a rumour is already on the table.
+  assert.deepEqual(gossip([
+    ['B', "Aren't you the roommate the girl cheated on her boyfriend with?", 0, 3000],
+    ['A', "I'm not sure, that's what I heard", 3200, 5000],
+  ]), ['1 them', '2 you']);
+});
+
+test('awkward: a normal goodbye is not a fizzle, and a 50 ms overlap is not a cut-in', () => {
+  const goodbye = detectAwkward(timed([
+    ['A', 'So great meeting you, I will send that article', 0, 2000],
+    ['B', 'Please do, it was lovely', 2300, 3500],
+    ['A', 'Totally', 3800, 4200],
+    ['B', 'See you!', 4500, 5000],
+    ['A', 'Bye!', 5200, 5600],
+    ['B', 'Take care', 5800, 6300],
+  ]), 'A');
+  assert.ok(!goodbye.flags.some(f => f.kind === 'fizzle'), JSON.stringify(goodbye.flags));
+  const ranOut = detectAwkward(timed([
+    ['A', 'So what are you working on these days?', 0, 2000],
+    ['B', 'Oh, a robotics project with the lab', 2300, 3500],
+    ['A', 'Cool', 3800, 4200],
+    ['B', 'Yeah', 4500, 5000],
+    ['A', 'Okay', 5200, 5600],
+    ['B', 'Mm', 5800, 6300],
+  ]), 'A');
+  assert.ok(ranOut.flags.some(f => f.kind === 'fizzle'));
+
+  const tight = detectAwkward(timed([['B', 'Nice to meet you too.', 0, 1500], ['A', 'So what do you do?', 1450, 3000]]), 'A');
+  assert.deepEqual(tight.flags, []);
+  const barged = detectAwkward(timed([['B', 'Nice to meet you too.', 0, 1500], ['A', 'So what do you do?', 1000, 3000]]), 'A');
+  assert.equal(barged.flags[0]?.kind, 'cut-in');
+});
+
+test('awkward: a dropped full stop is not a cut-in; a dangling preposition is', () => {
+  // Muse splits turns at the speaker change, so their endMs equals your startMs on most lines.
+  const kinds = rows => detectAwkward(timed(rows), 'A').flags.map(f => `${f.turnId} ${f.kind}`);
+  assert.deepEqual(kinds([['B', "Yeah, I'm enjoying it a lot. I love building", 58460, 60940], ['A', 'Alright.', 60940, 61980]]), []);
+  assert.deepEqual(kinds([
+    ['B', "I'm trying to make an ML model to proofread what they segment using", 43340, 55260],
+    ['A', 'Wait honestly are you enjoying like the hackathon so far?', 55260, 58380],
+  ]), ['2 cut-in']);
+  assert.deepEqual(kinds([['B', 'yeah i was gonna say that the', 0, 1500], ['A', 'what do you do', 1550, 3000]]), ['2 cut-in']);
+});

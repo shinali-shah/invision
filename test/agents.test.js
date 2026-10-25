@@ -210,3 +210,75 @@ test('next step uses the fixed goal without calling the llm when there is no pat
   assert.equal(out, FIXED_GOALS.networking[0]);
   assert.equal(llm.calls.length, 0);
 });
+
+// ---- regressions from the live-transcript debugging pass ----
+
+import { generateInsight } from '../src/agents/insight.js';
+import { extractHooks } from '../src/nlp/hooks.js';
+
+test('coach survives a reply whose fields have the wrong types instead of throwing out of the pipeline', async () => {
+  const note = await generateNote({ llm: stubLlm({ text: 'You asked two questions.', suggestion: 'Ask about the pot.', citedTurnIds: '3' }), tag: 'family', signals, turns, userLabel: 'A', reflection: '' });
+  assert.equal(note.status, 'shown');
+  assert.deepEqual(note.citedTurnIds, []);
+  const odd = await generateNote({ llm: stubLlm({ text: 'You asked two questions.', suggestion: 5, citedTurnIds: [3] }), tag: 'family', signals, turns, userLabel: 'A', reflection: '' });
+  assert.equal(odd.suggestion, null);
+});
+
+test('reviewer survives a rewrite with a non-string suggestion', async () => {
+  const note = await reviewNote({ llm: stubLlm({ verdict: 'rewrite', text: 'You asked two questions.', suggestion: 7 }), note: goodNote, signals });
+  assert.equal(note.status, 'rewritten');
+  assert.equal(note.suggestion, null);
+});
+
+test('violatesOtherPersonRule: talking about a game score is fine, "seemed bored" is not', () => {
+  assert.equal(violatesOtherPersonRule('You asked about the score twice and she told you the whole match.'), false);
+  assert.equal(violatesOtherPersonRule('You asked how their rating at work went.'), false);
+  assert.equal(violatesOtherPersonRule('She was a 7/10 listener.'), true);
+  assert.equal(violatesOtherPersonRule('She seemed bored by the end.'), true);
+  assert.equal(violatesOtherPersonRule('He seemed pretty quiet after that.'), true);
+});
+
+const insightTurns = [
+  { turnId: 1, speaker: 'A', text: 'How was Oaxaca?', startMs: 0, endMs: 1000 },
+  { turnId: 2, speaker: 'B', text: 'Lovely, we saw the pottery market and my cousin got married there.', startMs: 1200, endMs: 5000 },
+  { turnId: 3, speaker: 'A', text: 'Cool. I went to Austin.', startMs: 5200, endMs: 7000 },
+];
+const insightWith = (reply, turns = insightTurns) => generateInsight({
+  llm: stubLlm(reply), note: null, behavior: null, hooks: extractHooks(turns, 'A'),
+  signals: { questions: [{ turnId: 1, isFollowUp: false }] }, turns, userLabel: 'A',
+});
+const moment = (observation, why = 'Ask about it next time.', turnId = 2) => ({ moments: [{ turnId, title: 'Pottery', observation, why }], adviceCheck: [], rewrites: [] });
+
+test('insight: stated interests and intensifiers are not mind-reading; sincerity and feelings still are', async () => {
+  for (const ok of ['They are interested in pottery, so ask about the market.', 'You genuinely asked about the wedding.', 'Her cousin is happy there, she said.']) {
+    assert.equal((await insightWith(moment(ok))).source, 'muse-spark', ok);
+  }
+  for (const bad of ['They seemed interested at first.', 'She looked bored by then.', 'That was a genuine smile.', 'They genuinely enjoyed that one.', 'She was happy about it.']) {
+    assert.equal((await insightWith(moment(bad))).source, 'fallback', bad);
+  }
+});
+
+test('insight: a corrective "keep the question about them" on a flagged line is not praise', async () => {
+  const turns = [
+    { turnId: 1, speaker: 'B', text: 'Do you know Sam?', startMs: 0, endMs: 1000 },
+    { turnId: 2, speaker: 'A', text: 'I heard that she cheated on her boyfriend', startMs: 1200, endMs: 3000 },
+    { turnId: 3, speaker: 'B', text: 'Oh. Um.', startMs: 3200, endMs: 3600 },
+  ];
+  const out = await insightWith(moment('You brought up the rumour and they answered in two words.', 'Next time keep the question about them, not about Sam.', 2), turns);
+  assert.equal(out.source, 'muse-spark');
+  assert.equal(out.moments[0].turnId, 2);
+  const praised = await insightWith(moment('You brought up the rumour and they smiled.', 'That landed, keep doing it.', 2), turns);
+  assert.equal(praised.source, 'fallback');
+});
+
+test('insight survives replies whose arrays are not arrays', async () => {
+  for (const bad of [
+    { moments: { turnId: 1 }, adviceCheck: [], rewrites: [] },
+    { moments: [{ turnId: 2, title: 'x', observation: 'y', why: 'z' }], adviceCheck: [{ advice: 'a', verdict: 'backed', evidenceTurnIds: 'x', reason: 'r' }], rewrites: 'none' },
+    { moments: [{ turnId: 2, title: 'x', observation: 'y', why: 'z' }], adviceCheck: [], rewrites: [{ turnId: 3, title: 't', tryInstead: 7, because: 'b' }] },
+  ]) {
+    const out = await insightWith(bad);
+    assert.ok(['muse-spark', 'fallback'].includes(out.source));
+    assert.ok(Array.isArray(out.takeaways));
+  }
+});

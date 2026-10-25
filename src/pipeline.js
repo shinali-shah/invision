@@ -4,12 +4,15 @@ import { generateNote } from './agents/coach.js';
 import { reviewNote } from './agents/reviewer.js';
 import { findPattern } from './agents/patternFinder.js';
 import { proposeNextStep } from './agents/nextStep.js';
-import { draftFollowUp } from './agents/followUp.js';
+import { draftFollowUp, templateFollowUp } from './agents/followUp.js';
 import { extractHooks } from './nlp/hooks.js';
 
 const TOO_SHORT = Object.freeze({
   text: null, suggestion: null, citedTurnIds: [], status: 'dropped', reason: 'too_short', source: 'fallback',
 });
+
+// A message the user already sent or rewrote in their own words is theirs; no draft replaces it.
+const userOwned = followUp => !!followUp && (followUp.status === 'sent' || followUp.source === 'edited');
 
 // Steps 4–6 of the spec: analyze → coach → review → remember.
 export async function processConversation({ store, llm, log, id, reflection }) {
@@ -33,8 +36,14 @@ export async function processConversation({ store, llm, log, id, reflection }) {
   }
 
   // The follow-up only needs the hooks, so it drafts while the slower classify → coach → review chain runs.
-  const keep = convo.followUp && (convo.followUp.status === 'sent' || convo.followUp.source === 'edited');
-  const drafting = keep ? Promise.resolve(convo.followUp) : writeFollowUp({ llm, log, convo: { ...convo, hooks, userLabel } });
+  // Both detached promises are caught right here: a rejection sitting unawaited during coaching would
+  // take the process down.
+  const drafting = userOwned(convo.followUp)
+    ? Promise.resolve(convo.followUp)
+    : writeFollowUp({ llm, log, convo: { ...convo, hooks, userLabel } }).catch(err => {
+      log('followUp', 'warn', `follow-up failed, using the template: ${err.message}`);
+      return { ...templateFollowUp({ hooks, otherName: convo.otherName, tag: convo.tag }), status: 'draft', sentAt: null };
+    });
 
   const signals = withDetector(
     await classifySignals({ llm, turns, userLabel, tag: convo.tag, ruleSignals }),
@@ -44,13 +53,16 @@ export async function processConversation({ store, llm, log, id, reflection }) {
 
   store.updateConversation(id, { signals });
   // The trend only needs the counts, so it runs next to coaching rather than after it.
-  // Caught here: a rejection sitting unawaited during coaching would take the process down.
   const remembering = refreshMemory({ store, llm, log }).catch(err => log('pattern', 'warn', `memory refresh failed: ${err.message}`));
-  const note = await coachAndReview({ store, llm, log, convo: { ...convo, signals, userLabel, hooks } });
+  // The tag may have been switched while we were classifying; coach for the one that's there now.
+  const tag = store.getConversation(id)?.tag ?? convo.tag;
+  const note = await coachAndReview({ store, llm, log, convo: { ...convo, tag, signals, userLabel, hooks } });
   convo = store.updateConversation(id, { note });
 
   const [followUp] = await Promise.all([drafting, remembering]);
-  return store.updateConversation(id, { followUp });
+  // Coaching takes a while; if the user edited or sent the message meanwhile, that one stays.
+  const current = store.getConversation(id)?.followUp;
+  return store.updateConversation(id, { followUp: userOwned(current) ? current : followUp });
 }
 
 // The lexical detector is the fallback when Muse Spark is down, and a cross-check when it isn't.
@@ -121,12 +133,17 @@ export async function refreshMemory({ store, llm, log }) {
   }
   log('pattern', 'info', pattern.statement);
 
+  const live = step => !!step && ['proposed', 'accepted'].includes(step.status);
   let nextStep = store.latestNextStep();
-  if (!nextStep || !['proposed', 'accepted'].includes(nextStep.status)) {
+  if (!live(nextStep)) {
     const latest = conversations.at(-1);
     const text = await proposeNextStep({ llm, pattern, tag: latest?.tag ?? 'family', statedGoal: latest?.reflection ?? '' });
-    nextStep = store.createNextStep(text);
-    log('nextStep', 'info', `proposed: ${text}`);
+    // Two refreshes can overlap (a double tap on Process, a delete mid-coaching); the first proposal wins.
+    nextStep = store.latestNextStep();
+    if (!live(nextStep)) {
+      nextStep = store.createNextStep(text);
+      log('nextStep', 'info', `proposed: ${text}`);
+    }
   }
   return { pattern, nextStep };
 }

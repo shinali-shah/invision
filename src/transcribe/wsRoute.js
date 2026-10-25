@@ -21,12 +21,19 @@ export function attachTranscribeSocket({ server, store, log, config, openStream,
 
     const assembler = createTurnAssembler();
     let finished = false;
+    let browserGone = false; // the phone dropped the socket without sending "end"
     let stream;
 
     const finish = () => {
       if (finished) return;
       finished = true;
       const turns = assembler.flush();
+      // The phone deletes the conversation when the user walks out of a recording;
+      // what Muse heard after that isn't ours to keep or show on the stage.
+      if (!store.getConversation(conversationId)) {
+        log('transcribe', 'info', `conversation ${conversationId.slice(0, 8)} was deleted mid-stream; ${turns.length} turns dropped`);
+        return ws.close(1000);
+      }
       store.updateConversation(conversationId, { turns });
       log('transcribe', 'info', `${turns.length} turns, speakers ${[...new Set(turns.map(t => t.speaker))].join('/') || 'none'}; audio discarded`);
       send({ type: 'done', turns });
@@ -36,6 +43,7 @@ export function attachTranscribeSocket({ server, store, log, config, openStream,
 
     const onEvent = event => {
       const out = assembler.push(event);
+      if (browserGone) return; // nobody is on this conversation any more; just finish assembling
       if (out?.kind === 'partial') {
         const msg = { type: 'partial', turnId: out.turnId, text: out.text, speaker: out.speaker };
         send(msg);
@@ -97,6 +105,7 @@ export function attachTranscribeSocket({ server, store, log, config, openStream,
 
     ws.on('close', () => {
       pending.length = 0;
+      if (!finished) browserGone = true;
       // still end the Muse side if the browser vanished mid-handshake
       opening.then(s => { if (s && !finished) s.end().catch(() => {}); });
     });

@@ -18,10 +18,16 @@ export function createStageHub({ mock }) {
       sendTo(ws, { type: 'hello', mock, focus: lastFocus });
     },
     publish(msg) {
+      // A finished stream means the phone isn't recording any more, whatever the last focus said;
+      // otherwise a Mac that connects hours later would start a recording card for a phone that's gone.
+      if (msg.type === 'done' && lastFocus?.view === 'recording' && lastFocus.conversationId === msg.conversationId) {
+        lastFocus = { ...lastFocus, view: 'label', at: Date.now() };
+      }
       for (const ws of clients) sendTo(ws, msg);
     },
     focus({ view, conversationId = null, otherName = null }) {
-      lastFocus = { view, conversationId, otherName };
+      // `at` lets clients ignore a remembered focus that is older than they care about.
+      lastFocus = { view, conversationId, otherName, at: Date.now() };
       this.publish({ type: 'focus', ...lastFocus });
     },
     close() {

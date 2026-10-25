@@ -94,15 +94,24 @@ export function stripFillers(text) {
   return rest[0].toUpperCase() + rest.slice(1);
 }
 
-const QUESTION_START = /^(?:what|how|why|where|when|who|do|did|does|are|is|can|could|would|have|qué|cómo|cuándo|dónde|por qué|y tú)(?![\p{L}'’])/iu;
+// A wh-word followed by "I"/"we" is usually a story ("when I was in Oaxaca", "what I liked"), not a question.
+const WH = "(?:what|how|why|where|when|who|which|qué|cómo|cuándo|dónde|por qué|quién|cuál|y tú)(?:['’]s)?(?![\\p{L}'’])(?!\\s+(?:i|we)(?![\\p{L}'’]))";
+// Auxiliaries need a subject after them: "do you", "is it", but not "have a good one" or "do it tomorrow".
+const AUX = "(?:(?:did|does|are|is|was|were|can|could|would|will|should|have|has)\\s+(?:you|we|they|she|he|i|it|there|that|this|your|anyone|anybody|everyone)|do\\s+(?:you|we|they|i|your))(?![\\p{L}'’])";
+const QUESTION_START = new RegExp(`^(?:${WH}|${AUX})`, 'iu');
+// "...and I mean yeah so like what else do you do": the question rides at the end of a run-on line.
+const QUESTION_TAIL = new RegExp(`(?:[,;:]|(?<!\\p{L})(?:like|so|and|but|well|um|uh|yeah|okay|ok|oh|or|wait|honestly))\\s+(?:${WH}|${AUX})`, 'iu');
 
 // ASR output often has no punctuation at all, so "what do you do" has to count as a question too.
-// Anything punctuated is trusted as is.
+// Punctuation is trusted where it exists, but the "?" at the very end is what the ASR drops most,
+// so only the last sentence is judged on its words.
 export function isQuestion(text) {
   const t = String(text ?? '');
   if (/[?¿]/.test(t)) return true;
-  if (/[.!…]/.test(t)) return false;
-  return QUESTION_START.test(stripFillers(t));
+  const last = sentences(t).at(-1) ?? '';
+  if (/[.!…]["'”)]?$/.test(last.trim())) return false;
+  const s = stripFillers(last);
+  return QUESTION_START.test(s) || QUESTION_TAIL.test(s);
 }
 
 export const sentences = text => String(text ?? '').trim().split(/(?<=[.!?…])\s+/).filter(Boolean);

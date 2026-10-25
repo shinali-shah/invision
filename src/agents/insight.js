@@ -90,12 +90,21 @@ const SYSTEM = [
 
 const FIELD_NAMES = /\b(smileDelta|facingPct|smilePeak|congruence|textTone)\b/;
 // Mind-reading is out: words that judge sincerity anywhere, and feelings pinned on the other person.
-// "you called yourself just bored" is fine; "she was bored" is not.
+// "you called yourself just bored" is fine; "she was bored" is not. "They are interested in pottery"
+// repeats what they said and stays; "they seemed interested" guesses and goes.
+const FEELINGS = 'bored|annoyed|uninterested|disinterested|happy|sad|upset|uncomfortable|offended|hurt|nervous|awkward';
+const ADV = '(?:\\w+\\s+)?';
 const BANNED = new RegExp([
-  '\\b(fake|faking|lying|lied|liar|insincere|genuine(?:ly)?|pretend\\w*)\\b',
-  "\\b(she|he|they|them|her|him)\\b[^.!?]{0,20}\\b(was|were|seemed|looked|felt|got|is|are)\\s+(bored|annoyed|uninterested|disinterested|happy|sad|upset|uncomfortable|offended|hurt|interested)\\b",
+  '\\b(fake|faking|lying|lied|liar|insincere|pretend\\w*)\\b',
+  '\\bgenuine\\b',
+  '\\bgenuinely\\s+(?:smil\\w*|laugh\\w*|enjoy\\w*|happy|interested|pleased|liked|cared)\\b',
+  `\\b(she|he|they)\\s+${ADV}(was|were|got|is|are)\\s+${ADV}(${FEELINGS})\\b`,
+  `\\b(she|he|they)\\s+${ADV}(seemed|looked|felt|sounded|appeared)\\s+${ADV}(${FEELINGS}|interested|engaged|into it)\\b`,
+  `\\b(made|got|left)\\s+(her|him|them)\\s+(${FEELINGS})\\b`,
   "\\b(didn['’]t care|lost interest|they felt|she felt|he felt)\\b",
 ].join('|'), 'i');
+
+const list = v => (Array.isArray(v) ? v : []);
 
 const pct = v => (v == null ? '–' : `${Math.round(v * 100)}%`);
 const signed = v => (v == null ? '–' : `${v >= 0 ? '+' : '−'}${Math.abs(Math.round(v * 100))}`);
@@ -336,21 +345,23 @@ export async function generateInsight({ llm, note, behavior, hooks, signals, tur
   const known = new Set((turns ?? []).map(t => t.turnId));
   const clean = s => (typeof s === 'string' ? s.trim() : '');
   const flaggedYou = new Set((hooks?.awkward?.flags ?? []).filter(f => f.who === 'you').map(f => f.turnId));
-  const PRAISE = /\b(keep|great|nice job|well done|works|worked|landed|helps|win)\b/i;
-  const moments = (out?.moments ?? [])
-    .filter(m => known.has(m.turnId) && clean(m.observation) && clean(m.title))
+  // "Keep doing it" is praise; "keep the question about them" is the correction we want.
+  const PRAISE = /\b(keep (?:doing|going|asking|this up|it up|that up)|great|nice job|well done|(?<!would have |would['’]ve |could have |might have )(?:worked|landed)|a win)\b/i;
+  const moments = list(out?.moments)
+    .filter(m => m && known.has(m.turnId) && clean(m.observation) && clean(m.title))
     // Belt and braces: an awkward line of yours never comes back as praise.
     .filter(m => !(flaggedYou.has(m.turnId) && PRAISE.test(`${m.title} ${m.why}`)))
     .map(m => ({ turnId: m.turnId, title: clean(m.title), observation: clean(m.observation), why: clean(m.why) }))
     .slice(0, 4);
-  const adviceCheck = (out?.adviceCheck ?? [])
-    .filter(a => clean(a.advice) && ['backed', 'partly', 'not yet'].includes(a.verdict))
-    .map(a => ({ advice: clean(a.advice), verdict: a.verdict, evidenceTurnIds: (a.evidenceTurnIds ?? []).filter(id => known.has(id)), reason: clean(a.reason) }));
+  const adviceCheck = list(out?.adviceCheck)
+    .filter(a => a && clean(a.advice) && ['backed', 'partly', 'not yet'].includes(a.verdict))
+    .map(a => ({ advice: clean(a.advice), verdict: a.verdict, evidenceTurnIds: list(a.evidenceTurnIds).filter(id => known.has(id)), reason: clean(a.reason) }));
 
   const said = [...moments.flatMap(m => [m.title, m.observation, m.why]), ...adviceCheck.map(a => a.reason)].join(' ');
   if (!moments.length || BANNED.test(said) || FIELD_NAMES.test(said)) return fallback();
 
-  const rewrites = (out?.rewrites ?? [])
+  const rewrites = list(out?.rewrites)
+    .filter(r => r && typeof r === 'object')
     .map(r => ({ turnId: r.turnId, title: clean(r.title), tryInstead: clean(r.tryInstead), because: clean(r.because) }))
     .filter(r => r.tryInstead && r.title && validRewrite(r, candidates, turns, userLabel))
     .slice(0, 3);

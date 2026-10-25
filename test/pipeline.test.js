@@ -111,3 +111,46 @@ test('deleting a conversation drops it from memory and recent notes (Review Focu
   assert.equal(deps.store.getKv('pattern'), null);
   assert.equal(deps.store.recentNotes(10).length, 2);
 });
+
+// ---- concurrency: follow-up and memory run alongside coaching ----
+
+const slow = base => ({ mock: true, json: async args => { await new Promise(r => setTimeout(r, 15)); return base.json(args); } });
+
+test('two /process calls on the same conversation propose one next step, not two', async () => {
+  const deps = setup({ llm: slow(createLlm({ mock: true })) });
+  seedDemo(deps.store);
+  const id = liveConversation(deps.store);
+  await Promise.all([processConversation({ ...deps, id, reflection: '' }), processConversation({ ...deps, id, reflection: '' })]);
+  assert.equal(deps.store.listLogs().filter(l => l.agent === 'nextStep').length, 1);
+  assert.equal(deps.store.latestNextStep().id, 1);
+});
+
+test('a follow-up the user edited or sent while coaching ran is not overwritten by the draft', async () => {
+  const deps = setup();
+  const id = liveConversation(deps.store);
+  const base = createLlm({ mock: true });
+  const edited = { text: 'my own words', hooksUsed: [], source: 'edited', status: 'draft', sentAt: null };
+  const editing = { mock: true, json: async args => {
+    if (args.name === 'coach') deps.store.updateConversation(id, { followUp: edited });
+    return base.json(args);
+  } };
+  const c = await processConversation({ ...deps, llm: editing, id, reflection: '' });
+  assert.equal(c.followUp.source, 'edited');
+  assert.equal(c.followUp.text, 'my own words');
+  assert.ok(['shown', 'rewritten'].includes(c.note.status));
+});
+
+test('a tag change that lands while coaching runs is what the note is coached for', async () => {
+  const deps = setup();
+  const id = liveConversation(deps.store);
+  const base = createLlm({ mock: true });
+  let coachedAs = null;
+  const retagging = { mock: true, json: async args => {
+    if (args.name === 'classify') deps.store.updateConversation(id, { tag: 'networking' });
+    if (args.name === 'coach') coachedAs = args.user.tag;
+    return base.json(args);
+  } };
+  const c = await processConversation({ ...deps, llm: retagging, id, reflection: '' });
+  assert.equal(c.tag, 'networking');
+  assert.equal(coachedAs, 'networking');
+});

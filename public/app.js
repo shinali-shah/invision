@@ -357,7 +357,8 @@ function beginCapture(convo, ctx, stream, videoNote = null) {
 
   node.port.onmessage = (e) => {
     if (rec.stopping) return;
-    if (rec.firstAudioAt === null) rec.firstAudioAt = Date.now();
+    // Transcript 0 is this chunk's first sample, which was captured a whole chunk before it got here.
+    if (rec.firstAudioAt === null) rec.firstAudioAt = Date.now() - (e.data.length / ctx.sampleRate) * 1000;
     pushSamples(rec, rec.resample(e.data));
   };
 
@@ -424,7 +425,10 @@ function buildLevelChain(ctx, source) {
   mono.channelCountMode = 'explicit';
   mono.channelInterpretation = 'speakers';
   const gain = ctx.createGain();
-  gain.gain.value = 8; // a sensible head start until the first words are measured
+  // Head start until the first words are measured. The leveler jumps to the right gain on its
+  // first reading anyway; anything bigger than this drives a normal mic into clipping for the ~1 s
+  // the gain takes to ramp back down.
+  gain.gain.value = 2;
   const limiter = ctx.createDynamicsCompressor();
   limiter.threshold.value = -6;
   limiter.knee.value = 0;
@@ -468,7 +472,9 @@ function startVideo(rec) {
   try {
     recorder = new MediaRecorder(stream, { ...(mimeType ? { mimeType } : {}), videoBitsPerSecond: 1_000_000 });
     recorder.ondataavailable = (e) => { if (e.data && e.data.size) rec.chunks.push(e.data); };
-    recorder.onstart = () => { rec.videoAt = Date.now(); };
+    // The recording's clock starts when start() is called, not when the start event fires;
+    // in Chrome that event lands ~60 ms later, after the encoders have spun up.
+    rec.videoAt = Date.now();
     recorder.start(1000);
   } catch {
     rec.stream.getVideoTracks().forEach((t) => { t.stop(); rec.stream.removeTrack(t); });
@@ -498,7 +504,7 @@ function endVideo(rec, keep) {
   rec.recorder = null;
   const id = state.convo && state.convo.id;
   if (keep && id) {
-    recorder.onstop = () => {
+    const flush = () => {
       const blob = new Blob(rec.chunks, { type: recorder.mimeType || rec.chunks[0]?.type || 'video/mp4' });
       rec.chunks = [];
       if (!blob.size) return;
@@ -507,6 +513,10 @@ function endVideo(rec, keep) {
       state.uploads.set(id, { blob, offsetMs, status: 'uploading', pct: 0, error: null, recording: null });
       uploadVideo(id);
     };
+    // If the camera or mic was taken away mid-recording (a call, the system reclaiming the camera)
+    // the recorder has already stopped itself and won't fire stop again; the chunks are still here.
+    if (recorder.state === 'inactive') return flush();
+    recorder.onstop = flush;
   } else {
     recorder.ondataavailable = null;
     recorder.onstop = null;
@@ -1276,8 +1286,8 @@ function renderConvoList(convos) {
     if (c.seeded) sub.push(document.createTextNode(' Sample'));
     if (c.note && c.note.status === 'dropped') sub.push(document.createTextNode(' Counts only'));
     const name = c.otherName || 'Someone';
-    // Up to two initials, like the avatars in the design.
-    const initials = name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0].toUpperCase()).join('');
+    // Up to two initials, like the avatars in the design. Whole code points: w[0] on an emoji is half a surrogate pair.
+    const initials = name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => Array.from(w)[0].toUpperCase()).join('');
     return el('li', {}, el('button', {
       type: 'button',
       onclick: () => openConversation(c),
@@ -1345,6 +1355,14 @@ function abandonRecording() {
   releaseAudio(rec);
   try { rec.ws.close(1000); } catch { /* ignore */ }
   state.rec = null;
+  // The confirm said the transcript would be lost, so don't leave the conversation behind
+  // for the server to fill in with whatever Muse still had.
+  const id = state.convo && state.convo.id;
+  if (id) {
+    state.uploads.delete(id);
+    state.convo = null;
+    api.remove(id).catch(() => {});
+  }
 }
 
 function init() {

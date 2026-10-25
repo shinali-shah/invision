@@ -44,7 +44,7 @@ BehaviorUpload = { model: string /* e.g. 'mediapipe-face-landmarker@0.10.14' */,
 // Stored as conversation.behavior; built server-side by alignBehavior() — no model involved
 Behavior = {
   model, fps, frameCount, faceSeenPct,
-  baseline: { smile, animation },                    // median over frames with a face
+  baseline: { smile, animation },                    // mean over frames with a face (the smile score is right-skewed; a median under-reads it)
   turns: [{ turnId, speaker: 'you' | 'them',
             smile, smilePeak, facingPct, nods, animation,     // over the turn's window; null if no face frames
             reaction: { smileDelta, nods, facingPct } | null, // for YOUR turns: their response in the 2.5 s after you stopped

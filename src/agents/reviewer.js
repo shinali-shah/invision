@@ -24,8 +24,10 @@ const SYSTEM = [
 
 const escapeRe = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-const SCORING = /\b(score|rating|rated|\d+\/10)\b/i;
-const JUDGEMENT_WORDS = '(boring|rude|cold|distant|annoying|awkward|uninterested|disinterested|bad|difficult|a bad)';
+// Scoring the other person, not a conversation that happened to be about a game's score.
+const SCORING = /\b\d+\s*\/\s*10\b|\b(?:score|scored|rate|rated|rating|grade|graded)\s+(?:her|him|them|your \w+)\b/i;
+const JUDGEMENT_WORDS = '(?:(?:a bit|a little|pretty|kind of|kinda|really|very|quite|clearly|so|too|rather)\\s+)?'
+  + '(boring|bored|rude|cold|distant|annoying|awkward|uninterested|disinterested|not interested|disengaged|checked out|closed off|standoffish|quiet|shy|dry|bad|difficult|a bad)';
 
 export function violatesOtherPersonRule(text, otherName) {
   if (!text) return false;
@@ -60,6 +62,7 @@ export async function reviewNote({ llm, note, signals, otherName }) {
   if (out?.verdict === 'pass') return note;
   if (out?.verdict !== 'rewrite' || typeof out.text !== 'string' || !out.text.trim()) return drop(note);
 
-  const rewritten = { ...note, text: out.text.trim(), suggestion: out.suggestion?.trim() || null, status: 'rewritten' };
+  const suggestion = typeof out.suggestion === 'string' && out.suggestion.trim() ? out.suggestion.trim() : null;
+  const rewritten = { ...note, text: out.text.trim(), suggestion, status: 'rewritten' };
   return violates(rewritten, otherName) ? drop(note) : rewritten;
 }
