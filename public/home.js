@@ -248,16 +248,23 @@ function goals() {
   return out.slice(0, 3);
 }
 
+// Follow-ups and promises from older conversations have gone stale; the list only nags about recent ones.
+const TASK_DAYS = 4;
+
 function tasks() {
   const out = [];
+  const since = today();
+  since.setDate(since.getDate() - (TASK_DAYS - 1));
+  since.setHours(0, 0, 0, 0);
+  const recent = state.convos.filter((c) => new Date(c.createdAt) >= since);
   // Unfinished first: nothing else about that conversation exists until it's done.
   for (const c of state.convos) {
     if (c.needsLabel) out.push({ key: `label:${c.id}`, text: `Finish coaching for ${c.first}`, convo: c, finish: true });
   }
-  for (const c of state.convos) {
+  for (const c of recent) {
     if (c.followUp && c.followUp.status === 'draft' && c.followUp.text) out.push({ key: `fu:${c.id}`, text: `Follow up with ${c.first}`, convo: c });
   }
-  for (const c of state.convos) {
+  for (const c of recent) {
     for (const k of c.commitments) if (k && k.text) out.push({ key: `commit:${c.id}:${k.turnId ?? k.text}`, text: `You said: ${k.text}` });
   }
   return out;
