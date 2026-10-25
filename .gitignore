@@ -3,3 +3,8 @@ data/
 .env
 .DS_Store
 private/
+demo/
+*.mp4
+*.mov
+*.webm
+brag-output/

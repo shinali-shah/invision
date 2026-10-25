@@ -32,6 +32,7 @@ const state = {
   rendered: new Set(),   // `${list}:${turnId}` already drawn, so only new lines animate
   compare: new Map(),    // id -> { key, data } so we only refetch when the note or counts change
   brief: { name: null, data: null, seq: 0 },
+  jumpedTo: null,        // conversation we moved to coaching for on `processing`, ahead of the phone
 };
 
 // ---------- helpers ----------
@@ -91,7 +92,7 @@ function liveList(id) {
   const m = state.live.get(id);
   if (!m) return [];
   return [...m.entries()].sort((a, b) => a[0] - b[0])
-    .map(([turnId, t]) => ({ turnId, speaker: t.speaker, text: t.text, partial: t.partial }));
+    .map(([turnId, t]) => ({ turnId, speaker: t.speaker, text: t.text, startMs: t.startMs, partial: t.partial }));
 }
 
 // Best transcript we have for a conversation, newest source wins.
@@ -130,6 +131,8 @@ function renderLines(listId, turns, convo, { cited = [], emptyText = '' } = {}) 
     if (cited.includes(t.turnId)) cls += ' cited';
     if (!state.rendered.has(key)) { cls += ' enter'; state.rendered.add(key); }
     return el('li', { class: cls, 'data-turn': t.turnId },
+      // the Figma line is time | who | text; a partial has no time yet
+      el('span', { class: 'st-time', text: Number.isFinite(t.startMs) ? fmtClock(t.startMs) : '' }),
       el('span', { class: 'st-who', text: speakerName(t.speaker, convo, labels) }),
       el('span', { class: 'st-said', text: t.text || '' }),
     );
@@ -181,15 +184,17 @@ function renderScript(view, convo) {
 
   const ind = $('rec-ind');
   ind.classList.toggle('stopped', !recording);
+  $('ticket').classList.toggle('stopped', !recording);
   $('rec-word').textContent = recording ? 'Recording' : 'Recorded';
   updateTimer();
 
-  let title = '';
-  if (!recording) {
-    if (convo && convo.userLabel) title = `You and ${convo.otherName || 'them'}`;
-    else title = 'Picking which voice is you…';
-  }
-  $('script-title').textContent = title;
+  // The Figma ticket's "Session with Maya"; while the mic is off and nobody's labelled yet,
+  // the picking step sits beside the REC caption.
+  const name = convo && convo.otherName && convo.otherName !== 'them' ? convo.otherName : null;
+  $('script-title').textContent = name ? `Session with ${name}` : 'Live session';
+  const sub = $('script-sub');
+  sub.hidden = recording || !!(convo && convo.userLabel);
+  sub.textContent = sub.hidden ? '' : 'Picking which voice is you…';
 
   const turns = recording ? (liveList(id).length ? liveList(id) : turnsFor(id)) : turnsFor(id, { withPartials: true });
   renderLines('script-lines', turns, recording ? null : convo, {
@@ -645,6 +650,7 @@ function setFocus(view, conversationId, otherName) {
   setBriefName(view === 'start' ? otherName : null);
   const prevView = state.view;
   state.view = view;
+  state.jumpedTo = null; // the phone has spoken; we're no longer ahead of it
   state.convoId = conversationId || null;
   if (state.convoId) state.lastConvoId = state.convoId;
   if (view === 'recording' && state.convoId) startTimer(state.convoId);
@@ -697,11 +703,16 @@ function handle(msg) {
       settleProcessing(id);
       state.processing.set(id, setTimeout(() => {
         state.processing.delete(id);
+        // Nothing came back (the server's /process failed). If we jumped ahead to coaching
+        // ourselves, go back to where the phone still is rather than spin on an empty page.
+        const c = state.convos.get(id);
+        if (id === state.convoId && state.view === 'coaching' && state.jumpedTo === id && !(c && (c.note || c.signals))) state.view = 'label';
+        state.jumpedTo = null;
         if (id === state.convoId) render();
       }, PROCESSING_GIVE_UP_MS));
       // Coaching can take a few seconds live; get the room looking at it now
       // rather than waiting for the phone to switch.
-      if (id === state.convoId && state.view === 'label') state.view = 'coaching';
+      if (id === state.convoId && state.view === 'label') { state.view = 'coaching'; state.jumpedTo = id; }
       if (id === state.convoId) render();
       break;
     case 'partial':
@@ -714,7 +725,7 @@ function handle(msg) {
         if (prev && !prev.partial) break;
         m.set(msg.turnId, { speaker: msg.speaker || (prev && prev.speaker) || 'unknown', text: msg.text || '', partial: true });
       } else if (msg.turn) {
-        m.set(msg.turn.turnId, { speaker: msg.turn.speaker, text: msg.turn.text, partial: false });
+        m.set(msg.turn.turnId, { speaker: msg.turn.speaker, text: msg.turn.text, startMs: msg.turn.startMs, partial: false });
       }
       startTimer(id);
       // If the focus call got lost, the transcript arriving is proof enough.
@@ -729,6 +740,9 @@ function handle(msg) {
       if (!id) break;
       stopTimer(id);
       state.doneTurns.set(id, Array.isArray(msg.turns) ? msg.turns : turnsFor(id));
+      // The mic is off. If the phone never says so (it closed mid-recording), don't keep
+      // the red "Recording" up on the wall.
+      if (id === state.convoId && state.view === 'recording') state.view = 'label';
       if (id === state.convoId) render();
       break;
     case 'memory':

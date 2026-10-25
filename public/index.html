@@ -4,10 +4,10 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="color-scheme" content="light">
-  <meta name="theme-color" content="#f7f7f5">
+  <meta name="theme-color" content="#0d110f">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <title>Playback</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 56 35%22 fill=%22none%22%3E%3Cpath d=%22M28 17.5C21 6 7 4 5 17.5c2 13.5 16 11.5 23 0Z%22 stroke=%22%23397d74%22 stroke-width=%225.5%22 stroke-linejoin=%22round%22 opacity=%22.55%22/%3E%3Cpath d=%22M28 17.5C35 6 49 4 51 17.5c-2 13.5-16 11.5-23 0Z%22 stroke=%22%23397d74%22 stroke-width=%225.5%22 stroke-linejoin=%22round%22/%3E%3C/svg%3E">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 56 35%22 fill=%22none%22%3E%3Cpath d=%22M28 17.5C21 6 7 4 5 17.5c2 13.5 16 11.5 23 0Z%22 stroke=%22%23f4a51c%22 stroke-width=%225.5%22 stroke-linejoin=%22round%22 opacity=%22.55%22/%3E%3Cpath d=%22M28 17.5C35 6 49 4 51 17.5c-2 13.5-16 11.5-23 0Z%22 stroke=%22%23f4a51c%22 stroke-width=%225.5%22 stroke-linejoin=%22round%22/%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="tokens.css">
@@ -16,7 +16,7 @@
 <body>
   <header class="bar">
     <button type="button" class="brand" id="go-home" aria-label="New conversation"><svg class="brand-mark" viewBox="0 0 56 35" fill="none" aria-hidden="true"><path d="M28 17.5C21 6 7 4 5 17.5c2 13.5 16 11.5 23 0Z" stroke="var(--accent)" stroke-width="5.5" stroke-linejoin="round" opacity=".55"/><path d="M28 17.5C35 6 49 4 51 17.5c-2 13.5-16 11.5-23 0Z" stroke="var(--accent)" stroke-width="5.5" stroke-linejoin="round"/><path d="M20.5 18.5 27 13h5.5l4.5 3.5-3 5-6.5 4-3-2.5-3.5 1Z" fill="var(--paper)"/><path d="M22 17.5 27.5 13H32l3.5 3.5" stroke="var(--accent)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><path d="m23 21.5 2.5 2.5M26 20l2.5 2.5M29 18.5l2.5 2.5" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round"/></svg><span>Playback</span></button>
-    <span class="mock-badge" id="mock-badge" hidden>Demo audio</span>
+    <span class="mock-badge" id="mock-badge" hidden title="Demo audio">Demo</span>
     <nav class="bar-actions">
       <button type="button" class="link-btn" id="go-memory">Memory</button>
       <button type="button" class="link-btn" id="open-logs">Logs</button>
@@ -26,6 +26,7 @@
   <main>
     <!-- 1. Start -->
     <section class="view" id="view-start" aria-labelledby="start-title">
+      <span class="label">New conversation</span>
       <h1 id="start-title" class="title">Who are you talking with?</h1>
 
       <fieldset class="segmented" id="tag-start">
@@ -64,16 +65,21 @@
     </section>
 
     <!-- 2. Recording -->
-    <section class="view" id="view-recording" hidden aria-labelledby="rec-title">
+    <!-- The Figma "ticket": a night card with a red spine while recording. -->
+    <section class="view ticket" id="view-recording" hidden aria-labelledby="rec-title">
       <div class="rec-status">
         <span class="rec-dot" aria-hidden="true"></span>
         <span class="rec-tag" aria-hidden="true">REC</span>
+        <span class="rec-tag cam-tag" aria-hidden="true">Camera on</span>
         <h1 id="rec-title" class="rec-word">Recording</h1>
-        <span class="rec-timer" id="rec-timer">0:00</span>
       </div>
       <p class="hint" id="rec-with"></p>
       <p class="hint rec-note" id="rec-note" hidden></p>
       <ol class="transcript live" id="live-transcript" aria-live="polite"></ol>
+      <div class="recording-meta">
+        <span class="elapsed"><span class="rec-timer" id="rec-timer">0:00</span><small>elapsed</small></span>
+        <span class="private-note">Private to you</span>
+      </div>
       <p class="error" id="rec-error" role="alert" hidden></p>
       <div class="sticky-action">
         <button type="button" class="disc disc-stop" id="stop-btn">
@@ -85,6 +91,7 @@
 
     <!-- 3. Who are you? -->
     <section class="view" id="view-label" hidden aria-labelledby="label-title">
+      <span class="label">After the talk</span>
       <h1 id="label-title" class="title">Which voice is yours?</h1>
       <p class="hint" id="label-hint">Tap one of your own lines.</p>
       <div class="video-status" id="label-video" hidden></div>
@@ -103,6 +110,7 @@
 
     <!-- 4. Coaching -->
     <section class="view" id="view-coaching" hidden aria-labelledby="coach-title">
+      <span class="label">Reflection</span>
       <h1 id="coach-title" class="title" tabindex="-1"></h1>
       <p class="hint" id="coach-meta"></p>
 
@@ -141,6 +149,7 @@
 
     <!-- 5. Memory -->
     <section class="view" id="view-memory" hidden aria-labelledby="memory-title">
+      <span class="label">Memory</span>
       <h1 id="memory-title" class="title" tabindex="-1">Over time</h1>
       <p class="error" id="memory-error" role="alert" hidden></p>
 

@@ -8,34 +8,38 @@ const MODEL = 'mediapipe-face-landmarker@0.10.14';
 const VENDOR = new URL('vendor/mediapipe/', location.href).href;
 const FPS = 5;
 const STEP_MS = 1000 / FPS;
-// Same thresholds as src/behavior/align.js, so the ticks match the per-turn counts.
+// Same thresholds and nod detector as src/behavior/align.js, so the ticks match the per-turn
+// counts (a test there checks findNods against the server's copy).
 const FACING_DEG = 25;
-const NOD_DEG = 5;
+const NOD_DEG = 8;
 const NOD_MAX_MS = 1500;
+const NOD_REF_MS = 1000;
+const NOD_GAP_MS = 500;
 const SEEK_TIMEOUT_MS = 4000;
 const LIVE_EVERY_MS = 100;
 const PREROLL_S = 0.3;
 const TAG_NAMES = { family: 'Family', friend: 'Friend', networking: 'Networking' };
 const VERDICTS = { backed: 'Backed', partly: 'Partly', 'not yet': 'Not yet' };
 const MARKS = {
-  follow: { sym: '✓', label: 'Follow-up question' },
-  missed: { sym: '⚠', label: 'Missed moment' },
-  tk1: { sym: '1', label: 'Takeaway 1' },
-  tk2: { sym: '2', label: 'Takeaway 2' },
-  tk3: { sym: '3', label: 'Takeaway 3' },
-  awk: { sym: '!', label: 'Awkward moment' },
+  follow: { cls: 'fu', sym: '', label: 'Follow-up question' },
+  missed: { cls: 'ms', sym: '', label: 'Missed moment' },
+  tk1: { cls: 'tk', sym: '1', label: 'Try this next time' },
+  tk2: { cls: 'tk', sym: '2', label: 'Keep doing this' },
+  tk3: { cls: 'tk', sym: '3', label: 'Ask about it next time' },
+  awk: { cls: 'awk', sym: '', label: 'Awkward moment' },
 };
 const MARK_ORDER = ['tk1', 'tk2', 'tk3', 'awk', 'follow', 'missed'];
-const markClass = (k) => (k.startsWith('tk') ? 'mk-tk' : `mk-${k}`);
+// The Figma's .tl-track (who's talking, with the moment dots above it) is DOM; the face cues
+// underneath it are still a canvas.
+const TRACK_TOP = 0;    // the dots overhang the tl-head margin, like the Figma
+const TRACK_H = 26;
+const MARK_W = 17;
 const LANES = [
-  { key: 'talk', label: "Who's talking", h: 30 },
-  { key: 'smile', label: 'Smile', h: 56 },
-  { key: 'facing', label: 'Facing', h: 16 },
-  { key: 'nods', label: 'Nods', h: 20 },
-  { key: 'marks', label: 'Moments', h: 30 },
+  { key: 'smile', label: 'Smile', h: 44 },
+  { key: 'facing', label: 'Facing', h: 14 },
+  { key: 'nods', label: 'Nods', h: 18 },
 ];
 const LANE_GAP = 8;
-const AXIS_H = 18;
 
 const $ = (id) => document.getElementById(id);
 const enc = encodeURIComponent;
@@ -67,6 +71,8 @@ const state = {
   liveBusy: false,
   lastResult: null,     // last landmarker result drawn on the overlay
   videoSrc: null,
+  compare: { id: null, data: null }, // /compare, for the "Last time" numbers
+  draftFor: null,       // conversation whose follow-up draft is in the modal's textarea
 };
 
 // ---------- helpers ----------
@@ -183,7 +189,7 @@ function speakerName(turn, side, labels) {
   const c = state.convo;
   if (side === 'them') {
     const others = labels.filter((l) => l !== c.userLabel);
-    if (others.length <= 1 && c.otherName) return c.otherName;
+    if (others.length <= 1 && c.otherName && c.otherName !== 'them') return firstName();
   }
   if (!turn.speaker || turn.speaker === 'unknown') return 'Unclear';
   return `Speaker ${turn.speaker}`;
@@ -213,7 +219,9 @@ function markersByTurn(c) {
   if (needsVoice()) return new Map();
   for (const b of (c.hooks && c.hooks.missedBids) || []) add(b.turnId, 'missed');
   for (const f of awkward().flags) if (f.who === 'you') add(f.turnId, 'awk');
-  takeaways().forEach((t, i) => add(t.turnId, `tk${i + 1}`));
+  // numbered like the cards: 1 try, 2 keep, 3 ask
+  const { tryT, keep, ask } = threeTakeaways();
+  [tryT, keep, ask].forEach((t, i) => { if (t) add(t.turnId, `tk${i + 1}`); });
   return out;
 }
 
@@ -231,7 +239,8 @@ function missedCue(turnId) {
 }
 
 function markerTitle(turnId, kinds) {
-  const tks = takeaways();
+  const three = threeTakeaways();
+  const tks = [three.tryT, three.keep, three.ask];
   return MARK_ORDER.filter((k) => kinds.has(k)).map((k) => {
     if (k === 'missed') {
       const cue = missedCue(turnId);
@@ -243,7 +252,7 @@ function markerTitle(turnId, kinds) {
     }
     if (k.startsWith('tk')) {
       const t = tks[Number(k.slice(2)) - 1];
-      return t && t.title ? `Takeaway ${k.slice(2)}: ${t.title}` : MARKS[k].label;
+      return t && t.title ? `${MARKS[k].label}: ${t.title}` : MARKS[k].label;
     }
     return MARKS[k].label;
   }).join('\n');
@@ -319,17 +328,17 @@ function findNods(frames) {
   let dip = null;
   for (let i = 0; i < pts.length; i++) {
     const f = pts[i];
-    if (dip && f.t - dip.lastT > 3 * STEP_MS) dip = null; // lost the face mid-dip
+    if (dip && f.t - dip.lastT > NOD_GAP_MS) dip = null; // lost the face mid-dip
     if (!dip) {
       const ref = refPitch(pts, i);
-      if (ref !== null && Math.abs(f.pitch - ref) >= NOD_DEG) dip = { ref, start: f.t, minT: f.t, max: Math.abs(f.pitch - ref), lastT: f.t };
+      if (ref !== null && Math.abs(f.pitch - ref) >= NOD_DEG) dip = { ref, start: f.t, peakT: f.t, max: Math.abs(f.pitch - ref), lastT: f.t };
       continue;
     }
     dip.lastT = f.t;
     const off = Math.abs(f.pitch - dip.ref);
-    if (off > dip.max) { dip.max = off; dip.minT = f.t; }
+    if (off > dip.max) { dip.max = off; dip.peakT = f.t; }
     if (off < NOD_DEG / 2) {
-      if (f.t - dip.start <= NOD_MAX_MS) out.push(dip.minT);
+      if (f.t - dip.start <= NOD_MAX_MS) out.push(dip.peakT);
       dip = null;
     } else if (f.t - dip.start > NOD_MAX_MS) {
       dip = null; // a held tilt, not a nod
@@ -338,11 +347,12 @@ function findNods(frames) {
   return out;
 }
 
-// Median pitch over the second before frame i.
+// Median pitch over the second before frame i, only across frames with no gap between them:
+// the pose the model settles on after re-finding a face isn't comparable to the one before.
 function refPitch(pts, i) {
   const t = pts[i].t;
   const win = [];
-  for (let j = i - 1; j >= 0 && pts[j].t >= t - 1000; j--) win.push(pts[j].pitch);
+  for (let j = i - 1; j >= 0 && pts[j].t >= t - NOD_REF_MS && pts[j + 1].t - pts[j].t <= NOD_GAP_MS; j--) win.push(pts[j].pitch);
   if (win.length < 2) return null;
   win.sort((a, b) => a - b);
   return win[Math.floor(win.length / 2)];
@@ -909,13 +919,17 @@ function laneTops() {
     tops[l.key] = y;
     y += l.h + LANE_GAP;
   }
-  return { tops, axisTop: y - LANE_GAP + 4, height: y - LANE_GAP + 4 + AXIS_H };
+  return { tops, height: y - LANE_GAP };
 }
 
+// Face cues only exist with a video; without one the track stands alone, like the Figma.
+const showLanes = () => hasVideo() || !!(state.convo && state.convo.behavior);
+
 function buildLaneLabels() {
-  const box = document.querySelector('.rp-lane-labels');
-  put(box, ...LANES.map((l) => el('span', { style: `height:${l.h}px;margin-bottom:${LANE_GAP}px`, text: l.label })));
-  box.style.paddingBottom = `${AXIS_H + 4 - LANE_GAP}px`;
+  const box = document.querySelector('.tl-labels');
+  put(box,
+    el('span', { style: `height:${TRACK_TOP + TRACK_H}px`, text: 'Talk' }),
+    ...LANES.map((l) => el('span', { class: 'lane', style: `height:${l.h}px;margin-top:${LANE_GAP}px`, text: l.label })));
 }
 
 function drawLanes() {
@@ -923,18 +937,24 @@ function drawLanes() {
   const canvas = $('lanes-canvas');
   const W = track.clientWidth;
   if (!W || !state.convo) return;
-  const { tops, axisTop, height } = laneTops();
-  track.style.height = `${height}px`;
+  const D = domainMs();
+  renderSegments(D);
+  renderMarkers(D);
+  renderAxis(D);
+  const lanes = showLanes();
+  canvas.hidden = !lanes;
+  for (const s of document.querySelectorAll('.tl-labels .lane')) s.hidden = !lanes;
+  if (!lanes) return;
+
+  const { tops, height } = laneTops();
   const ctx = sizeCanvas(canvas, W, height);
   canvas.style.height = `${height}px`;
   ctx.clearRect(0, 0, W, height);
-
-  const D = domainMs();
   const x = (videoMs) => (videoMs / D) * W;
-  const col = {
-    you: cssVar('--you'), them: cssVar('--them'), line: cssVar('--hairline'), muted: cssVar('--fog'),
-    lane: cssVar('--surface'), ink: cssVar('--ink'), smile: cssVar('--smile') || cssVar('--them'),
-  };
+  const col = { ink: cssVar('--ink'), them: cssVar('--ink-3'), muted: cssVar('--ink-3'), lane: cssVar('--tint') };
+  const smileH = LANES[0].h;
+  const facingH = LANES[1].h;
+  const nodsH = LANES[2].h;
 
   for (const l of LANES) {
     ctx.fillStyle = col.lane;
@@ -944,32 +964,17 @@ function drawLanes() {
 
   const turns = turnsOf(state.convo);
   const bts = behaviorTurns();
-
-  // who's talking: you on top, them underneath
-  const talkTop = tops.talk;
-  const half = LANES[0].h / 2;
-  for (const t of turns) {
-    const side = sideOf(t, bts.get(t.turnId));
-    const x0 = x(toVideoMs(t.startMs));
-    const w = Math.max(2, x(toVideoMs(t.endMs)) - x0);
-    ctx.fillStyle = side === 'you' ? col.you : side === 'them' ? col.them : col.muted;
-    const y = side === 'you' ? talkTop + 3 : side === 'them' ? talkTop + half + 1 : talkTop + half / 2 + 2;
-    roundRect(ctx, x0, y, w, half - 4, 3);
-    ctx.fill();
-  }
-
   const fs = state.frames;
   const smileTop = tops.smile;
-  const smileH = LANES[1].h;
   const sy = (v) => smileTop + smileH - 3 - Math.max(0, Math.min(1, v)) * (smileH - 6);
   const b = state.convo.behavior;
 
   if (fs && fs.length) {
     // smile line, broken wherever the face drops out
-    ctx.strokeStyle = col.smile;
+    ctx.strokeStyle = col.them;
     ctx.lineWidth = 2;
     ctx.lineJoin = 'round';
-    ctx.fillStyle = withAlpha(col.smile, 0.16);
+    ctx.fillStyle = withAlpha(col.them, 0.16);
     let run = [];
     const flush = () => {
       if (run.length > 1) {
@@ -994,12 +999,10 @@ function drawLanes() {
     flush();
 
     // facing band
-    const fy = tops.facing;
-    const fh = LANES[2].h;
     for (const f of fs) {
       if (!f.face) continue;
       ctx.fillStyle = facing(f) ? withAlpha(col.ink, 0.55) : withAlpha(col.muted, 0.25);
-      ctx.fillRect(x(toVideoMs(f.t)), fy + 2, Math.max(1, x(STEP_MS) + 0.5), fh - 4);
+      ctx.fillRect(x(toVideoMs(f.t)), tops.facing + 2, Math.max(1, x(STEP_MS) + 0.5), facingH - 4);
     }
 
     // nod ticks
@@ -1009,7 +1012,7 @@ function drawLanes() {
     for (const n of state.nods) {
       const nx = x(toVideoMs(n));
       ctx.moveTo(nx, tops.nods + 3);
-      ctx.lineTo(nx, tops.nods + LANES[3].h - 3);
+      ctx.lineTo(nx, tops.nods + nodsH - 3);
     }
     ctx.stroke();
   } else if (b && bts.size) {
@@ -1019,26 +1022,25 @@ function drawLanes() {
       if (!bt || bt.smile == null) continue;
       const x0 = x(toVideoMs(t.startMs));
       const w = Math.max(2, x(toVideoMs(t.endMs)) - x0);
-      ctx.fillStyle = withAlpha(col.smile, 0.3);
+      ctx.fillStyle = withAlpha(col.them, 0.3);
       ctx.fillRect(x0, sy(bt.smile), w, smileTop + smileH - 3 - sy(bt.smile));
       ctx.fillStyle = withAlpha(col.ink, Math.max(0.12, (bt.facingPct || 0) * 0.55));
-      ctx.fillRect(x0, tops.facing + 2, w, LANES[2].h - 4);
+      ctx.fillRect(x0, tops.facing + 2, w, facingH - 4);
       ctx.strokeStyle = col.ink;
       ctx.lineWidth = 2;
       ctx.beginPath();
       for (let i = 0; i < (bt.nods || 0); i++) {
         const nx = x0 + (w * (i + 1)) / ((bt.nods || 0) + 1);
         ctx.moveTo(nx, tops.nods + 3);
-        ctx.lineTo(nx, tops.nods + LANES[3].h - 3);
+        ctx.lineTo(nx, tops.nods + nodsH - 3);
       }
       ctx.stroke();
     }
   } else {
     ctx.fillStyle = col.muted;
-    ctx.font = `400 13px ${cssVar('--sans') || 'system-ui'}`;
+    ctx.font = `500 12px ${cssVar('--font-serif') || 'system-ui'}`;
     ctx.textBaseline = 'middle';
-    const msg = hasVideo() ? 'Face cues show up here once the video is analysed.' : 'No video, so no face cues.';
-    ctx.fillText(msg, 10, smileTop + smileH / 2);
+    ctx.fillText('Face cues show up here once the video is analysed.', 10, smileTop + smileH / 2);
   }
 
   // their usual smile, dashed
@@ -1053,27 +1055,36 @@ function drawLanes() {
     ctx.stroke();
     ctx.setLineDash([]);
   }
+}
 
-  // time axis
-  ctx.fillStyle = col.muted;
-  ctx.font = `500 11px ${cssVar('--sans') || 'system-ui'}`;
-  ctx.textBaseline = 'top';
-  const step = niceStep(D, W);
-  for (let ms = 0; ms <= D; ms += step) {
-    const tx = x(ms);
-    ctx.fillRect(tx, axisTop - 4, 1, 4);
-    const label = fmtClock(ms);
-    const lw = ctx.measureText(label).width;
-    ctx.fillText(label, Math.min(W - lw, Math.max(0, tx - lw / 2)), axisTop + 1);
-  }
-
-  renderMarkers(tops.marks, LANES[4].h, D);
+// Figma .tl-track: one segment per turn, yours in --you, theirs in ink-3.
+function renderSegments(D) {
+  const bts = behaviorTurns();
+  put($('segs'), ...turnsOf(state.convo).map((t) => {
+    const side = sideOf(t, bts.get(t.turnId));
+    const s = toVideoMs(t.startMs);
+    const e = Math.max(toVideoMs(t.endMs || t.startMs), s + 400);
+    return el('i', {
+      class: `seg ${side === 'you' ? 'me' : side === 'them' ? 'them' : 'unk'}`,
+      style: `left:${(s / D) * 100}%;width:${((e - s) / D) * 100}%`,
+    });
+  }));
 }
 
 function niceStep(D, W) {
   const target = D / Math.max(2, W / 90);
   for (const s of [1000, 2000, 5000, 10000, 15000, 30000, 60000, 120000, 300000]) if (s >= target) return s;
   return 600000;
+}
+
+function renderAxis(D) {
+  const W = $('track').clientWidth;
+  const step = niceStep(D, W);
+  const kids = [];
+  // skip a label that would sit on top of the end one
+  for (let ms = 0; ms + step * 0.4 < D; ms += step) kids.push(el('span', { style: `left:${(ms / D) * 100}%`, text: fmtClock(ms) }));
+  kids.push(el('span', { class: 'end', style: 'left:100%', text: fmtClock(D) }));
+  put($('tl-axis'), ...kids);
 }
 
 function roundRect(ctx, x, y, w, h, r) {
@@ -1096,16 +1107,15 @@ function withAlpha(color, a) {
   return `color-mix(in srgb, ${c} ${Math.round(a * 100)}%, transparent)`;
 }
 
-function renderMarkers(top, h, D) {
+// Figma .mark buttons above the track. A turn with several kinds gets a little row of dots.
+function renderMarkers(D) {
   const box = $('markers');
-  box.style.top = `${top}px`;
-  box.style.height = `${h}px`;
   const W = $('track').clientWidth;
   const marks = markersByTurn(state.convo);
   const turns = new Map(turnsOf(state.convo).map((t) => [t.turnId, t]));
   const items = [...marks.entries()].filter(([id]) => turns.has(id)).map(([id, kinds]) => {
     const sorted = MARK_ORDER.filter((k) => kinds.has(k));
-    return { id, t: turns.get(id), sorted, w: sorted.length * 23, x: (toVideoMs(turns.get(id).startMs) / D) * W };
+    return { id, t: turns.get(id), sorted, w: sorted.length * MARK_W, x: (toVideoMs(turns.get(id).startMs) / D) * W };
   }).sort((a, b) => a.x - b.x);
   // Push neighbours apart so close markers don't sit on top of each other.
   for (let i = 0; i < items.length; i++) {
@@ -1118,17 +1128,18 @@ function renderMarkers(top, h, D) {
     const limit = i === items.length - 1 ? W - it.w / 2 : items[i + 1].x - (items[i + 1].w + it.w) / 2 - 3;
     it.x = Math.min(it.x, limit);
   }
-  put(box, ...items.map(({ id, t, sorted, x }) => {
-    const title = `${markerTitle(id, new Set(sorted))} at ${fmtClock(t.startMs)}`;
-    return el('button', {
-      class: 'rp-marker',
-      type: 'button',
-      style: `left:${Math.round(x)}px`,
-      title,
-      'aria-label': title,
-      on: { click: (e) => { e.stopPropagation(); seekToTurn(id); } },
-    }, ...sorted.map((k) => el('span', { class: `rp-mk ${markClass(k)}`, text: MARKS[k].sym })));
-  }));
+  put(box, ...items.map(({ id, t, sorted, x }) => el('span', { class: 'mark-set', style: `left:${Math.round(x)}px` },
+    ...sorted.map((k) => {
+      const title = `${markerTitle(id, new Set([k]))} at ${fmtClock(t.startMs)}`;
+      return el('button', {
+        class: `mark ${MARKS[k].cls}`,
+        type: 'button',
+        title,
+        'aria-label': title,
+        text: MARKS[k].sym,
+        on: { click: (e) => { e.stopPropagation(); play(id); } },
+      });
+    }))));
 }
 
 function updatePlayhead(videoMsOverride) {
@@ -1138,7 +1149,9 @@ function updatePlayhead(videoMsOverride) {
   const ms = videoMsOverride ?? video.currentTime * 1000;
   const D = domainMs();
   head.hidden = false;
-  head.style.left = `${Math.max(0, Math.min(1, ms / D)) * 100}%`;
+  const at = Math.max(0, Math.min(1, ms / D));
+  head.style.left = `${at * 100}%`;
+  head.classList.toggle('edge', at < 0.03); // keep the time chip inside the card
   $('playhead-time').textContent = fmtClock(ms - state.offsetMs);
 }
 
@@ -1189,15 +1202,28 @@ function turnAt(t) {
 function setActive(turnId, { scroll = false } = {}) {
   if (state.activeTurn === turnId && !scroll) return;
   state.activeTurn = turnId;
-  const list = $('lines');
-  for (const li of list.querySelectorAll('.rp-line.active')) li.classList.remove('active');
-  const li = list.querySelector(`.rp-line[data-turn="${turnId}"]`);
+  const box = $('script-scroll');
+  for (const li of box.querySelectorAll('.line.active')) li.classList.remove('active');
+  const li = box.querySelector(`.line[data-turn="${turnId}"]`);
   if (!li) return;
   li.classList.add('active');
-  const box = $('script-scroll');
-  const top = li.offsetTop - box.clientHeight * 0.28;
-  const visible = li.offsetTop >= box.scrollTop + 8 && li.offsetTop + li.offsetHeight <= box.scrollTop + box.clientHeight - 8;
+  const top = li.offsetTop - box.offsetTop - box.clientHeight * 0.28;
+  const rel = li.offsetTop - box.offsetTop;
+  const visible = rel >= box.scrollTop + 8 && rel + li.offsetHeight <= box.scrollTop + box.clientHeight - 8;
   if (scroll || !visible) box.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+}
+
+// Takeaway and timeline buttons: seek the video and flash the line, like the Figma's play().
+let flashTimer = null;
+function play(turnId) {
+  seekToTurn(turnId);
+  const li = $('script-scroll').querySelector(`.line[data-turn="${turnId}"]`);
+  if (!li) return;
+  li.classList.remove('flash');
+  void li.offsetWidth;
+  li.classList.add('flash');
+  clearTimeout(flashTimer);
+  flashTimer = setTimeout(() => li.classList.remove('flash'), 1800);
 }
 
 // smile delta 0..1 as signed points, e.g. +21 / −8
@@ -1212,11 +1238,11 @@ function themCues(bt, b) {
   if (!b || !bt) return null;
   const chips = [];
   if (bt.smile == null) {
-    chips.push(el('span', { class: 'rp-chip dim', text: 'face not in view' }));
+    chips.push(el('em', { class: 'tag cue dim', text: 'face not in view' }));
   } else {
-    chips.push(el('span', { class: 'rp-chip', title: `Mean smile over this line (peak ${pct(bt.smilePeak) ?? '—'}%). Their usual: ${pct(b.baseline && b.baseline.smile) ?? '—'}%.`, text: `smile ${pct(bt.smile)}%` }));
-    if (isNum(bt.facingPct)) chips.push(el('span', { class: 'rp-chip', title: 'Share of frames where their head pointed at the camera', text: `facing ${pct(bt.facingPct)}%` }));
-    if (isNum(bt.nods)) chips.push(el('span', { class: 'rp-chip', text: plural(bt.nods, 'nod') }));
+    chips.push(el('em', { class: 'tag cue', title: `Mean smile over this line (peak ${pct(bt.smilePeak) ?? '—'}%). Their usual: ${pct(b.baseline && b.baseline.smile) ?? '—'}%.`, text: `smile ${pct(bt.smile)}%` }));
+    if (isNum(bt.facingPct)) chips.push(el('em', { class: 'tag cue', title: 'Share of frames where their head pointed at the camera', text: `facing ${pct(bt.facingPct)}%` }));
+    if (isNum(bt.nods)) chips.push(el('em', { class: 'tag cue', text: plural(bt.nods, 'nod') }));
   }
   if (bt.congruence === 'match' || bt.congruence === 'mixed') {
     const base = b.baseline || {};
@@ -1225,9 +1251,9 @@ function themCues(bt, b) {
       + `animation ${isNum(bt.animation) ? bt.animation.toFixed(2) : '—'} vs usual ${isNum(base.animation) ? base.animation.toFixed(2) : '—'}. `
       + (bt.congruence === 'match' ? 'They point the same way.' : "They don't point the same way.")
       + ' Observable cues only, not feelings or sincerity.';
-    chips.push(el('span', { class: `rp-chip cong ${bt.congruence}`, title: tip, text: bt.congruence }));
+    chips.push(el('em', { class: `tag cue ${bt.congruence}`, title: tip, text: `words + face: ${bt.congruence}` }));
   }
-  return el('span', { class: 'rp-chips rp-cues' }, ...chips);
+  return el('span', { class: 'cues' }, ...chips);
 }
 
 // Only reactions big enough to matter get a chip: "smiled +39", "smile −10, looked away".
@@ -1238,20 +1264,22 @@ function reactionChip(bt, heatReaction) {
   const bits = [d > 0 ? `smiled ${pts(d)}` : `smile ${pts(d)}`];
   if (r && isNum(r.nods) && r.nods > 0) bits.push(plural(r.nods, 'nod'));
   if (r && isNum(r.facingPct) && r.facingPct < 0.5) bits.push('looked away');
-  return el('span', {
-    class: `rp-chip react ${d > 0 ? 'up' : 'down'}`,
+  return el('em', {
+    class: `tag react ${d > 0 ? 'up' : 'down'}`,
     title: 'Their smile over the 2.5 s after you stopped talking, against the moment you stopped (points out of 100)',
     text: bits.join(', '),
   });
 }
 
 function awkChip(f) {
-  return el('span', {
-    class: `rp-chip awk ${f.who === 'you' ? 'mine' : 'theirs'}`,
+  const why = `${f.label}: ${f.evidence || ''}`;
+  return el('em', {
+    class: `tag awk ${f.who === 'you' ? 'mine' : 'theirs'}`,
     title: f.evidence || f.label,
     tabindex: '0',
-    on: { mouseenter: () => showWhy(`${f.label}: ${f.evidence || ''}`), focus: () => showWhy(`${f.label}: ${f.evidence || ''}`) },
-  }, el('span', { class: 'rp-awk-icon', 'aria-hidden': 'true', text: '⚠' }), f.label || f.kind);
+    on: { mouseenter: () => showWhy(why), mouseleave: () => showWhy(''), focus: () => showWhy(why), blur: () => showWhy('') },
+    text: f.label || f.kind,
+  });
 }
 
 // Short names for the one-line legend.
@@ -1259,29 +1287,47 @@ const LEGEND_SHORT = {
   'picked-up': 'picked up', 'follow-up': 'follow-up', topic: 'their topic', promise: 'promise', smile: 'smiling',
   missed: 'missed', filler: 'filler', flat: 'mixed signal',
 };
+const HEAT_NOTE = 'Highlighted words are the few that mattered. Hover or focus one to see why.';
 
+// The Figma's heat-note doubles as the place a hovered word explains itself.
 function showWhy(text) {
-  $('heat-why').textContent = text || 'Hover a coloured word to see why. Click a line to play it.';
+  const box = $('heat-note');
+  box.classList.toggle('why', !!text);
+  if (text) { put(box, text); return; }
+  put(box, HEAT_NOTE, ...legendKeys());
 }
 
+function legendKeys() {
+  const d = state.heat.data;
+  const legend = d && Array.isArray(d.legend) ? d.legend : [];
+  if (!legend.length) return [];
+  const names = (good) => legend.filter((l) => !!l.good === good).map((l) => LEGEND_SHORT[l.kind] || l.label).join(', ');
+  return [
+    el('span', { class: 'heat-key good' }, el('i', { 'aria-hidden': 'true' }), names(true)),
+    el('span', { class: 'heat-key bad' }, el('i', { 'aria-hidden': 'true' }), names(false)),
+  ];
+}
+
+// Figma <mark data-reason>: only words the server tagged get colour; a bare score is too noisy to show.
 function heatWords(words, legend) {
   const good = new Map(legend.map((l) => [l.kind, !!l.good]));
   const kids = [];
   words.forEach((w, i) => {
     if (i) kids.push(' ');
     const text = String(w.w ?? '');
-    // only words the server tagged get colour; a bare score is too noisy to show
     if (!w.kind) { kids.push(text); return; }
     const isGood = good.has(w.kind) ? good.get(w.kind) : w.score > 0;
     const label = (legend.find((l) => l.kind === w.kind) || {}).label || w.kind;
     const why = `“${text}”: ${w.why || label}`;
-    kids.push(el('span', {
-      class: `rp-heat-w ${isGood ? 'good' : 'bad'}`,
-      title: w.why || label,
+    kids.push(el('mark', {
+      class: isGood ? '' : 'bad',
+      'data-reason': w.why || label,
       tabindex: '0',
       on: {
         mouseenter: () => showWhy(why),
+        mouseleave: () => showWhy(''),
         focus: () => showWhy(why),
+        blur: () => showWhy(''),
         click: (e) => { e.stopPropagation(); showWhy(why); },
       },
       text,
@@ -1290,25 +1336,11 @@ function heatWords(words, legend) {
   return kids;
 }
 
-function renderLegend() {
-  const d = state.heat.data;
-  const legend = d && Array.isArray(d.legend) ? d.legend : [];
-  const box = $('heat-legend');
-  if (!legend.length) { box.replaceChildren(); return; }
-  const names = (good) => legend.filter((l) => !!l.good === good).map((l) => LEGEND_SHORT[l.kind] || l.label).join(', ');
-  put(box,
-    el('span', { class: 'rp-heat-key good' }, el('span', { class: 'rp-heat-sw', 'aria-hidden': 'true' }), names(true)),
-    el('span', { class: 'rp-heat-key bad' }, el('span', { class: 'rp-heat-sw', 'aria-hidden': 'true' }), names(false)),
-    !hasVideo() ? el('span', { class: 'rp-heat-key dim', text: 'no video, so no face cues' }) : null,
-  );
-}
-
-// One transcript: synced to the video, words tinted from the heatmap when it's in.
+// One transcript: synced to the video, words marked from the heatmap when it's in.
 function renderTranscript() {
   const c = state.convo;
   const turns = turnsOf(c);
-  const list = $('lines');
-  renderLegend();
+  const list = $('script-scroll');
   showWhy('');
   if (!turns.length) {
     list.replaceChildren(el('li', { class: 'rp-empty', text: 'No transcript for this one.' }));
@@ -1328,9 +1360,9 @@ function renderTranscript() {
     const bt = bts.get(t.turnId);
     const side = sideOf(t, bt);
     const ht = heat.get(t.turnId);
-    const kinds = marks.get(t.turnId);
+    const kinds = marks.get(t.turnId) || new Set();
     const tryT = tries.get(t.turnId);
-    const sideCls = side ? `is-${side}` : `spk-${Math.max(0, labels.indexOf(t.speaker))}`;
+    const sideCls = side === 'you' ? 'me' : side === 'them' ? 'them' : `spk-${Math.max(0, labels.indexOf(t.speaker))}`;
     const seam = seams.get(t.turnId);
     // a seam line shows only their half here; the merged-in half gets its own sub-line
     const words = seam ? [seam.theirs]
@@ -1339,44 +1371,53 @@ function renderTranscript() {
     // on a seam, your flags belong to the merged-in half
     const awkMain = seam ? awk.filter((f) => f.who !== 'you') : awk;
     const awkSeam = seam ? awk.filter((f) => f.who === 'you') : [];
-    return el('li', { class: `rp-line ${sideCls}${t.turnId === state.activeTurn ? ' active' : ''}`, 'data-turn': t.turnId },
-      el('button', { class: 'rp-who', type: 'button', title: 'Play this line', on: { click: () => seekToTurn(t.turnId) } },
-        el('span', { text: speakerName(t, side, labels) }),
-        el('span', { class: 'rp-time' }, el('span', { class: 'rp-play', 'aria-hidden': 'true', text: '▶ ' }), fmtClock(t.startMs)),
+    const tks = MARK_ORDER.filter((k) => k.startsWith('tk') && kinds.has(k));
+    const cls = ['line', sideCls, kinds.has('follow') ? 'is-fu' : '', kinds.has('missed') ? 'is-ms' : '', t.turnId === state.activeTurn ? 'active' : '']
+      .filter(Boolean).join(' ');
+    const seek = () => seekToTurn(t.turnId);
+    return el('li', { class: cls, 'data-turn': t.turnId, id: `ln-${t.turnId}` },
+      el('button', { class: 'line-time', type: 'button', title: 'Play this line', text: fmtClock(t.startMs), on: { click: seek } }),
+      el('span', { class: 'line-who', text: speakerName(t, side, labels) }),
+      el('p', { on: { click: seek } },
+        ...words,
+        kinds.has('follow') ? el('em', { class: 'tag fu', text: 'Follow-up' }) : null,
+        kinds.has('missed') ? el('em', { class: 'tag ms', title: markerTitle(t.turnId, new Set(['missed'])), text: 'Missed moment' }) : null,
+        ...tks.map((k) => el('em', { class: 'tag tk', title: markerTitle(t.turnId, new Set([k])), text: `Takeaway ${k.slice(2)}` })),
+        ...awkMain.map(awkChip),
+        side === 'you' ? reactionChip(bt, ht && ht.reaction) : null,
       ),
-      el('div', { class: 'rp-said', on: { click: () => seekToTurn(t.turnId) } },
-        el('p', { class: 'rp-said-text' },
-          kinds ? el('span', { class: 'rp-line-marks', title: markerTitle(t.turnId, kinds) },
-            ...MARK_ORDER.filter((k) => kinds.has(k)).map((k) => el('span', { class: `rp-mk ${markClass(k)}`, text: MARKS[k].sym }))) : null,
-          ...words,
-          ...awkMain.map(awkChip),
-          side === 'you' ? reactionChip(bt, ht && ht.reaction) : null,
-        ),
-        seam ? el('div', { class: 'rp-seam' },
-          el('p', { class: 'rp-seam-text' },
-            el('span', { class: 'rp-seam-who', text: 'You (merged)' }),
-            seam.yours,
-            ...awkSeam.map(awkChip)),
-          el('p', { class: 'rp-seam-note', text: 'Voice separation merged this into their line.' })) : null,
-        side === 'them' ? themCues(bt, b) : null,
-        tryT ? el('p', { class: 'rp-tryline' }, el('span', { class: 'rp-tryline-label', text: 'Try instead' }), `“${tryT.tryInstead}”`) : null,
-      ),
+      seam ? el('div', { class: 'seam' },
+        el('p', {}, el('span', { class: 'rp-seam-who', text: 'You (merged)' }), seam.yours, ...awkSeam.map(awkChip)),
+        el('p', { class: 'seam-note', text: 'Voice separation merged this into their line.' })) : null,
+      side === 'them' ? themCues(bt, b) : null,
+      tryT ? el('p', { class: 'tk-rewrite' }, el('b', { text: 'Try instead' }), `“${tryT.tryInstead}”`) : null,
     );
   }));
   if (state.activeTurn != null) setActive(state.activeTurn);
 }
 
+// The coaching note under the transcript (Figma .reflection-copy).
+function renderNote() {
+  const note = state.convo.note;
+  const shown = !!(note && note.text && note.status !== 'dropped') && !needsVoice();
+  $('reflection').hidden = !shown;
+  if (!shown) return;
+  $('note-text').textContent = note.text;
+  const sugg = $('note-sugg');
+  sugg.textContent = note.suggestion || '';
+  sugg.parentElement.hidden = !note.suggestion;
+}
+
 // ---------- takeaways ----------
 
-const TK_KICKER = { try: 'Try this next time', keep: 'Keep doing this', next: 'Next time' };
-const TK_ICON = { keep: '✓', next: '→', try: '↺' };
+const TK_KINDS = ['try', 'keep', 'next'];
 const TK_ORDER = { try: 0, keep: 1, next: 2 };
 
 // What the server sent; until it sends takeaways, a stand-in made from the moments.
 function takeaways() {
   const ins = state.convo && state.convo.insight;
   if (!ins || needsVoice()) return [];
-  const kindOf = (k) => (k in TK_KICKER ? k : 'next');
+  const kindOf = (k) => (TK_KINDS.includes(k) ? k : 'next');
   if (Array.isArray(ins.takeaways) && ins.takeaways.length) {
     return ins.takeaways.slice(0, 3).map((t) => ({ ...t, kind: kindOf(t.kind) }));
   }
@@ -1393,73 +1434,125 @@ function takeaways() {
   }).sort((a, b) => TK_ORDER[a.kind] - TK_ORDER[b.kind]);
 }
 
-function seekChip(turnId) {
-  const t = turnsOf(state.convo).find((x) => x.turnId === turnId);
-  if (!t) return null;
-  return el('button', { class: 'rp-seek', type: 'button', title: 'Play this moment', on: { click: () => seekToTurn(turnId) } },
-    el('span', { class: 'rp-play', 'aria-hidden': 'true', text: '▶' }), fmtClock(t.startMs));
-}
+const turnById = (id) => turnsOf(state.convo).find((t) => t.turnId === id) || null;
+const firstOf = (arr) => (Array.isArray(arr) && arr.length ? arr[0] : null);
 
-function themName() {
-  const n = state.convo.otherName;
-  return n && n !== 'them' ? n : 'They said';
+// The Figma's three cards: try / keep / ask. Each comes from the matching takeaway when the
+// server wrote one, else from the nearest thing we measured, so the page is rarely blank.
+function threeTakeaways() {
+  const list = takeaways();
+  const tryT = list.find((t) => t.kind === 'try') || null;
+  let keep = list.find((t) => t.kind === 'keep') || null;
+  if (!keep && state.convo.insight) {
+    const bts = behaviorTurns();
+    const warm = (state.convo.insight.moments || []).find((m) => {
+      const r = bts.get(m.turnId) && bts.get(m.turnId).reaction;
+      return r && isNum(r.smileDelta) && r.smileDelta > 0 && !(tryT && tryT.turnId === m.turnId);
+    });
+    if (warm) keep = { kind: 'keep', turnId: warm.turnId, title: warm.title || '', text: warm.why || '', evidence: warm.observation || null };
+  }
+  let ask = list.find((t) => t.kind === 'next') || null;
+  if (!ask && !needsVoice()) {
+    const h = state.convo.hooks || {};
+    const ev = firstOf(h.events);
+    const cm = firstOf(h.commitments);
+    const tp = firstOf(h.topics);
+    const hk = firstOf(state.convo.followUp && state.convo.followUp.hooksUsed);
+    if (ev && ev.text) ask = { kind: 'next', turnId: ev.turnId, title: `Ask how it went: ${ev.text}` };
+    else if (cm && cm.text) ask = { kind: 'next', turnId: cm.turnId, title: `Follow through: ${cm.text}` };
+    else if (tp && tp.term) ask = { kind: 'next', turnId: firstOf(tp.turnIds), title: `Ask about ${tp.term}, the thing they kept coming back to.` };
+    else if (hk) ask = { kind: 'next', turnId: null, title: `Ask about ${hk}. It came up last time.` };
+  }
+  return { tryT, keep, ask };
 }
 
 // The server joins evidence bits with middle dots; on screen they read better as a list.
 const evidenceText = (s) => String(s).replace(/\s+·\s+/g, ', ');
 
-function heroCard(t) {
-  const quote = t.kind === 'try' && (t.said || t.tryInstead);
-  return el('article', { class: `rp-tk-hero kind-${t.kind}` },
-    el('p', { class: 'rp-tk-kicker' },
-      el('span', { class: 'rp-tk-num', text: '1' }),
-      el('span', { text: TK_KICKER[t.kind] }),
-      Number.isInteger(t.turnId) ? seekChip(t.turnId) : null),
-    quote ? el('div', { class: 'rp-tk-quote' },
-      t.theySaid ? el('p', { class: 'rp-tk-they' }, el('span', { class: 'rp-tk-who', text: themName() }), `“${t.theySaid}”`) : null,
-      t.said ? el('p', { class: 'rp-tk-said' }, el('span', { class: 'rp-tk-who', text: 'You said' }), el('s', { text: `“${t.said}”` })) : null,
-      t.tryInstead ? el('p', { class: 'rp-tk-try' }, el('span', { class: 'rp-tk-who', text: 'Try' }), `“${t.tryInstead}”`) : null,
-    ) : el('p', { class: 'rp-tk-title', text: t.title || '' }),
-    t.evidence ? el('p', { class: 'rp-tk-evidence', text: evidenceText(t.evidence) }) : null,
-    t.text ? el('p', { class: 'rp-tk-why', text: t.text }) : null,
+function quoteLine(cls, who, text) {
+  return text ? el('p', { class: cls }, el('b', { text: who }), text) : null;
+}
+
+function playButton(turnId) {
+  if (!Number.isInteger(turnId) || !turnById(turnId)) return null;
+  return el('button', { class: 'play', type: 'button', on: { click: () => play(turnId) } }, el('span', { 'aria-hidden': 'true', text: '▶' }), ' Play the moment');
+}
+
+function tryCard(t, first) {
+  const turn = t && Number.isInteger(t.turnId) ? turnById(t.turnId) : null;
+  const kids = [el('span', { class: 'label', text: '1 · Try this next time' })];
+  if (!t) {
+    kids.push(el('p', { class: 'tk-note tk-empty', text: 'Nothing to redo this time.' }));
+  } else {
+    kids.push(
+      quoteLine('tk-them', first, t.theySaid || null),
+      quoteLine('tk-you', 'You', t.said || (turn ? turn.text : null)),
+      t.tryInstead ? el('p', { class: 'tk-rewrite' }, el('b', { text: 'Try instead' }), t.tryInstead) : null,
+      t.text ? el('p', { class: 'tk-note', text: t.text }) : (t.title ? el('p', { class: 'tk-note', text: t.title }) : null),
+      t.evidence ? el('p', { class: 'tk-note tk-evidence', text: evidenceText(t.evidence) }) : null,
+      playButton(t.turnId),
+    );
+  }
+  return el('article', { class: 'takeaway try' }, ...kids);
+}
+
+function keepCard(t, first) {
+  const turn = t && Number.isInteger(t.turnId) ? turnById(t.turnId) : null;
+  const kids = [el('span', { class: 'label', text: '2 · Keep doing this' })];
+  if (!t) {
+    kids.push(el('p', { class: 'tk-note tk-empty', text: 'No moment stood out yet.' }));
+  } else {
+    const side = turn ? sideOf(turn, behaviorTurns().get(turn.turnId)) : null;
+    kids.push(
+      t.said ? quoteLine('tk-you', 'You', t.said)
+        : turn ? quoteLine(side === 'them' ? 'tk-them' : 'tk-you', side === 'them' ? first : 'You', turn.text) : null,
+      el('p', { class: 'tk-note', text: t.text || t.title || '' }),
+      t.evidence ? el('p', { class: 'tk-note tk-evidence', text: evidenceText(t.evidence) }) : null,
+      playButton(t.turnId),
+    );
+  }
+  return el('article', { class: 'takeaway keep' }, ...kids);
+}
+
+function askCard(t) {
+  return el('article', { class: 'takeaway ask' },
+    el('span', { class: 'label', text: '3 · Ask about it next time' }),
+    el('p', { class: 'tk-note big', text: t ? (t.title || t.text || '') : 'Ask what’s new since you talked.' }),
+    t && t.title && t.text ? el('p', { class: 'tk-note', text: t.text }) : null,
+    el('button', { class: 'play', type: 'button', on: { click: () => openDraft() } }, el('span', { 'aria-hidden': 'true', text: '✉' }), ' Use in follow-up'),
   );
 }
 
-function smallCard(t, i) {
-  return el('li', { class: `rp-tk-card kind-${t.kind}` },
-    el('span', { class: 'rp-tk-icon', 'aria-hidden': 'true', text: TK_ICON[t.kind] }),
-    el('div', { class: 'rp-tk-body' },
-      el('p', { class: 'rp-tk-card-title' },
-        el('span', { class: 'rp-tk-num', text: String(i + 2) }),
-        el('span', { text: t.title || TK_KICKER[t.kind] }),
-        Number.isInteger(t.turnId) ? seekChip(t.turnId) : null),
-      t.text ? el('p', { class: 'rp-tk-text', text: t.text }) : null,
-      t.evidence ? el('p', { class: 'rp-tk-evidence', text: evidenceText(t.evidence) }) : null,
-    ),
-  );
+// Why there are no cards yet, or null when there's something to show.
+function takeawaysPending() {
+  const c = state.convo;
+  if (needsVoice()) return { msg: 'Pick which voice is yours first. Until then we can’t tell your lines from theirs.' };
+  if (state.uploading || state.insightBusy) return { msg: 'Writing takeaways…', busy: true };
+  if (state.analysing || (hasVideo() && !c.behavior)) return { msg: 'Takeaways show up once the video is analysed.' };
+  if (state.insightError) {
+    return {
+      msg: `Couldn't write takeaways: ${state.insightError}`,
+      action: el('button', { class: 'rp-btn rp-btn-quiet', type: 'button', text: 'Try again', on: { click: () => { state.insightAsked = null; state.insightError = null; ensureInsight(); } } }),
+    };
+  }
+  if (!turnsOf(c).length) return { msg: 'Nothing to learn from yet: this conversation has no transcript.' };
+  return null;
 }
 
 function renderTakeaways() {
   const box = $('takeaways');
-  const c = state.convo;
-  const list = takeaways();
-  const head = el('h2', { class: 'rp-tk-head', text: list.length ? `${list.length === 1 ? 'One takeaway' : `${list.length} takeaways`}` : 'Takeaways' });
-  if (list.length) {
-    const [first, ...rest] = list;
-    put(box, head, heroCard(first), rest.length ? el('ol', { class: 'rp-tk-rest' }, ...rest.map(smallCard)) : null);
+  const pending = takeawaysPending();
+  if (pending) {
+    put(box, el('p', { class: `rp-tk-empty${pending.busy ? ' busy' : ''}` }, pending.msg, pending.action || null));
     return;
   }
-  let msg;
-  let action = null;
-  if (needsVoice()) msg = 'Pick which voice is yours first. Until then we can’t tell your lines from theirs.';
-  else if (state.uploading || state.insightBusy) msg = 'Writing takeaways…';
-  else if (state.analysing || (hasVideo() && !c.behavior)) msg = 'Takeaways show up once the video is analysed.';
-  else if (state.insightError) {
-    msg = `Couldn't write takeaways: ${state.insightError}`;
-    action = el('button', { class: 'rp-btn rp-btn-quiet', type: 'button', text: 'Try again', on: { click: () => { state.insightAsked = null; state.insightError = null; ensureInsight(); } } });
-  } else if (!turnsOf(c).length) msg = 'Nothing to learn from yet: this conversation has no transcript.';
-  else msg = 'No takeaways this time.';
-  put(box, head, el('p', { class: `rp-tk-empty${msg.endsWith('…') ? ' busy' : ''}`, text: msg }), action);
+  const { tryT, keep, ask } = threeTakeaways();
+  if (!tryT && !keep && !ask) {
+    put(box, el('p', { class: 'rp-tk-empty', text: 'No takeaways this time.' }));
+    return;
+  }
+  const first = firstName();
+  put(box, tryCard(tryT, first), keepCard(keep, first), askCard(ask));
 }
 
 // No insight yet (no video, or an older conversation): ask for one, once per page view.
@@ -1486,67 +1579,87 @@ function ensureInsight() {
 
 // ---------- score strip ----------
 
+// "Last time" numbers come from /compare, fetched once per conversation.
+function ensureCompare() {
+  const id = state.id;
+  if (state.compare.id === id) return state.compare.data;
+  state.compare = { id, data: null };
+  getJson(`/api/conversations/${enc(id)}/compare`)
+    .then((d) => { if (state.compare.id === id && state.convo) { state.compare.data = d; renderScores(); } })
+    .catch(() => { /* first conversation, or an older server: no "last time" */ });
+  return null;
+}
+
+function lastTime(key) {
+  const cmp = ensureCompare();
+  const m = cmp && Array.isArray(cmp.metrics) ? cmp.metrics.find((x) => x.key === key) : null;
+  return m && isNum(m.before) ? m.before : null;
+}
+
+// Your lines after which they smiled (+10 points or more) or nodded, follow-ups vs the rest.
+function reactionCounts() {
+  const bts = behaviorTurns();
+  if (!bts.size) return null;
+  const fu = new Set([...markersByTurn(state.convo).entries()].filter(([, k]) => k.has('follow')).map(([id]) => id));
+  const tally = { fu: [0, 0], other: [0, 0] };
+  for (const bt of bts.values()) {
+    if (bt.speaker !== 'you' || !bt.reaction) continue;
+    const r = bt.reaction;
+    const warm = (isNum(r.smileDelta) && r.smileDelta >= 0.1) || (isNum(r.nods) && r.nods > 0);
+    const slot = fu.has(bt.turnId) ? tally.fu : tally.other;
+    slot[1] += 1;
+    if (warm) slot[0] += 1;
+  }
+  return tally;
+}
+
 function renderScores() {
   const box = $('scores');
   const c = state.convo;
-  const items = [];
-  if (needsVoice()) { box.hidden = true; box.replaceChildren(); return; }
-  const awk = awkward().flags.filter((f) => f.who === 'you');
-  if (c.hooks && c.hooks.awkward) {
-    items.push(el('div', { class: `rp-score${awk.length ? ' bad' : ''}`, title: awk.map((f) => `${f.label}: ${f.evidence || ''}`).join('\n') || null },
-      el('span', { class: 'rp-score-num', text: String(awk.length) }),
-      el('span', { class: 'rp-score-label', text: awk.length === 1 ? 'awkward moment' : 'awkward moments' })));
+  if (needsVoice()) {
+    box.hidden = true;
+    $('cue-note').hidden = true;
+    box.replaceChildren();
+    return;
   }
-  const qs = c.signals && Array.isArray(c.signals.questions) ? c.signals.questions : [];
-  if (qs.length) {
-    const fu = [...markersByTurn(c).values()].filter((k) => k.has('follow')).length;
-    items.push(el('div', { class: 'rp-score' },
-      el('span', { class: 'rp-score-num', text: `${fu} of ${qs.length}` }),
-      el('span', { class: 'rp-score-label', text: 'questions were follow-ups' })));
-  }
-  const missed = c.hooks && Array.isArray(c.hooks.missedBids) ? c.hooks.missedBids.length : null;
-  if (missed !== null) {
-    items.push(el('div', { class: `rp-score${missed ? ' warn' : ''}` },
-      el('span', { class: 'rp-score-num', text: String(missed) }),
-      el('span', { class: 'rp-score-label', text: missed === 1 ? 'missed moment' : 'missed moments' })));
-  }
-  const s = c.behavior && c.behavior.stats;
-  const af = (s && s.afterFollowUps) || {};
-  const ao = (s && s.afterOther) || {};
-  if (af.n > 0 && isNum(af.smileDelta)) {
-    const other = ao.n > 0 && isNum(ao.smileDelta);
-    items.push(el('div', { class: 'rp-score wide', title: `After ${plural(af.n, 'follow-up')}${other ? ` vs ${plural(ao.n, 'other line')}` : ''}. Smile change in the 2.5 s after you stopped, out of 100.${af.n < 3 || ao.n < 3 ? ' Small sample: a hint, not proof.' : ''}` },
-      el('span', { class: 'rp-score-num' },
-        el('span', { class: af.smileDelta > 0 ? 'up' : '', text: pts(af.smileDelta) }),
-        other ? el('span', { class: 'rp-score-vs', text: ` vs ${pts(ao.smileDelta)}` }) : null),
-      el('span', { class: 'rp-score-label', text: other ? 'smile after your follow-ups vs your other lines' : 'smile after your follow-ups' }),
-      other ? deltaBars([
-        { label: 'follow-ups', v: af.smileDelta, cls: 'follow' },
-        { label: 'other lines', v: ao.smileDelta, cls: 'other' },
-      ]) : null));
-  }
+  box.hidden = false;
+  $('cue-note').hidden = false;
+  const fu = [...markersByTurn(c).values()].filter((k) => k.has('follow')).length;
+  const missed = c.hooks && Array.isArray(c.hooks.missedBids) ? c.hooks.missedBids.length : 0;
+  const share = c.signals && isNum(c.signals.userTalkShare) ? pct(c.signals.userTalkShare) : null;
+  const prevFu = lastTime('followUps');
+  const prevShare = lastTime('userTalkShare');
+  const awk = c.hooks && c.hooks.awkward ? awkward().flags.filter((f) => f.who === 'you') : null;
   const seen = c.behavior && isNum(c.behavior.faceSeenPct) ? pct(c.behavior.faceSeenPct > 1 ? c.behavior.faceSeenPct / 100 : c.behavior.faceSeenPct) : null;
-  if (seen !== null) {
-    items.push(el('div', { class: 'rp-score' },
-      el('span', { class: 'rp-score-num', text: `${seen}%` }),
-      el('span', { class: 'rp-score-label', text: 'of the video had their face in view' })));
+  const tally = reactionCounts();
+  let after;
+  let other;
+  if (!hasVideo()) {
+    after = 'No camera on this call';
+    other = 'No camera on this call';
+  } else if (!tally) {
+    after = state.analysing ? 'Analysing the video…' : 'Not analysed yet';
+    other = after;
+  } else {
+    after = tally.fu[1] ? `Smiled or nodded after ${tally.fu[0]} of ${plural(tally.fu[1], 'follow-up')}` : 'No follow-ups to react to';
+    other = tally.other[1] ? `${tally.other[0]} of ${plural(tally.other[1], 'other line')}` : '—';
   }
-  box.hidden = !items.length;
-  put(box, ...items);
-}
-
-function deltaBars(rows) {
-  const max = Math.max(0.1, ...rows.map((r) => Math.abs(r.v || 0)));
-  return el('div', { class: 'rp-dbars' }, ...rows.map((r) => {
-    const w = isNum(r.v) ? (Math.abs(r.v) / max) * 50 : 0;
-    const style = isNum(r.v) && r.v < 0 ? `right:50%;width:${w}%` : `left:50%;width:${w}%`;
-    return el('div', { class: `rp-dbar ${r.cls}` },
-      el('span', { class: 'rp-dbar-label', text: r.label }),
-      el('span', { class: 'rp-dbar-track' },
-        el('span', { class: 'rp-dbar-zero' }),
-        el('span', { class: `rp-dbar-fill${isNum(r.v) && r.v < 0 ? ' neg' : ''}`, style })),
-    );
-  }));
+  const cell = (cls, big, label, small, title) => el('div', { class: cls, title },
+    el('b', { text: big }), el('span', { text: label }), el('small', { text: small }));
+  box.classList.toggle('has-awk', !!awk);
+  put(box,
+    cell('fu', String(fu), 'Follow-ups', prevFu !== null ? `Last time: ${prevFu}` : 'Questions that built on their words'),
+    cell(`ms${missed ? ' some' : ''}`, String(missed), 'Missed moments', 'Openings you moved past'),
+    awk ? cell(`awk${awk.length ? '' : ' none'}`, String(awk.length), 'Awkward moments',
+      awk.length ? [...new Set(awk.map((f) => f.label))].join(', ') : 'Nothing flagged',
+      awk.map((f) => `${f.label}: ${f.evidence || ''}`).join('\n') || null) : null,
+    cell('talk', share !== null ? `${share}%` : '—', 'You talked', prevShare !== null ? `Last time: ${pct(prevShare)}%` : 'Share of the talking'),
+    el('div', { class: 'react' },
+      el('span', { text: 'Reactions' }),
+      el('small', {}, el('strong', { text: 'After your follow-ups: ' }), after),
+      el('small', {}, el('strong', { text: 'After other lines: ' }), other),
+      seen !== null ? el('small', { text: `Their face was in view ${seen}% of the video.` }) : null),
+  );
 }
 
 // ---------- folded details ----------
@@ -1650,16 +1763,118 @@ function ensureHeatmap() {
 
 // ---------- page ----------
 
+const cap = (s) => String(s).charAt(0).toUpperCase() + String(s).slice(1);
+
+// "Conversation with Maya": the capitalised first name, or "them" when nobody typed one.
+function firstName() {
+  const n = state.convo && state.convo.otherName;
+  if (!n || n === 'them') return 'them';
+  return cap(n.trim().split(/\s+/)[0]);
+}
+
+function initialsOf(name) {
+  if (!name || name === 'them') return '?';
+  return name.trim().split(/\s+/).slice(0, 2).map((w) => w.charAt(0).toUpperCase()).join('');
+}
+
+// "Today, 10:30 AM" / "Yesterday, 4:15 PM" / "Oct 20, 12:40 PM", like the Figma's `when`.
+function fmtWhen(iso) {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  const time = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+  const today = new Date();
+  const sameDay = (a, b) => a.toDateString() === b.toDateString();
+  if (sameDay(d, today)) return `Today, ${time}`;
+  const yesterday = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
+  if (sameDay(d, yesterday)) return `Yesterday, ${time}`;
+  return `${fmtDate(iso)}, ${time}`;
+}
+
 function renderHeader() {
   const c = state.convo;
-  $('title').replaceChildren(...(c ? [
-    `With ${c.otherName && c.otherName !== 'them' ? c.otherName : 'them'}`,
-    c.createdAt ? el('span', { class: 'rp-title-date', text: fmtDate(c.createdAt) }) : '',
-  ] : []));
+  const first = firstName();
+  $('title').textContent = `Conversation with ${first}`;
   document.title = c ? `Replay of ${c.otherName || 'a conversation'}` : 'Playback Replay';
+  $('side-title').textContent = first === 'them' ? 'How they responded' : `How ${first} responded`;
   const tag = $('tag');
   tag.hidden = !(c && c.tag);
   tag.textContent = c && c.tag ? TAG_NAMES[c.tag] || c.tag : '';
+  const turns = turnsOf(c);
+  const dur = turns.length ? fmtClock(Math.max(...turns.map((t) => t.endMs || t.startMs || 0))) : null;
+  $('person-avatar').textContent = initialsOf(c.otherName);
+  $('person-name').textContent = c.otherName && c.otherName !== 'them' ? cap(c.otherName) : 'Someone';
+  $('person-meta').textContent = [fmtWhen(c.createdAt), dur].filter(Boolean).join(' · ');
+  put($('tl-key'),
+    el('i', { class: 'you' }), 'You',
+    el('i', { class: 'them' }), first === 'them' ? 'Them' : first,
+    el('i', { class: 'fu' }), 'Follow-up',
+    el('i', { class: 'ms' }), 'Missed moment',
+    el('i', { class: 'awk' }), 'Awkward',
+    el('i', { class: 'tk' }), 'Takeaway');
+}
+
+// ---------- follow-up draft (Figma .modal) ----------
+
+function openDraft() {
+  const c = state.convo;
+  if (!c) return;
+  const fu = c.followUp;
+  const first = firstName();
+  $('modal-label').textContent = `Draft for ${first}`;
+  $('modal-note').textContent = `Based on your conversation on ${fmtWhen(c.createdAt) || fmtDate(c.createdAt)}. Edit it before you send.`;
+  const ta = $('followup-text');
+  // keep the person's edits while the modal is closed and reopened on the same conversation
+  if (state.draftFor !== c.id) {
+    ta.value = fu && fu.text ? fu.text : '';
+    state.draftFor = c.id;
+  }
+  $('modal-copy').textContent = 'Copy message';
+  $('modal').hidden = false;
+  ta.focus();
+}
+
+function closeDraft() {
+  $('modal').hidden = true;
+}
+
+// ---------- privacy box ----------
+
+function renderPrivacy(confirming = false) {
+  const box = $('privacy-actions');
+  if (confirming) {
+    put(box, el('div', { class: 'confirm-row' },
+      el('button', { class: 'button stop-button', type: 'button', text: 'Yes, delete it', on: { click: deleteConvo } }),
+      el('button', { class: 'button ghost', type: 'button', text: 'Keep it', on: { click: () => renderPrivacy(false) } })));
+  } else {
+    put(box, el('button', { class: 'button ghost', type: 'button', text: 'Delete conversation', on: { click: () => renderPrivacy(true) } }));
+  }
+}
+
+async function deleteConvo() {
+  const id = state.id;
+  put($('privacy-actions'), el('p', { class: 'rp-voice-busy', text: 'Deleting…' }));
+  try {
+    const res = await fetch(`/api/conversations/${enc(id)}`, { method: 'DELETE' });
+    if (!res.ok && res.status !== 404) throw new Error(`Server said ${res.status}`);
+    $('video').pause();
+    abortAnalysis();
+    clearOverlay();
+    goBack();
+  } catch (err) {
+    put($('privacy-actions'),
+      el('p', { class: 'rp-voice-error', text: `Couldn't delete it: ${err.message}` }),
+      el('button', { class: 'button ghost', type: 'button', text: 'Try again', on: { click: () => renderPrivacy(true) } }));
+  }
+}
+
+// "Back to overview". Inside the studio the shell owns the tabs, so it hears about it too;
+// either way this frame goes back to the list.
+function goBack() {
+  if (window.self !== window.top) {
+    try { window.parent.postMessage({ type: 'playback:back' }, location.origin); } catch { /* a shell on another origin */ }
+  }
+  location.href = listHref();
 }
 
 function renderAll() {
@@ -1671,7 +1886,6 @@ function renderAll() {
   const video = hasVideo();
   $('novideo').hidden = video;
   $('video').hidden = !video;
-  $('player').classList.toggle('empty', !video);
   $('live-toggle-wrap').hidden = !video;
   if (video) loadMainVideo();
   $('hero').classList.toggle('no-video', !video);
@@ -1680,6 +1894,7 @@ function renderAll() {
   renderTakeaways();
   renderScores();
   renderTranscript();
+  renderNote();
   renderChecked();
   renderHooks();
   ensureHeatmap();
@@ -1843,14 +2058,18 @@ async function loadList() {
   const list = (Array.isArray(all) ? all : []).slice().sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
   const withVideo = list.filter((c) => c.recording);
   const plain = list.filter((c) => !c.recording && Array.isArray(c.turns) && c.turns.length);
+  // Figma .conversation rows: avatar, name, when, "View full"
   const row = (c) => {
     const dur = c.turns && c.turns.length ? fmtClock(Math.max(...c.turns.map((t) => t.endMs || 0))) : null;
     const status = c.recording ? (c.behavior ? 'Analysed' : 'Not analysed yet') : 'No video';
     return el('li', {},
-      el('a', { class: 'rp-convo-link', href: convoHref(c.id) },
-        el('span', { class: 'rp-convo-name', text: c.otherName && c.otherName !== 'them' ? c.otherName : 'Someone' }),
-        el('span', { class: 'rp-convo-meta', text: [fmtDate(c.createdAt), TAG_NAMES[c.tag] || c.tag, dur, c.seeded ? 'sample' : null].filter(Boolean).join(', ') }),
+      el('a', { class: 'conversation', href: convoHref(c.id) },
+        el('span', { class: 'person-avatar', text: initialsOf(c.otherName) }),
+        el('div', {},
+          el('h3', { text: c.otherName && c.otherName !== 'them' ? cap(c.otherName) : 'Someone' }),
+          el('span', { text: [fmtWhen(c.createdAt), TAG_NAMES[c.tag] || c.tag, dur, c.seeded ? 'sample' : null].filter(Boolean).join(' · ') })),
         el('span', { class: `rp-convo-status${c.behavior ? ' done' : ''}`, text: status }),
+        el('span', { class: 'deck-chip' }, 'View full ', el('span', { 'aria-hidden': 'true', text: '→' })),
       ),
     );
   };
@@ -1943,6 +2162,7 @@ function init() {
     .catch(() => {});
 
   buildLaneLabels();
+  renderPrivacy(false);
   const video = $('video');
   for (const ev of ['play', 'seeked', 'timeupdate']) video.addEventListener(ev, startTicking);
   video.addEventListener('seeked', () => {
@@ -1958,6 +2178,16 @@ function init() {
   });
   $('analyze-btn').addEventListener('click', () => analyse());
   $('rerun-btn').addEventListener('click', () => analyse());
+  $('back-link').addEventListener('click', goBack);
+  $('draft-btn').addEventListener('click', openDraft);
+  $('modal-close').addEventListener('click', closeDraft);
+  $('modal-cancel').addEventListener('click', closeDraft);
+  $('modal').addEventListener('click', (e) => { if (e.target === $('modal')) closeDraft(); });
+  $('modal-copy').addEventListener('click', () => {
+    if (navigator.clipboard) navigator.clipboard.writeText($('followup-text').value).catch(() => {});
+    $('modal-copy').textContent = 'Copied';
+  });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('modal').hidden) closeDraft(); });
   const track = $('track');
   track.addEventListener('click', onTrackClick);
   track.addEventListener('mousemove', onTrackHover);

@@ -5,18 +5,17 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light">
   <title>Playback Stage</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 56 35%22 fill=%22none%22%3E%3Cpath d=%22M28 17.5C21 6 7 4 5 17.5c2 13.5 16 11.5 23 0Z%22 stroke=%22%23397d74%22 stroke-width=%225.5%22 stroke-linejoin=%22round%22 opacity=%22.55%22/%3E%3Cpath d=%22M28 17.5C35 6 49 4 51 17.5c-2 13.5-16 11.5-23 0Z%22 stroke=%22%23397d74%22 stroke-width=%225.5%22 stroke-linejoin=%22round%22/%3E%3C/svg%3E">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 56 35%22 fill=%22none%22%3E%3Cpath d=%22M28 17.5C21 6 7 4 5 17.5c2 13.5 16 11.5 23 0Z%22 stroke=%22%23f4a51c%22 stroke-width=%225.5%22 stroke-linejoin=%22round%22 opacity=%22.55%22/%3E%3Cpath d=%22M28 17.5C35 6 49 4 51 17.5c-2 13.5-16 11.5-23 0Z%22 stroke=%22%23f4a51c%22 stroke-width=%225.5%22 stroke-linejoin=%22round%22/%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="tokens.css">
-  <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="stage.css">
   <script>if (window.self !== window.top) document.documentElement.classList.add('embedded');</script>
 </head>
 <body class="stage-body">
   <header class="st-bar">
     <span class="st-brand">
-      <svg class="st-mark" viewBox="0 0 56 35" fill="none" aria-hidden="true"><path d="M28 17.5C21 6 7 4 5 17.5c2 13.5 16 11.5 23 0Z" stroke="var(--accent)" stroke-width="5.5" stroke-linejoin="round" opacity=".55"/><path d="M28 17.5C35 6 49 4 51 17.5c-2 13.5-16 11.5-23 0Z" stroke="var(--accent)" stroke-width="5.5" stroke-linejoin="round"/><path d="M20.5 18.5 27 13h5.5l4.5 3.5-3 5-6.5 4-3-2.5-3.5 1Z" fill="var(--paper)"/><path d="M22 17.5 27.5 13H32l3.5 3.5" stroke="var(--accent)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><path d="m23 21.5 2.5 2.5M26 20l2.5 2.5M29 18.5l2.5 2.5" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round"/></svg>
+      <svg class="st-mark" viewBox="0 0 56 24" fill="none" aria-hidden="true"><path d="M28 12C23.2 5 17.6 3 11.5 3 6 3 3 7 3 12s3 9 8.5 9c6.1 0 11.7-2 16.5-9 4.8-7 10.4-9 16.5-9 5.5 0 8.5 4 8.5 9s-3 9-8.5 9c-6.1 0-11.7-2-16.5-9Z" stroke="#f4a51c" stroke-width="4.6" stroke-linejoin="round"/><path d="M21.6 15.4l5-4.4 3.6.3 3.2 2.5-2.3 3.5-3.7 2.3-3.5-1.2Z" fill="#c4820f"/><path d="M26.4 10.7l4.3-3.3 3.6.6 1.9 2.5-2.6 3-3.4-.5Z" fill="#ffc650"/><path d="M24.7 17.1l1.5 1.4M26.5 15.7l1.6 1.5M28.3 14.3l1.6 1.4" stroke="#7a4f03" stroke-width=".9" stroke-linecap="round"/></svg>
       Playback
     </span>
     <span class="st-badge" id="mock-badge" hidden>Demo audio</span>
@@ -25,9 +24,11 @@
   </header>
 
   <main class="st-main">
-    <!-- start / idle -->
+    <!-- start / idle: the night hero band -->
     <section class="st-view st-start" id="v-start" aria-labelledby="start-line">
-      <h1 class="st-start-line" id="start-line">Most tools only look at what you said. Playback looks at how the other person responded.</h1>
+      <span class="st-start-kicker">Live</span>
+      <h1 class="st-start-line" id="start-line">Most tools only look at what you said.</h1>
+      <p class="st-start-sub">Playback looks at how the other person responded.</p>
       <div class="st-brief" id="start-brief" hidden></div>
       <div class="st-start-foot">
         <span class="st-tag" id="start-tag" hidden></span>
@@ -35,16 +36,24 @@
       </div>
     </section>
 
-    <!-- recording + label share the script layout -->
+    <!-- recording + label share the ticket -->
     <section class="st-view st-script" id="v-script" hidden aria-labelledby="script-title">
-      <div class="st-script-head">
-        <span class="st-rec" id="rec-ind"><span class="st-rec-dot" aria-hidden="true"></span><span class="st-rec-tag" aria-hidden="true">REC</span><span id="rec-word">Recording</span></span>
-        <span class="st-timer" id="rec-timer">0:00</span>
-        <h1 class="st-script-title" id="script-title"></h1>
-        <span class="st-tag" id="script-tag" hidden></span>
-      </div>
-      <div class="st-scroll st-fade" id="script-scroll">
-        <ol class="st-lines" id="script-lines" aria-live="polite"></ol>
+      <div class="st-ticket" id="ticket">
+        <div class="st-script-head">
+          <div class="st-live-label">
+            <span class="st-rec" id="rec-ind"><span class="st-rec-dot" aria-hidden="true"></span><span class="st-rec-tag" aria-hidden="true">REC</span><span id="rec-word">Recording</span></span>
+            <span class="st-tag" id="script-tag" hidden></span>
+            <span class="st-sub" id="script-sub" hidden></span>
+          </div>
+          <h1 class="st-script-title" id="script-title"></h1>
+        </div>
+        <div class="st-scroll st-fade" id="script-scroll">
+          <ol class="st-lines" id="script-lines" aria-live="polite"></ol>
+        </div>
+        <div class="st-script-meta">
+          <span class="st-elapsed"><span class="st-timer" id="rec-timer">0:00</span><small>elapsed</small></span>
+          <span class="st-private">Private to you</span>
+        </div>
       </div>
     </section>
 
@@ -79,6 +88,7 @@
     <!-- memory -->
     <section class="st-view st-memory" id="v-memory" hidden aria-labelledby="memory-title">
       <div class="st-mem-main">
+        <span class="label st-mem-kicker">Memory</span>
         <h1 class="st-mem-title" id="memory-title">Over time</h1>
         <div id="pattern"></div>
       </div>

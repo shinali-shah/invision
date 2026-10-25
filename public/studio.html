@@ -17,40 +17,45 @@
     body { display: flex; flex-direction: column; background: var(--paper); color: var(--ink); font: 400 16px/1.4 var(--sans); font-synthesis: none; }
     :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 
-    /* The Figma's .header, .brand, .status-pill and .avatar, copied from home.css so the shell
-       and the Home pane look like one page. Home hides its own header when it's in here. */
-    .header { height: 68px; padding: 0 4vw; border-bottom: 1px solid #dfdfda; background: rgba(247,247,245,.94); display: flex; align-items: center; justify-content: space-between; gap: 16px; position: sticky; top: 0; z-index: 10; backdrop-filter: blur(12px); }
-    .header.with-wash { background: rgba(219,231,223,.55); border-bottom-color: rgba(41,45,44,.08); }
+    /* The Figma v2 .header, .brand, .status-pill and .avatar (night chrome, bone text), copied from
+       home.css so the shell and the Home pane look like one page. Home hides its own header in here. */
+    .header { height: 72px; padding: 0 4vw; border-bottom: 1px solid var(--night-line); background: var(--night); color: var(--bone); font-size: 15px; line-height: 1.5; display: flex; align-items: center; justify-content: space-between; gap: 16px; position: sticky; top: 0; z-index: 10; --accent: var(--marigold); }
+    .header.with-wash { background: var(--night); border-bottom-color: var(--night-line); }
     .brand, .header-actions, .status-pill, .sd-tabs { display: flex; align-items: center; }
-    .brand { gap: 10px; font-family: var(--font-serif); font-size: 19px; font-weight: 600; letter-spacing: -.015em; }
+    .brand { gap: 10px; font-family: var(--font-display); font-weight: 900; font-size: 30px; line-height: .8; text-transform: uppercase; letter-spacing: -.01em; }
     .brand-mark { display: grid; place-items: center; }
     .header-actions { gap: 12px; margin-left: auto; }
-    .status-pill { gap: 7px; padding: 7px 10px; font-size: 11px; font-weight: 600; color: var(--ink-2); background: #fff; border: 1px solid #deded9; border-radius: 99px; }
-    .status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--ink-3); }
-    .avatar { width: 34px; height: 34px; border: 0; border-radius: 50%; background: var(--tint); color: var(--ink-2); font-size: 11px; font-weight: 700; cursor: pointer; }
-    button { font: inherit; }
+    /* The Figma pill, on night: bone outline, bone text; the selected one fills bone with ink text. */
+    .status-pill { gap: 7px; padding: 7px 12px; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--bone); background: transparent; border: 1.5px solid var(--bone); border-radius: 99px; }
+    .status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--bone-2); }
+    .avatar { width: 40px; height: 40px; border: 1.5px solid var(--bone); border-radius: 50%; background: transparent; color: var(--bone); font-size: 11px; font-weight: 700; letter-spacing: .08em; cursor: pointer; transition: background .2s, color .2s; }
+    .avatar:hover { background: var(--bone); color: var(--ink); }
+    /* Same reset the Figma gets from Tailwind's preflight: no UA padding or button colour on the pills and avatar. */
+    button { font: inherit; padding: 0; color: inherit; letter-spacing: inherit; }
+    :focus-visible { outline: 2.5px solid var(--marigold); outline-offset: 3px; border-radius: 4px; }
 
     .sd-tabs { gap: 6px; position: absolute; left: 50%; transform: translateX(-50%); }
-    @media (max-width: 1100px) { .sd-tabs { position: static; transform: none; } }
-    .sd-tab { cursor: pointer; }
-    .sd-tab:hover { color: var(--ink); }
-    .sd-tab[aria-selected="true"] { color: #fff; background: var(--ink); border-color: var(--ink); }
+    /* The v2 pills are wide; below 1500px the centred tab group would run into the status pills, so it flows inline. */
+    @media (max-width: 1500px) { .sd-tabs { position: static; transform: none; } }
+    .sd-tab { cursor: pointer; transition: background .2s, color .2s; }
+    .sd-tab:hover { background: rgba(233,234,230,.12); }
+    .sd-tab[aria-selected="true"] { color: var(--ink); background: var(--bone); border-color: var(--bone); }
     .sd-tab:focus-visible { outline-offset: 2px; }
     .sd-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--rec); }
     .sd-dot[hidden] { display: none; }
-    .sd-tab[aria-selected="true"] .sd-dot { background: #fff; }
+    .sd-tab[aria-selected="true"] .sd-dot { background: var(--rec); }
 
-    .sd-ready { color: var(--ink); }
+    .sd-ready { color: var(--bone); border-color: var(--marigold); }
     .sd-ready[hidden] { display: none; }
-    .sd-ready button { padding: 0; border: 0; background: none; color: var(--accent); font: inherit; font-weight: 700; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
-    .sd-follow { cursor: pointer; }
-    .sd-follow input { width: 14px; height: 14px; margin: 0; accent-color: var(--accent); }
-    .sd-phone { white-space: nowrap; }
-    .sd-phone[data-state="connected"], .sd-phone[data-state="recording"] { color: var(--ink); }
-    .sd-phone[data-state="connected"] .status-dot { background: var(--accent); }
-    .sd-phone[data-state="recording"] .status-dot { background: var(--rec); box-shadow: 0 0 0 0 rgba(200,55,45,.4); animation: rec-pulse 2s ease-out infinite; }
-    .sd-phone[data-state="offline"] .status-dot { background: var(--status-amber); }
-    @keyframes rec-pulse { 0% { box-shadow: 0 0 0 0 rgba(200,55,45,.4); } 80%, 100% { box-shadow: 0 0 0 6px rgba(200,55,45,0); } }
+    .sd-ready button { padding: 0; border: 0; background: none; color: var(--marigold); font: inherit; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+    .sd-follow { cursor: pointer; color: var(--bone-2); border-color: var(--night-line); }
+    .sd-follow input { width: 14px; height: 14px; margin: 0; accent-color: var(--marigold); }
+    .sd-phone { white-space: nowrap; color: var(--bone-2); border-color: var(--night-line); }
+    .sd-phone[data-state="connected"], .sd-phone[data-state="recording"] { color: var(--bone); border-color: var(--bone); }
+    .sd-phone[data-state="connected"] .status-dot { background: var(--you-d); }
+    .sd-phone[data-state="recording"] .status-dot { background: var(--rec); box-shadow: 0 0 0 0 rgba(226,65,43,.4); animation: rec-pulse 2s ease-out infinite; }
+    .sd-phone[data-state="offline"] .status-dot { background: var(--marigold); }
+    @keyframes rec-pulse { 0% { box-shadow: 0 0 0 0 rgba(226,65,43,.4); } 80%, 100% { box-shadow: 0 0 0 6px rgba(226,65,43,0); } }
     @media (prefers-reduced-motion: reduce) { .sd-phone .status-dot { animation: none !important; } }
 
     .sd-panes { position: relative; flex: 1; min-height: 0; width: 100%; }
@@ -64,12 +69,12 @@
   <header class="header with-wash" id="shell-header">
     <div class="brand">
       <span class="brand-mark">
-        <svg width="38" height="23.56" viewBox="0 0 56 35" fill="none" aria-hidden="true">
-          <path d="M28 17.500C21 6 7 4 5 17.500c2 13.500 16 11.500 23 0Z" stroke="var(--accent)" stroke-width="5.500" stroke-linejoin="round" opacity=".55"/>
-          <path d="M28 17.500C35 6 49 4 51 17.500c-2 13.500-16 11.500-23 0Z" stroke="var(--accent)" stroke-width="5.500" stroke-linejoin="round"/>
-          <path d="M20.500 18.500 27 13h5.500l4.500 3.500-3 5-6.500 4-3-2.500-3.500 1Z" fill="var(--paper)"/>
-          <path d="M22 17.500 27.500 13H32l3.500 3.500" stroke="var(--accent)" stroke-width="2.200" stroke-linecap="round" stroke-linejoin="round"/>
-          <path d="m23 21.500 2.500 2.500M26 20l2.500 2.500M29 18.500l2.500 2.500" stroke="var(--accent)" stroke-width="1.800" stroke-linecap="round"/>
+        <!-- Same mark as logoSvg() in home.js: the Figma's gold infinity with the handshake at the crossing. -->
+        <svg width="56" height="24.08" viewBox="0 0 56 24" fill="none" aria-hidden="true">
+          <path d="M28 12C23.2 5 17.6 3 11.5 3 6 3 3 7 3 12s3 9 8.5 9c6.1 0 11.7-2 16.5-9 4.8-7 10.4-9 16.5-9 5.5 0 8.5 4 8.5 9s-3 9-8.5 9c-6.1 0-11.7-2-16.5-9Z" stroke="#f4a51c" stroke-width="4.6" stroke-linejoin="round"/>
+          <path d="M21.6 15.4l5-4.4 3.6.3 3.2 2.5-2.3 3.5-3.7 2.3-3.5-1.2Z" fill="#c4820f"/>
+          <path d="M26.4 10.7l4.3-3.3 3.6.6 1.9 2.5-2.6 3-3.4-.5Z" fill="#ffc650"/>
+          <path d="M24.7 17.1l1.5 1.4M26.5 15.7l1.6 1.5M28.3 14.3l1.6 1.4" stroke="#7a4f03" stroke-width=".9" stroke-linecap="round"/>
         </svg>
       </span>
       <span>Playback</span>
@@ -114,9 +119,25 @@
     let replayId = null; // what the Replay pane was last pointed at
     let readyId = null;
 
+    // What the Replay frame is actually showing. It navigates on its own (the list, "See all
+    // replays"), so replayId alone can't be trusted.
+    function replayShowing() {
+      try {
+        const loc = panes.replay.contentWindow.location;
+        if (!loc.href || loc.href === 'about:blank') return undefined;
+        return new URLSearchParams(loc.search).get('id');
+      } catch { return undefined; }
+    }
+    panes.replay.addEventListener('load', () => {
+      const id = replayShowing();
+      if (id === undefined) return;
+      replayId = id;
+      if (current === 'replay') history.replaceState(null, '', `#replay${id ? `=${id}` : ''}`);
+    });
+
     function openReplay(id) {
       // Show first: a page laid out inside a hidden frame thinks the window is 0 px wide.
-      const reload = id !== replayId || !panes.replay.src;
+      const reload = !panes.replay.src || id !== (replayShowing() ?? replayId);
       replayId = id;
       show('replay');
       if (reload) panes.replay.src = withTheme('replay.html', id ? { id } : {});
@@ -151,16 +172,26 @@
       go(next);
       $(`tab-${next}`).focus();
     });
-    document.addEventListener('keydown', e => {
-      if (e.target.closest('input, textarea') || e.metaKey || e.ctrlKey || e.altKey) return;
+    // Key events don't cross an iframe boundary, so once they've clicked into a pane the shortcuts
+    // would go dead. Listen inside each pane too (same origin); typing fields are left alone.
+    function hotkeys(e) {
+      const t = e.target;
+      if (t && t.closest && t.closest('input, textarea, select, [contenteditable]')) return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
       const i = ['1', '2', '3'].indexOf(e.key);
       if (i >= 0) go(ORDER[i]);
-    });
+    }
+    document.addEventListener('keydown', hotkeys);
+    for (const pane of Object.values(panes)) {
+      pane.addEventListener('load', () => { try { pane.contentDocument.addEventListener('keydown', hotkeys); } catch { /* cross-origin, leave it */ } });
+    }
 
     // Home asks for a replay by id; the panes are same-origin but this keeps them from reaching into the shell.
+    // Replay's "Back to overview" comes the same way: the frame goes back to its list, the shell goes Home.
     window.addEventListener('message', e => {
-      if (e.origin !== location.origin || !e.data || e.data.type !== 'playback:open-replay') return;
-      if (typeof e.data.id === 'string') openReplay(e.data.id);
+      if (e.origin !== location.origin || !e.data) return;
+      if (e.data.type === 'playback:open-replay') { if (typeof e.data.id === 'string') openReplay(e.data.id); }
+      else if (e.data.type === 'playback:back') { replayId = null; show('home'); }
     });
 
     // On unless they turned it off on this Mac.
@@ -168,10 +199,18 @@
     try { $('auto').checked = localStorage.getItem('playback-auto-replay') !== '0'; } catch { /* private mode */ }
     $('auto').addEventListener('change', () => { try { localStorage.setItem('playback-auto-replay', $('auto').checked ? '1' : '0'); } catch { /* fine */ } });
 
-    // A conversation is worth replaying once it has both a video and a note.
+    // A conversation is worth replaying once it has both a video and a note. Until we've seen the
+    // list once we can't tell a new video from an old one being re-broadcast, so stay quiet.
     const announced = new Set();
+    let seeded = false;
+    function seed() {
+      return fetch('/api/conversations').then(r => r.json()).then(list => {
+        for (const c of list) if (c.recording && c.note) announced.add(c.id);
+        seeded = true;
+      }).catch(() => {});
+    }
     function maybeReady(c) {
-      if (!c || !c.id || !c.recording || !c.note || announced.has(c.id)) return;
+      if (!seeded || !c || !c.id || !c.recording || !c.note || announced.has(c.id)) return;
       announced.add(c.id);
       readyId = c.id;
       const name = c.otherName && c.otherName !== 'them' ? c.otherName.charAt(0).toUpperCase() + c.otherName.slice(1) : null;
@@ -181,9 +220,9 @@
       if ($('auto').checked) openReplay(c.id);
     }
 
-    // The server only hears from the phone when it does something, so "connected" means
-    // it has told us what it's showing at least once since this page opened.
-    let phoneSeen = false;
+    // The server only hears from the phone when it does something, so "connected" means it has
+    // told us what it's showing since this page opened. The focus that comes with `hello` is just
+    // the last thing the hub remembers, maybe from hours ago, so it only counts while recording.
     function phone(stateName) {
       const el = $('phone');
       el.dataset.state = stateName;
@@ -200,19 +239,18 @@
         let msg;
         try { msg = JSON.parse(ev.data); } catch { return; }
         if (msg.type === 'conversation') maybeReady(msg.conversation);
-        const focus = msg.type === 'focus' ? msg : msg.type === 'hello' ? msg.focus : null;
-        if (focus) { phoneSeen = true; phone(focus.view === 'recording' ? 'recording' : 'connected'); }
-        else if (msg.type === 'partial' || msg.type === 'turn') { phoneSeen = true; phone('recording'); }
+        if (msg.type === 'hello') {
+          // Anything that became ready while we were away is old news by now.
+          seed();
+          phone(msg.focus && msg.focus.view === 'recording' ? 'recording' : 'waiting');
+        } else if (msg.type === 'focus') phone(msg.view === 'recording' ? 'recording' : 'connected');
+        else if (msg.type === 'partial' || msg.type === 'turn') phone('recording');
         else if (msg.type === 'done') phone('connected');
-        else if (msg.type === 'hello') phone(phoneSeen ? 'connected' : 'waiting');
       });
       ws.addEventListener('close', () => { phone('offline'); setTimeout(listen, 1500); });
     }
 
-    // Conversations that already have a video shouldn't pop the banner on load.
-    fetch('/api/conversations').then(r => r.json()).then(list => {
-      for (const c of list) if (c.recording && c.note) announced.add(c.id);
-    }).catch(() => {}).finally(listen);
+    listen();
 
     const [name, id] = location.hash.slice(1).split('=');
     if (name === 'replay') openReplay(id || null);

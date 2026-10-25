@@ -393,9 +393,10 @@ function beginCapture(convo, ctx, stream, videoNote = null) {
   };
 
   // UI
-  $('rec-with').textContent = convo.otherName
-    ? `With ${convo.otherName}. ${TAG_NAMES[convo.tag]}.`
-    : `${TAG_NAMES[convo.tag]} conversation.`;
+  // Reads the way the Figma ticket does: "Session with Maya"
+  $('rec-with').textContent = convo.otherName && convo.otherName !== 'them'
+    ? `Session with ${convo.otherName}`
+    : `${TAG_NAMES[convo.tag]} session`;
   $('rec-timer').textContent = '0:00';
   $('live-transcript').replaceChildren();
   $('live-transcript').dataset.empty = 'Listening…';

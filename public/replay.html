@@ -5,74 +5,84 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light">
   <title>Playback Replay</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 56 35%22 fill=%22none%22%3E%3Cpath d=%22M28 17.5C21 6 7 4 5 17.5c2 13.5 16 11.5 23 0Z%22 stroke=%22%23397d74%22 stroke-width=%225.5%22 stroke-linejoin=%22round%22 opacity=%22.55%22/%3E%3Cpath d=%22M28 17.5C35 6 49 4 51 17.5c-2 13.5-16 11.5-23 0Z%22 stroke=%22%23397d74%22 stroke-width=%225.5%22 stroke-linejoin=%22round%22/%3E%3C/svg%3E">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 56 35%22 fill=%22none%22%3E%3Cpath d=%22M28 17.5C21 6 7 4 5 17.5c2 13.5 16 11.5 23 0Z%22 stroke=%22%23f4a51c%22 stroke-width=%225.5%22 stroke-linejoin=%22round%22 opacity=%22.55%22/%3E%3Cpath d=%22M28 17.5C35 6 49 4 51 17.5c-2 13.5-16 11.5-23 0Z%22 stroke=%22%23f4a51c%22 stroke-width=%225.5%22 stroke-linejoin=%22round%22/%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="tokens.css">
-  <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="replay.css">
   <script>if (window.self !== window.top) document.documentElement.classList.add('embedded');</script>
 </head>
 <body class="rp-body">
-  <header class="rp-bar">
-    <a class="rp-brand" href="replay.html">
-      <svg class="rp-mark" viewBox="0 0 56 35" fill="none" aria-hidden="true"><path d="M28 17.5C21 6 7 4 5 17.5c2 13.5 16 11.5 23 0Z" stroke="var(--accent)" stroke-width="5.5" stroke-linejoin="round" opacity=".55"/><path d="M28 17.5C35 6 49 4 51 17.5c-2 13.5-16 11.5-23 0Z" stroke="var(--accent)" stroke-width="5.5" stroke-linejoin="round"/><path d="M20.5 18.5 27 13h5.5l4.5 3.5-3 5-6.5 4-3-2.5-3.5 1Z" fill="var(--paper)"/><path d="M22 17.5 27.5 13H32l3.5 3.5" stroke="var(--accent)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><path d="m23 21.5 2.5 2.5M26 20l2.5 2.5M29 18.5l2.5 2.5" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round"/></svg>
-      Playback
+  <!-- Figma .header: the brand mark on night, pills and the one action on the right -->
+  <header class="header">
+    <a class="brand" href="replay.html">
+      <span class="brand-mark"><svg viewBox="0 0 56 24" fill="none" aria-hidden="true"><path d="M28 12C23.2 5 17.6 3 11.5 3 6 3 3 7 3 12s3 9 8.5 9c6.1 0 11.7-2 16.5-9 4.8-7 10.4-9 16.5-9 5.5 0 8.5 4 8.5 9s-3 9-8.5 9c-6.1 0-11.7-2-16.5-9Z" stroke="#f4a51c" stroke-width="4.6" stroke-linejoin="round"/><path d="M21.6 15.4l5-4.4 3.6.3 3.2 2.5-2.3 3.5-3.7 2.3-3.5-1.2Z" fill="#c4820f"/><path d="M26.4 10.7l4.3-3.3 3.6.6 1.9 2.5-2.6 3-3.4-.5Z" fill="#ffc650"/><path d="M24.7 17.1l1.5 1.4M26.5 15.7l1.6 1.5M28.3 14.3l1.6 1.4" stroke="#7a4f03" stroke-width=".9" stroke-linecap="round"/></svg></span>
+      <span>Playback</span>
     </a>
-    <span class="rp-crumb">Replay</span>
-    <h1 class="rp-title" id="title"></h1>
-    <span class="rp-tag" id="tag" hidden></span>
-    <span class="rp-badge" id="mock-badge" hidden>Demo audio</span>
-    <span class="rp-pill" id="conn-pill" hidden>Reconnecting…</span>
-    <span class="rp-bar-actions">
-      <button class="rp-btn" id="analyze-btn" type="button" hidden>Analyze video</button>
-    </span>
+    <div class="header-actions">
+      <span class="status-pill" id="tag" hidden></span>
+      <span class="status-pill" id="mock-badge" hidden>Demo audio</span>
+      <span class="status-pill rp-pill" id="conn-pill" hidden>Reconnecting…</span>
+    </div>
   </header>
 
-  <main class="rp-main" id="main">
+  <main class="workspace" id="main">
     <!-- no ?id: pick a conversation -->
     <section class="rp-list" id="v-list" hidden aria-labelledby="list-title">
-      <h2 class="rp-list-title" id="list-title">Replays</h2>
-      <p class="rp-list-lede">Pick a conversation to see how they responded on camera, lined up with what was said.</p>
-      <ul class="rp-convos" id="convos-video" aria-label="Conversations with video"></ul>
-      <h3 class="rp-list-sub" id="no-video-head" hidden>Transcript only</h3>
-      <ul class="rp-convos rp-convos-muted" id="convos-plain" aria-label="Conversations without video"></ul>
+      <div class="page-intro">
+        <div><span class="label">Reflections</span><h1 id="list-title">Replays</h1><p class="intro-subtitle">Pick a conversation to see how they responded on camera, lined up with what was said.</p></div>
+      </div>
+      <section class="card conversations-card">
+        <ul class="rp-convos" id="convos-video" aria-label="Conversations with video"></ul>
+        <h3 class="rp-list-sub label" id="no-video-head" hidden>Transcript only</h3>
+        <ul class="rp-convos rp-convos-muted" id="convos-plain" aria-label="Conversations without video"></ul>
+      </section>
     </section>
 
     <p class="rp-gone" id="v-error" hidden></p>
 
-    <!-- one conversation -->
+    <!-- one conversation: the Figma TranscriptPage, with the video added above the takeaways -->
     <div class="rp-convo" id="v-convo" hidden>
-      <section class="rp-voice" id="voice" hidden aria-label="Which voice is yours?"></section>
+      <div>
+        <button class="back-link" id="back-link" type="button">← Back to overview</button>
+        <div class="page-intro">
+          <div><h1 id="title"></h1><p class="intro-subtitle">Replay: three takeaways, the moments behind them, and the full transcript.</p></div>
+          <button class="button" id="draft-btn" type="button">Draft follow-up <span aria-hidden="true">→</span></button>
+        </div>
+      </div>
 
-      <div class="rp-hero" id="hero">
-        <section class="rp-stage" aria-label="Video">
-          <div class="rp-player" id="player">
-            <video id="video" playsinline preload="metadata" controls></video>
-            <canvas class="rp-overlay" id="overlay" aria-hidden="true"></canvas>
-            <div class="rp-meters" id="meters" hidden>
-              <div class="rp-meter" id="m-smile">
-                <span class="rp-meter-label">Smile</span>
-                <span class="rp-meter-track"><span class="rp-meter-fill"></span></span>
-                <span class="rp-meter-val">—</span>
-              </div>
-              <div class="rp-meter" id="m-facing">
-                <span class="rp-meter-label">Facing</span>
-                <span class="rp-meter-track rp-meter-dial"><span class="rp-meter-dot"></span></span>
-                <span class="rp-meter-val">—</span>
-              </div>
-              <div class="rp-meter" id="m-nod">
-                <span class="rp-meter-label">Nod</span>
-                <span class="rp-nod-dot" aria-hidden="true"></span>
-                <span class="rp-meter-val">—</span>
-              </div>
+      <section class="card rp-voice" id="voice" hidden aria-label="Which voice is yours?"></section>
+
+      <section class="rp-stage" id="hero" aria-label="Video">
+        <div class="rp-player" id="player">
+          <video id="video" playsinline preload="metadata" controls></video>
+          <canvas class="rp-overlay" id="overlay" aria-hidden="true"></canvas>
+          <div class="rp-meters" id="meters" hidden>
+            <div class="rp-meter" id="m-smile">
+              <span class="rp-meter-label">Smile</span>
+              <span class="rp-meter-track"><span class="rp-meter-fill"></span></span>
+              <span class="rp-meter-val">—</span>
             </div>
-            <div class="rp-novideo" id="novideo" hidden>
-              <p class="rp-novideo-big">No video for this conversation.</p>
-              <p>Turn on Camera on the phone before recording.</p>
+            <div class="rp-meter" id="m-facing">
+              <span class="rp-meter-label">Facing</span>
+              <span class="rp-meter-track rp-meter-dial"><span class="rp-meter-dot"></span></span>
+              <span class="rp-meter-val">—</span>
+            </div>
+            <div class="rp-meter" id="m-nod">
+              <span class="rp-meter-label">Nod</span>
+              <span class="rp-nod-dot" aria-hidden="true"></span>
+              <span class="rp-meter-val">—</span>
             </div>
           </div>
-
+          <div class="rp-novideo" id="novideo" hidden>
+            <p class="rp-novideo-big">No video for this conversation.</p>
+            <p>Turn on Camera on the phone before recording.</p>
+          </div>
+        </div>
+        <div class="rp-side">
+          <span class="label">On camera</span>
+          <h2 id="side-title">How they responded</h2>
+          <p class="rp-side-lede">Smiling, facing and nods, measured from the video here in this browser. Observable cues only, never feelings.</p>
           <div class="rp-analysis" id="analysis" hidden>
             <div class="rp-analysis-row">
               <span class="rp-analysis-word" id="word-status"></span>
@@ -81,71 +91,101 @@
                 <input type="checkbox" id="live-toggle" checked>
                 <span>Live face overlay</span>
               </label>
+              <button class="button" id="analyze-btn" type="button" hidden>Analyze video</button>
               <button class="rp-btn rp-btn-quiet" id="rerun-btn" type="button" hidden>Re-run analysis</button>
             </div>
             <div class="rp-progress" id="progress" hidden><span class="rp-progress-fill" id="progress-fill"></span></div>
             <p class="rp-analysis-msg" id="analysis-msg" hidden></p>
           </div>
-        </section>
+        </div>
+      </section>
 
-        <section class="rp-takeaways" id="takeaways" aria-label="Takeaways"></section>
+      <section class="takeaways" id="takeaways" aria-label="Three takeaways"></section>
+
+      <div>
+        <section class="score-strip" id="scores" aria-label="Score strip"></section>
+        <p class="cue-note" id="cue-note">Face cues are observable only: smiling, facing and head movement. They never claim to know feelings.</p>
       </div>
 
-      <section class="rp-scores" id="scores" hidden aria-label="The numbers"></section>
-
-      <section class="rp-timeline" id="timeline" aria-label="Timeline">
-        <div class="rp-lanes">
-          <div class="rp-lane-labels" aria-hidden="true"></div>
+      <section class="timeline" id="timeline" aria-label="Timeline">
+        <div class="tl-head">
+          <span class="label">Timeline</span>
+          <span class="tl-key" id="tl-key"></span>
+        </div>
+        <div class="tl-body">
+          <div class="tl-labels" aria-hidden="true"></div>
           <div class="rp-track" id="track">
+            <div class="tl-track" id="tl-track">
+              <div id="segs"></div>
+              <div class="tl-marks" id="markers"></div>
+            </div>
             <canvas id="lanes-canvas"></canvas>
-            <div class="rp-markers" id="markers"></div>
             <div class="rp-playhead" id="playhead" hidden><span class="rp-playhead-time" id="playhead-time"></span></div>
             <div class="rp-hover" id="hover" hidden></div>
           </div>
-        </div>
-        <ul class="rp-legend" aria-label="Legend">
-          <li><span class="rp-sw sw-you"></span>You</li>
-          <li><span class="rp-sw sw-them"></span>Them</li>
-          <li><span class="rp-sw sw-smile"></span>Smile <span class="rp-legend-dim">(dashed: their usual)</span></li>
-          <li><span class="rp-sw sw-facing"></span>Facing the camera</li>
-          <li><span class="rp-mk mk-follow">✓</span>Follow-up question</li>
-          <li><span class="rp-mk mk-missed">⚠</span>Missed moment</li>
-          <li><span class="rp-mk mk-awk">!</span>Awkward moment</li>
-          <li><span class="rp-mk mk-tk">1</span>Takeaway</li>
-        </ul>
-      </section>
-
-      <section class="rp-script" aria-labelledby="script-head">
-        <div class="rp-script-head">
-          <h2 class="rp-section-head" id="script-head">Transcript</h2>
-          <p class="rp-heat-legend" id="heat-legend"></p>
-        </div>
-        <p class="rp-heat-why" id="heat-why" aria-live="polite"></p>
-        <div class="rp-script-scroll" id="script-scroll">
-          <ol class="rp-lines" id="lines"></ol>
+          <div class="tl-axis" id="tl-axis"></div>
         </div>
       </section>
 
-      <div class="rp-more">
-        <details class="rp-fold" id="fold-check">
-          <summary>How the coaching note was checked</summary>
-          <div class="rp-fold-body" id="checked"></div>
-        </details>
-        <details class="rp-fold" id="fold-hooks">
-          <summary>What we picked up <span class="rp-fold-note">no AI</span></summary>
-          <div class="rp-fold-body rp-hooks" id="hooks"></div>
-        </details>
-        <details class="rp-fold">
-          <summary>How this works</summary>
-          <div class="rp-fold-body rp-how">
-            <p>Cues come from a pretrained face model (MediaPipe Face Landmarker) running in this browser. It measures smiling, facing and nodding, not feelings or sincerity.</p>
-            <p>Numbers are computed without AI; Muse Spark only writes the insight, and every claim points to a moment you can play.</p>
-            <p class="rp-how-small">The video stays on this Mac. Face analysis runs locally in Chrome at 5 frames per second of video; only the per-frame numbers are sent to the local server.</p>
+      <div class="transcripts">
+        <article class="transcript" aria-labelledby="person-name">
+          <div class="person-row">
+            <span class="person-avatar" id="person-avatar"></span>
+            <div><h3 id="person-name"></h3><span id="person-meta"></span></div>
           </div>
-        </details>
+          <p class="heat-note" id="heat-note" aria-live="polite"></p>
+          <ol class="transcript-lines" id="script-scroll"><!-- lines go in here --></ol>
+          <div class="reflection-copy transcript-reflection" id="reflection" hidden>
+            <div><h4>Coaching note</h4><p id="note-text"></p></div>
+            <div><h4>Next time</h4><p id="note-sugg"></p></div>
+          </div>
+        </article>
+
+        <section class="privacy-box" aria-label="Privacy">
+          <div>
+            <h3>Your data, your call</h3>
+            <p>Audio is streamed for transcription and not stored. Deleting this conversation removes its transcript, notes, video and face cues.</p>
+          </div>
+          <div id="privacy-actions"></div>
+        </section>
+
+        <div class="rp-more">
+          <details class="rp-fold" id="fold-check">
+            <summary>How the coaching note was checked</summary>
+            <div class="rp-fold-body" id="checked"></div>
+          </details>
+          <details class="rp-fold" id="fold-hooks">
+            <summary>What we picked up <span class="rp-fold-note">no AI</span></summary>
+            <div class="rp-fold-body rp-hooks" id="hooks"></div>
+          </details>
+          <details class="rp-fold">
+            <summary>How this works</summary>
+            <div class="rp-fold-body rp-how">
+              <p>Cues come from a pretrained face model (MediaPipe Face Landmarker) running in this browser. It measures smiling, facing and nodding, not feelings or sincerity.</p>
+              <p>Numbers are computed without AI; Muse Spark only writes the insight, and every claim points to a moment you can play.</p>
+              <p class="rp-how-small">The video stays on this Mac. Face analysis runs locally in Chrome at 5 frames per second of video; only the per-frame numbers are sent to the local server.</p>
+            </div>
+          </details>
+        </div>
       </div>
     </div>
   </main>
+
+  <!-- Figma .modal: the follow-up draft -->
+  <div class="modal-backdrop" id="modal" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="followup-title">
+      <div class="modal-head">
+        <div><span class="label" id="modal-label"></span><h2 id="followup-title">Follow-up message</h2></div>
+        <button class="modal-close" id="modal-close" type="button" aria-label="Close">×</button>
+      </div>
+      <p class="modal-note" id="modal-note"></p>
+      <textarea class="followup-text" id="followup-text" rows="9" placeholder="No draft for this conversation yet. Write one here."></textarea>
+      <div class="modal-actions">
+        <button class="button ghost" id="modal-cancel" type="button">Close</button>
+        <button class="button" id="modal-copy" type="button">Copy message</button>
+      </div>
+    </div>
+  </div>
 
   <script type="module" src="replay.js"></script>
 </body>

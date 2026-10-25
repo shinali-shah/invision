@@ -1,7 +1,8 @@
-// Home. This is the team's Figma Make App.tsx rendered as plain DOM: same elements, same class
-// names, same order, so home.css (the Figma's index.css) applies untouched. The only thing that
-// changed is where the words come from: /api/memory instead of the hardcoded reflections, and
-// /ws/stage for the recording card, since the phone does the actual recording.
+// Home. This is the team's Figma Make App.tsx (v2: night / paper / marigold) rendered as plain DOM:
+// same elements, same class names, same order, so home.css (the Figma's index.css) applies
+// untouched. The only thing that changed is where the words come from: /api/memory instead of the
+// hardcoded reflections, /ws/stage for the recording card (the phone does the actual recording),
+// and /api/conversations/:id/{heatmap,compare} for the transcript page.
 
 const USER = { name: 'Parth', initials: 'PS' };
 const MONTHS = ['JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE', 'JULY', 'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER'];
@@ -42,15 +43,16 @@ function svgEl(tag, attrs, ...kids) {
   return node;
 }
 
-// <Logo /> from App.tsx
-function logo(size = 36) {
+// <Logo /> from App.tsx. The Figma ships it as a PNG (a gold infinity with a handshake at the
+// crossing); this is the same mark drawn by hand so it scales and needs no asset. studio.html
+// carries the identical markup.
+function logoSvg(width = 56) {
   const p = (attrs) => svgEl('path', attrs);
-  return svgEl('svg', { width: size, height: size * 0.62, viewBox: '0 0 56 35', fill: 'none', 'aria-hidden': 'true' },
-    p({ d: 'M28 17.500C21 6 7 4 5 17.500c2 13.500 16 11.500 23 0Z', stroke: 'var(--accent)', 'stroke-width': '5.500', 'stroke-linejoin': 'round', opacity: '.55' }),
-    p({ d: 'M28 17.500C35 6 49 4 51 17.500c-2 13.500-16 11.500-23 0Z', stroke: 'var(--accent)', 'stroke-width': '5.500', 'stroke-linejoin': 'round' }),
-    p({ d: 'M20.500 18.500 27 13h5.500l4.500 3.500-3 5-6.500 4-3-2.500-3.500 1Z', fill: 'var(--paper)' }),
-    p({ d: 'M22 17.500 27.500 13H32l3.500 3.500', stroke: 'var(--accent)', 'stroke-width': '2.200', 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }),
-    p({ d: 'm23 21.500 2.500 2.500M26 20l2.500 2.500M29 18.500l2.500 2.500', stroke: 'var(--accent)', 'stroke-width': '1.800', 'stroke-linecap': 'round' }),
+  return svgEl('svg', { width, height: width * 0.43, viewBox: '0 0 56 24', fill: 'none', 'aria-hidden': 'true' },
+    p({ d: 'M28 12C23.2 5 17.6 3 11.5 3 6 3 3 7 3 12s3 9 8.5 9c6.1 0 11.7-2 16.5-9 4.8-7 10.4-9 16.5-9 5.5 0 8.5 4 8.5 9s-3 9-8.5 9c-6.1 0-11.7-2-16.5-9Z', stroke: '#f4a51c', 'stroke-width': '4.6', 'stroke-linejoin': 'round' }),
+    p({ d: 'M21.6 15.4l5-4.4 3.6.3 3.2 2.5-2.3 3.5-3.7 2.3-3.5-1.2Z', fill: '#c4820f' }),
+    p({ d: 'M26.4 10.7l4.3-3.3 3.6.6 1.9 2.5-2.6 3-3.4-.5Z', fill: '#ffc650' }),
+    p({ d: 'M24.7 17.1l1.5 1.4M26.5 15.7l1.6 1.5M28.3 14.3l1.6 1.4', stroke: '#7a4f03', 'stroke-width': '.9', 'stroke-linecap': 'round' }),
   );
 }
 
@@ -77,17 +79,21 @@ const readJson = (key, fallback) => { try { return JSON.parse(kv.get(key)) ?? fa
 
 // ---------- formatting ----------
 
-const cap = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : '');
-const firstName = (name) => cap((name || 'them').trim().split(/\s+/)[0]);
-const initialsOf = (name) => (name || 'them').trim().split(/\s+/).slice(0, 2).map((w) => w.charAt(0).toUpperCase()).join('');
+// Whole code points: charAt(0) on an emoji name gives half a surrogate pair.
+const firstChar = (s) => (s ? Array.from(s)[0] : '');
+const cap = (s) => (s ? firstChar(s).toUpperCase() + s.slice(firstChar(s).length) : '');
+const cleanName = (name) => (name || '').trim() || 'them';
+const firstName = (name) => cap(cleanName(name).split(/\s+/)[0]);
+const initialsOf = (name) => cleanName(name).split(/\s+/).slice(0, 2).map((w) => firstChar(w).toUpperCase()).join('');
 const pad2 = (n) => String(n).padStart(2, '0');
 
 function dayKey(d) {
   return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
 }
 
-const TODAY = new Date();
-const TODAY_KEY = dayKey(TODAY);
+// Read fresh each time: the Mac stays open overnight and "today" has to move with it.
+const today = () => new Date();
+const todayKey = () => dayKey(today());
 
 function fmtTime(d) {
   return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
@@ -98,8 +104,9 @@ function fmtWhen(iso) {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '';
   const key = dayKey(d);
-  const yesterday = new Date(TODAY); yesterday.setDate(TODAY.getDate() - 1);
-  const day = key === TODAY_KEY ? 'Today' : key === dayKey(yesterday) ? 'Yesterday'
+  const now = today();
+  const yesterday = new Date(now); yesterday.setDate(now.getDate() - 1);
+  const day = key === dayKey(now) ? 'Today' : key === dayKey(yesterday) ? 'Yesterday'
     : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   return `${day}, ${fmtTime(d)}`;
 }
@@ -126,12 +133,17 @@ function greeting() {
 const state = {
   memory: null,
   convos: [],            // newest first, shaped for the cards (see convoView)
-  view: { year: TODAY.getFullYear(), month: TODAY.getMonth() },
+  view: { year: today().getFullYear(), month: today().getMonth() },
+  dayShown: todayKey(),  // the day the page was last drawn for
   savedPop: false,
   logged: new Set(readJson('playback-logged-days', [])),
   checks: readJson('playback-home-checks', {}),
   modal: null,           // the convo whose follow-up is open
   rec: { active: false, id: null, name: null, startedAt: null, lastElapsed: 0, lines: new Map() },
+  doneId: null,          // last conversation the hub said `done` for; its late turns don't restart the card
+  who: '',               // "Before: who are you about to talk to?"
+  extras: new Map(),     // conversation id -> { heat, compare } once fetched for the transcript page
+  confirming: false,     // the delete confirm row on the transcript page
 };
 
 const refs = {}; // long-lived nodes we update in place
@@ -162,7 +174,8 @@ function convoView(c) {
     flags: awkward && Array.isArray(awkward.flags) ? awkward.flags : [],
     score: awkward && typeof awkward.score === 'number' ? awkward.score : null,
     userLabel: c.userLabel || null,
-    transcript: turns.map((t) => [fmtClock(t.startMs || 0), t.speaker === c.userLabel ? 'me' : 'them', t.text || '']),
+    turns,
+    transcript: turns.map((t) => [fmtClock(t.startMs || 0), t.speaker === c.userLabel ? 'me' : 'them', t.text || '', t.turnId]),
   };
 }
 
@@ -197,18 +210,19 @@ function buildMonth(year, month, states) {
   const offset = (new Date(year, month, 1).getDay() + 6) % 7;
   const total = new Date(year, month + 1, 0).getDate();
   const cells = Math.ceil((offset + total) / 7) * 7;
+  const todayK = todayKey();
   return Array.from({ length: cells }, (_, index) => {
     const day = index - offset + 1;
     if (day < 1 || day > total) return { day: '', state: '', key: null };
     const key = dayKey(new Date(year, month, day));
-    if (key > TODAY_KEY) return { day, state: '', key };
+    if (key > todayK) return { day, state: '', key };
     return { day, state: stateFor(key, states), key };
   });
 }
 
 function streak(states) {
   let n = 0;
-  const d = new Date(TODAY);
+  const d = today();
   for (let i = 0; i < 400; i++) {
     if (!stateFor(dayKey(d), states)) break;
     n++;
@@ -253,15 +267,20 @@ function toggleCheck(key) {
 
 function header() {
   return el('header', { class: 'header' },
-    el('div', { class: 'brand' }, el('span', { class: 'brand-mark' }, logo(38)), el('span', { text: 'Playback' })),
+    el('div', { class: 'brand' }, el('span', { class: 'brand-mark' }, logoSvg(56)), el('span', { text: 'Playback' })),
     el('div', { class: 'header-actions' }, el('button', { class: 'avatar', 'aria-label': 'Open your profile', text: USER.initials })),
   );
 }
 
+// #conversations/<id> opens one transcript. The list is newest first, so a bare index would
+// point at someone else as soon as a new conversation lands; a number is still accepted.
 function parseHash() {
-  const m = window.location.hash.match(/^#conversations(?:\/(\d+))?$/);
+  const m = window.location.hash.match(/^#conversations(?:\/([^/]+))?$/);
   if (!m) return -1;
-  const n = m[1] ? Number(m[1]) : 0;
+  if (!m[1]) return 0;
+  const byId = state.convos.findIndex((c) => c.id === m[1]);
+  if (byId >= 0) return byId;
+  const n = /^\d+$/.test(m[1]) ? Number(m[1]) : 0;
   return state.convos.length && n >= state.convos.length ? 0 : n;
 }
 
@@ -272,8 +291,28 @@ function renderPage() {
   const main = home ? homePage() : transcriptPage(index);
   if (refs.main) refs.main.replaceWith(main); else refs.shell.append(main);
   refs.main = main;
-  if (home) { renderCalendar(); renderGoals(); renderTasks(); renderRecording(); renderConversations(); }
+  if (home) { renderCalendar(); renderGoals(); renderTasks(); renderRecording(); renderConversations(); fitHeroLine(); }
 }
+
+// The Figma's clamp() sizes the greeting for "ALEX" at 160px; "PARTH" or "GOOD AFTERNOON" wrap.
+// Shrink until it sits on one line, down to a floor, and re-fit when the width or the fonts change.
+function fitHeroLine() {
+  const h1 = refs.heroH1;
+  if (!h1 || !h1.isConnected) return;
+  const box = h1.parentElement.clientWidth;
+  if (!box) return;
+  h1.style.fontSize = '';
+  h1.style.whiteSpace = 'nowrap';
+  let size = parseFloat(getComputedStyle(h1).fontSize);
+  while (size > 56 && h1.scrollWidth > box) {
+    size -= 4;
+    h1.style.fontSize = `${size}px`;
+  }
+  if (h1.scrollWidth > box) h1.style.whiteSpace = ''; // a very long name still wraps rather than overflowing
+}
+let fitTimer = null;
+window.addEventListener('resize', () => { clearTimeout(fitTimer); fitTimer = setTimeout(fitHeroLine, 120); });
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitHeroLine);
 
 // ---------- home ----------
 
@@ -288,9 +327,9 @@ function homePage() {
     el('div', { class: 'page-intro hero-intro' },
       el('span', { class: 'cloud c1', 'aria-hidden': 'true' }), el('span', { class: 'cloud c2', 'aria-hidden': 'true' }), el('span', { class: 'cloud c3', 'aria-hidden': 'true' }),
       el('div', { class: 'hero-copy' },
-        el('span', { class: 'hero-date', text: heroDate(TODAY) }),
+        el('span', { class: 'hero-date', text: heroDate(today()) }),
         el('span', { class: 'label', text: 'OVERVIEW' }),
-        el('h1', { text: `${greeting()}, ${USER.name}` }),
+        (refs.heroH1 = el('h1', { text: `${greeting()}, ${USER.name}` })),
         el('p', { class: 'intro-subtitle', text: 'Review your practice and recent conversations.' }),
       ),
     ),
@@ -308,7 +347,7 @@ function shiftMonth(delta) {
 }
 
 function logToday() {
-  state.logged.add(TODAY_KEY);
+  state.logged.add(todayKey());
   kv.set('playback-logged-days', JSON.stringify([...state.logged]));
   state.savedPop = true;
   renderCalendar();
@@ -319,8 +358,10 @@ function renderCalendar() {
   if (!refs.calendar) return;
   const { year, month } = state.view;
   const states = dayStates();
-  const atCurrent = year === TODAY.getFullYear() && month === TODAY.getMonth();
-  const todayState = stateFor(TODAY_KEY, states);
+  const now = today();
+  const todayK = dayKey(now);
+  const atCurrent = year === now.getFullYear() && month === now.getMonth();
+  const todayState = stateFor(todayK, states);
   const n = streak(states);
   const cells = buildMonth(year, month, states);
   fill(refs.calendar,
@@ -337,7 +378,7 @@ function renderCalendar() {
     ),
     el('div', { class: 'weekdays' }, ...['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((d) => el('span', { text: d }))),
     el('div', { class: 'month-grid' }, ...cells.map((c) => {
-      const isToday = atCurrent && c.key === TODAY_KEY;
+      const isToday = atCurrent && c.key === todayK;
       const cls = `${c.state}${isToday ? ' today' : ''}${state.savedPop && isToday ? ' saved' : ''}`;
       return el('span', { class: cls || null, text: c.day === '' ? '' : String(c.day) });
     })),
@@ -396,32 +437,79 @@ function recName() {
   return known ? known.first : null;
 }
 
+// The pre-call brief: what memory holds on whoever they're about to talk to, by first name.
+function briefFor(name) {
+  const key = name.trim().toLowerCase();
+  if (!key) return null;
+  const past = state.convos.filter((c) => c.first.toLowerCase() === key);
+  if (!past.length) return { known: false };
+  const hooks = past[0].raw.hooks || {};
+  const promise = (hooks.commitments || []).find((k) => k && k.text);
+  const event = (hooks.events || []).find((e) => e && e.text);
+  const topics = (hooks.topics || []).map((t) => t && t.term).filter(Boolean).slice(0, 2);
+  return {
+    known: true,
+    promises: promise ? `You said: ${promise.text}` : 'Nothing you owe them.',
+    upcoming: event ? event.text : 'Nothing they mentioned.',
+    lit: topics.length ? `They kept coming back to ${topics.join(' and ')}.` : past[0].summary,
+  };
+}
+
+function renderBrief() {
+  if (!refs.brief) return;
+  const name = state.who.trim() ? firstName(state.who) : 'them';
+  const b = briefFor(state.who);
+  refs.brief.hidden = !b;
+  if (!b) { refs.brief.replaceChildren(); return; }
+  refs.brief.setAttribute('aria-label', `Brief for ${name}`);
+  fill(refs.brief,
+    ...(b.known ? [
+      el('div', {}, el('h4', { text: 'Promises you made' }), el('p', { text: b.promises })),
+      el('div', {}, el('h4', { text: 'Coming up for them' }), el('p', { text: b.upcoming })),
+      el('div', {}, el('h4', { text: 'Last time' }), el('p', { text: b.lit })),
+    ] : [el('p', { class: 'brief-empty', text: `No history with ${name} yet. This will be your first conversation, so the brief fills in afterwards.` })]),
+  );
+}
+
 function renderRecording() {
   if (!refs.recording) return;
   const r = state.rec;
   const name = recName();
   refs.recording.className = `card recording-card ${r.active ? 'is-recording' : 'is-idle'}`;
   refs.time = el('time', { text: fmtClock(r.active && r.startedAt ? Date.now() - r.startedAt : r.lastElapsed, { padMinutes: true }) });
+  const whoInput = el('input', { value: state.who, placeholder: 'First name', 'aria-label': 'Who are you about to talk to', oninput: (e) => { state.who = e.target.value; renderBrief(); } });
+  whoInput.value = state.who;
+  refs.brief = el('div', { class: 'brief' });
   fill(refs.recording,
     el('div', { class: 'recording-top' },
       el('div', {},
         el('div', { class: 'live-label' },
           el('span', { class: r.active ? 'pulse' : 'quiet-dot' }),
           r.active && el('span', { class: 'rec-tag', text: 'REC' }),
-          r.active ? 'Recording in progress' : 'Not recording'),
+          !r.active && 'Not recording'),
         el('h2', { text: r.active ? (name ? `Session with ${name}` : 'Session in progress') : 'Ready when you are' }),
       ),
-      r.active && el('button', { class: 'button stop-button', disabled: true, text: 'Recording on your phone' }),
+      // The phone holds the mic, so these are status, not controls.
+      r.active
+        ? el('button', { class: 'button stop-button', disabled: true }, icon('stop', 16), ' Recording on your phone')
+        : el('button', { class: 'button', disabled: true }, 'Start on your phone ', icon('arrow', 16)),
+    ),
+    !r.active && el('div', { class: 'before' },
+      el('div', { class: 'before-row' },
+        el('label', { class: 'who-field' }, el('span', { class: 'label', text: 'Before: who are you about to talk to?' }), whoInput),
+      ),
+      refs.brief,
     ),
     !r.active && el('div', { class: 'consent-step static' },
       el('span', {}, el('strong', { text: 'Start on your phone.' }), ' Tell them you’re recording before you tap Record.')),
     refs.live,
     el('div', { class: 'recording-meta' },
       el('span', { class: 'elapsed' }, refs.time, ' ', el('small', { text: 'elapsed' })),
-      r.active && name && el('span', { class: 'consent-ok' }, icon('check', 13), ` ${name} agreed to be recorded`),
+      r.active && name && el('span', { class: 'consent-ok' }, icon('check', 13), ` ${name} knows you’re recording`),
       el('span', { class: 'private-note', text: 'Private to you' }),
     ),
   );
+  renderBrief();
   renderLive();
 }
 
@@ -483,9 +571,31 @@ function stopRec() {
   renderRecording();
 }
 
+// Finished turns carry transcript time. After a reload mid-recording our clock started at the
+// reload, so the first turn that arrives pulls it back to where the session really began. One
+// shot only: turns flushed at stop carry times from the whole session, not from now.
+function syncStart(turn) {
+  const r = state.rec;
+  if (!r.active || !r.syncPending || !turn || !(turn.endMs > 0)) return;
+  r.syncPending = false;
+  const impliedStart = Date.now() - turn.endMs;
+  if (impliedStart < r.startedAt) r.startedAt = impliedStart;
+}
+
 function tick() {
   const r = state.rec;
   if (r.active && refs.time && r.startedAt) refs.time.textContent = fmtClock(Date.now() - r.startedAt, { padMinutes: true });
+  // Midnight: the ring, the hero date and "Today" labels all move on.
+  const key = todayKey();
+  if (key !== state.dayShown) {
+    const [y, m] = state.dayShown.split('-').map(Number);
+    state.dayShown = key;
+    // Still on what was the current month? Follow the calendar into the new one.
+    const now = today();
+    if (state.view.year === y && state.view.month === m - 1) state.view = { year: now.getFullYear(), month: now.getMonth() };
+    if (state.memory) applyMemory(state.memory); // "Today, 11:03 PM" is baked into each card view
+    renderPage();
+  }
 }
 
 // ---------- conversations ----------
@@ -503,14 +613,14 @@ function renderConversations() {
     el('div', { class: 'section-heading conversations-heading' },
       el('div', {}, el('span', { class: 'label', text: 'REFLECTIONS' }), el('h2', { text: 'Recent conversations' }))),
     el('div', { class: 'conversation-scroll' },
-      ...(state.convos.length ? state.convos.map((c, i) => el('article', { class: 'conversation' },
+      ...(state.convos.length ? state.convos.map((c) => el('article', { class: 'conversation' },
         el('div', { class: 'person-row' },
           el('span', { class: 'person-avatar', text: c.initials }),
           el('div', {}, el('h3', { text: c.name }), el('span', { text: c.when })),
-          el('button', { class: 'deck-chip', 'aria-label': `View full conversation with ${c.name}`, onclick: () => { window.location.hash = `conversations/${i}`; } }, 'View full ', icon('arrow', 14)),
+          el('button', { class: 'deck-chip', 'aria-label': `View full conversation with ${c.name}`, onclick: () => { window.location.hash = `conversations/${c.id}`; } }, 'View full ', icon('arrow', 14)),
         ),
         reflectionCopy(c),
-      )) : [el('p', { class: 'empty-row', text: state.memory ? 'No conversations yet. Record one on your phone.' : 'Loading your conversations…' })]),
+      )) : [el('p', { class: 'empty-convs', text: state.memory ? 'No conversations yet. Record one on your phone and it shows up here.' : 'Loading your conversations…' })]),
     ),
   );
 }
@@ -522,26 +632,219 @@ function openReplay(id) {
   else window.location.href = `replay.html?id=${encodeURIComponent(id)}`;
 }
 
+// The Figma's `analyses` entry, computed from what the pipeline stored on the conversation.
+function analysis(c) {
+  const raw = c.raw;
+  const signals = raw.signals || {};
+  const hooks = raw.hooks || {};
+  const behavior = raw.behavior || null;
+  const followUps = new Set((signals.questions || []).filter((q) => q.isFollowUp).map((q) => q.turnId));
+  if (!followUps.size) for (const d of hooks.followUpDetector || []) if (d.isFollowUp) followUps.add(d.turnId);
+  const missed = (hooks.missedBids || []).map((b) => b.turnId);
+  const followUpCount = typeof signals.followUps === 'number' ? signals.followUps : followUps.size;
+  const talk = typeof signals.userTalkShare === 'number' ? Math.round(signals.userTalkShare * 100) : null;
+
+  // Face cues: how often they visibly warmed up right after one of your lines.
+  let react = { after: 'No camera on this call', other: 'No camera on this call' };
+  if (behavior && Array.isArray(behavior.turns)) {
+    const warm = (t) => !!t.reaction && ((t.reaction.smileDelta ?? 0) >= 0.05 || (t.reaction.nods ?? 0) >= 1);
+    const yours = behavior.turns.filter((t) => t.reaction);
+    const after = yours.filter((t) => followUps.has(t.turnId));
+    const other = yours.filter((t) => !followUps.has(t.turnId));
+    react = {
+      after: after.length ? `Smiled or nodded after ${after.filter(warm).length} of ${after.length} follow-ups` : 'No follow-ups to compare',
+      other: other.length ? `${other.filter(warm).length} of ${other.length} other lines` : 'No other lines to compare',
+    };
+  }
+
+  // The three takeaways. Older conversations only have the one-line note, so it stands in.
+  let takeaways = raw.insight && Array.isArray(raw.insight.takeaways) ? raw.insight.takeaways.slice(0, 3) : [];
+  if (!takeaways.length && raw.note && raw.note.text) {
+    const cited = Array.isArray(raw.note.citedTurnIds) ? raw.note.citedTurnIds[0] : null;
+    takeaways = [{ kind: 'keep', turnId: cited ?? null, text: raw.note.text }];
+    if (raw.note.suggestion) takeaways.push({ kind: 'next', turnId: null, text: raw.note.suggestion });
+  }
+  return { followUps, missed, followUpCount, talk, react, takeaways };
+}
+
+function loadExtras(c) {
+  if (state.extras.has(c.id)) return;
+  const id = c.id;
+  const get = (path) => getJson(path).catch(() => null);
+  Promise.all([get(`/api/conversations/${encodeURIComponent(id)}/heatmap`), get(`/api/conversations/${encodeURIComponent(id)}/compare`)]).then(([heat, compare]) => {
+    state.extras.set(id, { heat, compare });
+    const index = parseHash();
+    if (index >= 0 && state.convos[index] && state.convos[index].id === id) renderPage();
+  });
+}
+
+const flashTimers = new Map();
+// "Play the moment": the Figma scrolls the line into view and lights it up for a beat.
+function play(turnId) {
+  const line = document.getElementById(`ln-${turnId}`);
+  if (!line) return;
+  line.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  line.classList.add('flash');
+  clearTimeout(flashTimers.get(turnId));
+  flashTimers.set(turnId, window.setTimeout(() => line.classList.remove('flash'), 1800));
+}
+
+// <Heat /> from App.tsx: the heatmap's marked words become <mark data-reason>, runs of the same
+// reason merged so a flagged phrase reads as one highlight.
+function heatText(text, heatTurn) {
+  if (!heatTurn || !Array.isArray(heatTurn.words) || !heatTurn.words.length) return [text];
+  const out = [];
+  let run = null;
+  const flush = () => { if (run) { out.push(run.kind ? el('mark', { tabindex: '0', 'data-reason': run.why || run.kind, text: run.words.join(' ') }) : run.words.join(' ')); run = null; } };
+  heatTurn.words.forEach((w) => {
+    const kind = w.kind || null;
+    const why = kind ? (w.why || '') : '';
+    if (run && run.kind === kind && run.why === why) run.words.push(w.w);
+    else { flush(); run = { kind, why, words: [w.w] }; }
+  });
+  flush();
+  // Words were split on whitespace, so put a space back between runs.
+  return out.flatMap((piece, i) => (i ? [' ', piece] : [piece]));
+}
+
+function takeawayArticle(c, t, i, an) {
+  const turnText = (id) => { const line = c.transcript.find((l) => l[3] === id); return line ? line : null; };
+  const n = `${i + 1} · `;
+  const playBtn = (id) => el('button', { class: 'play', disabled: id == null || !turnText(id), onclick: () => play(id) }, el('span', { 'aria-hidden': 'true', text: '▶' }), ' Play the moment');
+  if (t.kind === 'try') {
+    return el('article', { class: 'takeaway try' },
+      el('span', { class: 'label', text: `${n}Try this next time` }),
+      t.theySaid && el('p', { class: 'tk-them' }, el('b', { text: c.first }), t.theySaid),
+      t.said && el('p', { class: 'tk-you' }, el('b', { text: 'You' }), t.said),
+      t.tryInstead && el('p', { class: 'tk-rewrite' }, el('b', { text: 'Try instead' }), t.tryInstead),
+      !t.tryInstead && t.text && el('p', { class: 'tk-note', text: t.text }),
+      playBtn(t.turnId),
+    );
+  }
+  if (t.kind === 'keep') {
+    const line = t.turnId != null ? turnText(t.turnId) : null;
+    return el('article', { class: 'takeaway keep' },
+      el('span', { class: 'label', text: `${n}Keep doing this` }),
+      line && el('p', { class: 'tk-you' }, el('b', { text: line[1] === 'me' ? 'You' : c.first }), line[2]),
+      el('p', { class: 'tk-note', text: t.text || '' }),
+      playBtn(t.turnId),
+    );
+  }
+  return el('article', { class: 'takeaway ask' },
+    el('span', { class: 'label', text: `${n}Ask about it next time` }),
+    el('p', { class: 'tk-note big', text: t.text || '' }),
+    el('button', { class: 'play', onclick: () => draftFollowUp(c) }, el('span', { 'aria-hidden': 'true', text: '✉' }), ' Use in follow-up'),
+  );
+}
+
 function transcriptPage(index) {
   const c = state.convos[index];
+  const back = el('button', { class: 'back-link', onclick: () => { window.location.hash = ''; } }, icon('back', 15), ' Back to overview');
+  if (!c) {
+    return el('main', { class: 'workspace' }, back,
+      el('div', { class: 'page-intro' }, el('div', {}, el('h1', { text: 'Conversation' }), el('p', { class: 'intro-subtitle', text: state.memory ? 'That conversation isn’t here any more.' : 'Loading…' }))));
+  }
+  loadExtras(c);
+  const extras = state.extras.get(c.id) || {};
+  const an = analysis(c);
+  const heatByTurn = new Map(((extras.heat && extras.heat.turns) || []).map((t) => [t.turnId, t]));
+  const metric = (key) => { const m = extras.compare && Array.isArray(extras.compare.metrics) ? extras.compare.metrics.find((x) => x.key === key) : null; return m && m.before != null ? m.before : null; };
+  const prevFollowUps = metric('followUps');
+  const prevTalk = metric('userTalkShare');
+  const times = c.turns.map((t) => t.startMs || 0);
+  const ends = c.turns.map((t) => t.endMs || 0);
+  const total = Math.max(ends[ends.length - 1] || 0, times[times.length - 1] || 0) + 1000;
+  const pct = (ms) => `${(ms / total) * 100}%`;
+  const lineAt = (id) => c.turns.find((t) => t.turnId === id);
+
+  const draftBtn = el('button', { class: 'button', onclick: () => draftFollowUp(c, draftBtn) }, 'Draft follow-up ', icon('arrow', 16));
+
+  const deleteBox = el('section', { class: 'privacy-box', 'aria-label': 'Privacy' });
+  const renderDelete = () => fill(deleteBox,
+    el('div', {},
+      el('h3', { text: 'Your data, your call' }),
+      el('p', { text: 'Audio is streamed for transcription and not stored. Deleting this conversation removes its transcript, notes, video and face cues.' })),
+    state.confirming
+      ? el('div', { class: 'confirm-row' },
+        el('button', { class: 'button stop-button', onclick: async (e) => {
+          const btn = e.currentTarget; btn.disabled = true; btn.textContent = 'Deleting…';
+          try {
+            const res = await fetch(`/api/conversations/${encodeURIComponent(c.id)}`, { method: 'DELETE' });
+            if (!res.ok && res.status !== 404) throw new Error(String(res.status));
+            state.confirming = false;
+            state.extras.delete(c.id);
+            window.location.hash = '';
+            refreshMemory();
+          } catch {
+            btn.disabled = false; btn.textContent = 'Couldn’t delete. Try again';
+          }
+        }, text: 'Yes, delete it' }),
+        el('button', { class: 'button ghost', onclick: () => { state.confirming = false; renderDelete(); }, text: 'Keep it' }))
+      : el('button', { class: 'button ghost', onclick: () => { state.confirming = true; renderDelete(); }, text: 'Delete conversation' }),
+  );
+  renderDelete();
+
   return el('main', { class: 'workspace' },
-    el('button', { class: 'back-link', onclick: () => { window.location.hash = ''; } }, icon('back', 15), ' Back to overview'),
+    back,
     el('div', { class: 'page-intro' },
-      el('div', {}, el('h1', { text: c ? `Conversation with ${c.first}` : 'Conversation' }), el('p', { class: 'intro-subtitle', text: 'Full transcript and reflection.' }))),
+      el('div', {}, el('h1', { text: `Conversation with ${c.first}` }), el('p', { class: 'intro-subtitle', text: 'Replay: three takeaways, the moments behind them, and the full transcript.' })),
+      el('div', { class: 'intro-actions' },
+        el('button', { class: 'button ghost', onclick: () => openReplay(c.id) }, 'Open replay ', icon('arrow', 16)),
+        draftBtn),
+    ),
+
+    an.takeaways.length > 0 && el('section', { class: 'takeaways', 'aria-label': 'Three takeaways' },
+      ...an.takeaways.map((t, i) => takeawayArticle(c, t, i, an))),
+
+    el('section', { class: 'score-strip', 'aria-label': 'Score strip' },
+      el('div', {}, el('b', { text: String(an.followUpCount) }), el('span', { text: 'Follow-ups' }), el('small', { text: prevFollowUps != null ? `Last time: ${prevFollowUps}` : 'First conversation on record' })),
+      el('div', {}, el('b', { text: String(an.missed.length) }), el('span', { text: 'Missed moments' }), el('small', { text: 'Openings you moved past' })),
+      el('div', {}, el('b', { text: an.talk != null ? `${an.talk}%` : '–' }), el('span', { text: 'You talked' }), el('small', { text: prevTalk != null ? `Last time: ${Math.round(prevTalk * 100)}%` : 'Half is the balance to aim for' })),
+      el('div', { class: 'react' }, el('span', { text: 'Reactions' }),
+        el('small', {}, el('strong', { text: 'After your follow-ups: ' }), an.react.after),
+        el('small', {}, el('strong', { text: 'After other lines: ' }), an.react.other)),
+    ),
+    el('p', { class: 'cue-note', text: 'Face cues are observable only: smiling, facing and head movement. They never claim to know feelings.' }),
+
+    c.turns.length > 0 && el('section', { class: 'timeline', 'aria-label': 'Timeline' },
+      el('div', { class: 'tl-head' },
+        el('span', { class: 'label', text: 'Timeline' }),
+        el('span', { class: 'tl-key' }, el('i', { class: 'you' }), 'You', el('i', { class: 'them' }), c.first, el('i', { class: 'fu' }), 'Follow-up', el('i', { class: 'ms' }), 'Missed moment')),
+      el('div', { class: 'tl-track' },
+        ...c.turns.map((t, i) => {
+          const start = times[i];
+          const end = Math.max(ends[i], i + 1 < times.length ? times[i + 1] : start + 1000);
+          const seg = el('i', { class: `seg ${t.speaker === c.userLabel ? 'me' : 'them'}` });
+          seg.style.left = pct(start); seg.style.width = pct(Math.max(0, end - start));
+          return seg;
+        }),
+        ...[...an.followUps].filter(lineAt).map((id) => { const b = el('button', { class: 'mark fu', 'aria-label': `Follow-up at ${fmtClock(lineAt(id).startMs || 0)}`, onclick: () => play(id) }); b.style.left = pct(lineAt(id).startMs || 0); return b; }),
+        ...an.missed.filter(lineAt).map((id) => { const b = el('button', { class: 'mark ms', 'aria-label': `Missed moment at ${fmtClock(lineAt(id).startMs || 0)}`, onclick: () => play(id) }); b.style.left = pct(lineAt(id).startMs || 0); return b; }),
+      ),
+      el('div', { class: 'tl-axis' }, el('span', { text: '0:00' }), el('span', { text: fmtClock(total) })),
+    ),
+
     el('div', { class: 'transcripts' },
-      c && el('article', { class: 'transcript', id: `conv-${index}` },
+      el('article', { class: 'transcript', id: `conv-${index}` },
         el('div', { class: 'person-row' },
           el('span', { class: 'person-avatar', text: c.initials }),
           el('div', {}, el('h3', { text: c.name }), el('span', { text: `${c.when} · ${c.duration}` })),
-          el('button', { class: 'view-all', onclick: () => openReplay(c.id) }, 'Open replay ', icon('arrow', 14)),
         ),
-        el('div', { class: 'transcript-lines' }, ...c.transcript.map(([time, who, text]) => el('div', { class: `line ${who}` },
-          el('span', { class: 'line-time', text: time }),
-          el('span', { class: 'line-who', text: who === 'me' ? 'You' : c.first }),
-          el('p', { text }),
-        ))),
+        el('p', { class: 'heat-note', text: heatByTurn.size ? 'Highlighted words are the few that mattered. Hover or focus one to see why.' : 'The words that mattered light up here once coaching has run.' }),
+        el('div', { class: 'transcript-lines' }, ...c.transcript.map(([time, who, text, turnId]) => {
+          const isFu = an.followUps.has(turnId);
+          const isMs = an.missed.includes(turnId);
+          return el('div', { class: `line ${who}${isFu ? ' is-fu' : ''}${isMs ? ' is-ms' : ''}`, id: `ln-${turnId}` },
+            el('span', { class: 'line-time', text: time }),
+            el('span', { class: 'line-who', text: who === 'me' ? 'You' : c.first }),
+            el('p', {}, ...heatText(text, heatByTurn.get(turnId)),
+              isFu && el('em', { class: 'tag fu', text: 'Follow-up' }),
+              isMs && el('em', { class: 'tag ms', text: 'Missed moment' })),
+          );
+        })),
         reflectionCopy(c, 'transcript-reflection'),
       ),
+      deleteBox,
     ),
   );
 }
@@ -554,12 +857,35 @@ function closeFollowUp() {
   refs.modal = null;
 }
 
+// Opens the draft, writing one first if the agent hasn't yet.
+async function draftFollowUp(c, btn) {
+  if (c.followUp && c.followUp.text) { openFollowUp(c); return; }
+  const label = btn ? btn.textContent : null;
+  if (btn) { btn.disabled = true; btn.textContent = 'Drafting…'; }
+  try {
+    const res = await fetch(`/api/conversations/${encodeURIComponent(c.id)}/follow-up`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+    if (!res.ok) throw new Error(String(res.status));
+    c.followUp = await res.json();
+    if (btn) { btn.disabled = false; btn.textContent = label; }
+    openFollowUp(c);
+  } catch {
+    if (btn) { btn.disabled = false; btn.textContent = 'No draft yet. Get coaching first'; }
+  }
+}
+
 function openFollowUp(c) {
   closeFollowUp();
   state.modal = c;
   const textarea = el('textarea', { class: 'followup-text', rows: '9' });
   textarea.value = c.followUp.text;
-  const copyBtn = el('button', { class: 'button', text: 'Copy message', onclick: () => { navigator.clipboard?.writeText(textarea.value); copyBtn.textContent = 'Copied'; } });
+  const copyBtn = el('button', { class: 'button', text: 'Copy message', onclick: async () => {
+    // Over plain http (a LAN address) there is no navigator.clipboard; say so rather than claim "Copied".
+    let ok = false;
+    try { await navigator.clipboard.writeText(textarea.value); ok = true; } catch {
+      try { textarea.focus(); textarea.select(); ok = document.execCommand('copy'); } catch { /* nothing to do */ }
+    }
+    copyBtn.textContent = ok ? 'Copied' : 'Couldn’t copy. Select it and copy by hand';
+  } });
   const sentBtn = el('button', { class: 'button secondary', text: 'Mark sent', onclick: async () => {
     sentBtn.disabled = true;
     try {
@@ -624,8 +950,14 @@ function handle(msg) {
   const id = msg.conversationId;
   switch (msg.type) {
     case 'hello':
-      if (msg.focus && msg.focus.view === 'recording' && msg.focus.conversationId) startRec(msg.focus.conversationId, msg.focus.otherName);
-      else stopRec();
+      if (msg.focus && msg.focus.view === 'recording' && msg.focus.conversationId) {
+        // Joined mid-recording (reload, reconnect): our clock is behind the phone's.
+        const fresh = !(state.rec.active && state.rec.id === msg.focus.conversationId);
+        startRec(msg.focus.conversationId, msg.focus.otherName);
+        if (fresh) state.rec.syncPending = true;
+      } else stopRec();
+      // First connect or a reconnect: anything that changed while we were away.
+      refreshMemory();
       break;
     case 'focus':
       if (msg.view === 'recording' && id) startRec(id, msg.otherName);
@@ -634,6 +966,8 @@ function handle(msg) {
     case 'partial':
     case 'turn': {
       if (!id) break;
+      // A line flushed after `done` belongs to a session that's over.
+      if (!state.rec.active && id === state.doneId) break;
       startRec(id, state.rec.id === id ? state.rec.name : null);
       const lines = state.rec.lines;
       if (msg.type === 'partial') {
@@ -643,19 +977,28 @@ function handle(msg) {
       } else if (msg.turn) {
         const prev = lines.get(msg.turn.turnId);
         lines.set(msg.turn.turnId, { speaker: msg.turn.speaker, text: msg.turn.text, partial: false, at: prev ? prev.at : Date.now() });
+        syncStart(msg.turn);
       }
       renderLive();
       break;
     }
     case 'done':
-      if (id && state.rec.id === id) stopRec();
+      if (!id) break;
+      state.doneId = id;
+      if (state.rec.id === id) stopRec();
       break;
     case 'conversation':
       if (msg.conversation && state.rec.active && msg.conversation.id === state.rec.id && msg.conversation.otherName) startRec(state.rec.id, msg.conversation.otherName);
+      // Coaching, video or a label changed: the heat words and the comparison may have too.
+      if (msg.conversation && msg.conversation.id) state.extras.delete(msg.conversation.id);
+      refreshMemory();
+      break;
+    case 'deleted':
+      if (id && state.rec.id === id) stopRec();
+      if (id) state.extras.delete(id);
       refreshMemory();
       break;
     case 'memory':
-    case 'deleted':
       refreshMemory();
       break;
     default:
@@ -700,7 +1043,7 @@ function init() {
   document.getElementById('root').append(refs.shell);
   renderPage();
 
-  window.addEventListener('hashchange', () => { closeFollowUp(); renderPage(); window.scrollTo(0, 0); });
+  window.addEventListener('hashchange', () => { closeFollowUp(); state.confirming = false; renderPage(); window.scrollTo(0, 0); });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && state.modal) closeFollowUp(); });
   setInterval(tick, 500);
   refreshMemory();
