@@ -4,7 +4,7 @@
 // hardcoded reflections, /ws/stage for the recording card (the phone does the actual recording),
 // and /api/conversations/:id/{heatmap,compare} for the transcript page.
 
-const USER = { name: 'Parth', initials: 'PS' };
+const USER = { name: 'Sofía', initials: 'S' };
 const MONTHS = ['JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE', 'JULY', 'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER'];
 const FIGMA_GOALS = ['Ask one open question', 'Pause before replying', 'Reflect one detail'];
 const FLAG_GOALS = {
