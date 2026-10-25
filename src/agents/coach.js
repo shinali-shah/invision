@@ -50,7 +50,7 @@ export async function generateNote({ llm, tag, signals, turns, userLabel, reflec
 
   let out;
   try {
-    out = await llm.json({ name: 'coach', schema: SCHEMA, system: systemPrompt(tag), user, effort: 'medium', maxTokens: 2000 });
+    out = await llm.json({ name: 'coach', schema: SCHEMA, system: systemPrompt(tag), user, effort: 'medium' });
   } catch {
     return failed();
   }

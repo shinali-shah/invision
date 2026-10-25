@@ -11,7 +11,7 @@ export class LlmError extends Error {
 }
 
 // Thin Muse Spark client. Every agent asks for strict JSON, so that's the only call shape we expose.
-export function createLlm({ apiKey, mock, model, fetchImpl = fetch, timeoutMs = 20000, responders = defaultResponders }) {
+export function createLlm({ apiKey, mock, model, fetchImpl = fetch, timeoutMs = 45000, responders = defaultResponders }) {
   async function realJson({ name, schema, system, user, effort, maxTokens }) {
     let res;
     try {
@@ -39,10 +39,19 @@ export function createLlm({ apiKey, mock, model, fetchImpl = fetch, timeoutMs = 
       throw new LlmError(`${name}: HTTP ${res.status} ${detail.slice(0, 200)}`, { status: res.status });
     }
 
-    let content;
+    let choice;
     try {
-      content = (await res.json()).choices?.[0]?.message?.content;
-      return JSON.parse(content);
+      choice = (await res.json()).choices?.[0];
+    } catch (err) {
+      throw new LlmError(`${name}: response was not JSON`, { cause: err });
+    }
+    // Muse Spark always reasons, and those tokens come out of max_completion_tokens.
+    // When they eat the whole budget we get finish_reason "length" and no content at all.
+    if (choice?.finish_reason === 'length') {
+      throw new LlmError(`${name}: ran out of tokens while reasoning (max_completion_tokens ${maxTokens})`);
+    }
+    try {
+      return JSON.parse(choice?.message?.content);
     } catch (err) {
       throw new LlmError(`${name}: response was not JSON`, { cause: err });
     }
@@ -56,7 +65,7 @@ export function createLlm({ apiKey, mock, model, fetchImpl = fetch, timeoutMs = 
 
   return {
     mock: !!mock,
-    json({ name, schema, system, user, effort = 'low', maxTokens = 800 }) {
+    json({ name, schema, system, user, effort = 'low', maxTokens = 8000 }) {
       return mock ? mockJson({ name, user }) : realJson({ name, schema, system, user, effort, maxTokens });
     },
   };

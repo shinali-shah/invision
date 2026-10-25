@@ -52,7 +52,6 @@ export async function reviewNote({ llm, note, signals, otherName }) {
       system: SYSTEM,
       user: { note: { text: note.text, suggestion: note.suggestion ?? '' }, signals, otherName: otherName ?? null },
       effort: 'low',
-      maxTokens: 1500,
     });
   } catch {
     return drop(note);

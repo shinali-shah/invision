@@ -42,6 +42,19 @@ test('unparsable content rejects with LlmError', async () => {
   await assert.rejects(llm.json({ name: 'x', schema, system: '', user: {} }), LlmError);
 });
 
+test('running out of tokens mid-reasoning rejects with a clear LlmError', async () => {
+  const fetchImpl = async () => new Response(JSON.stringify({ choices: [{ finish_reason: 'length', message: { content: null } }] }), { status: 200 });
+  const llm = createLlm({ apiKey: 'k', mock: false, model: 'm', fetchImpl });
+  await assert.rejects(llm.json({ name: 'coach', schema, system: '', user: {} }), /ran out of tokens/);
+});
+
+test('default output budget leaves room for reasoning', async () => {
+  const calls = [];
+  const llm = createLlm({ apiKey: 'k', mock: false, model: 'm', fetchImpl: fakeFetch(200, '{"ok":true}', calls) });
+  await llm.json({ name: 'x', schema, system: '', user: {} });
+  assert.ok(JSON.parse(calls[0].init.body).max_completion_tokens >= 8000);
+});
+
 test('timeout rejects with LlmError', async () => {
   const hang = (url, init) => new Promise((_, reject) => init.signal.addEventListener('abort', () => reject(init.signal.reason)));
   const llm = createLlm({ apiKey: 'k', mock: false, model: 'm', fetchImpl: hang, timeoutMs: 20 });
