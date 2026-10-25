@@ -337,7 +337,8 @@ function everydaySpec(e, index, key, start, now) {
 /**
  * Conversations from the first of last month to today, the way a real person records them: the big
  * ones from conversations.js on their own days, everyday ones on most of the rest, and about a
- * third of days with nothing (more of them at weekends). Which days are skipped depends only on the
+ * third of days with nothing (more of them at weekends). Last month opens with the rough ones and
+ * moves to bumpy, this month is mostly going well. Which days are skipped depends only on the
  * date, so a rebuild gives the same calendar. Today always has one. Oldest first.
  */
 export function schedule(now) {
@@ -359,7 +360,11 @@ export function schedule(now) {
     if (taken.has(day)) continue;
     const weekend = d.getDay() === 0 || d.getDay() === 6;
     if (day < dayOf(now) && rng(d.toDateString())() < (weekend ? 0.5 : 0.3)) continue;
-    const pick = pool.find(p => !p.used && fits(p.e, day))
+    // A story of getting better: last month starts rough and turns bumpy, this month goes well.
+    const prefer = d.getMonth() !== new Date(now).getMonth()
+      ? (d.getDate() <= 14 ? ['rough', 'bumps', 'good'] : ['bumps', 'rough', 'good'])
+      : ['good', 'bumps', 'rough'];
+    const pick = prefer.map(mood => pool.find(p => !p.used && p.e.mood === mood && fits(p.e, day))).find(Boolean)
       ?? [...pool].filter(p => fits(p.e, day)).sort((a, b) => a.used - b.used)[0]
       ?? [...pool].sort((a, b) => a.used - b.used)[0];
     const start = Math.min(at(day, 0, pick.e.at), latest);
