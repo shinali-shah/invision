@@ -86,7 +86,7 @@ synthetic: every conversation has `synthetic: true`, and the database is marked 
 
 ```bash
 npm run synthetic       # writes data/demo.db (never data/playback.db)
-npm run dev:synthetic   # serves it: PLAYBACK_DB=demo, mock mode, http://localhost:3000
+npm run dev:synthetic   # serves it: PLAYBACK_DB=demo, mock mode, USER_NAME=Shinali, http://localhost:3000
 ```
 
 It holds 13 conversations, one a day from Oct 12 to Oct 24 2026, with teammates Prat, Priya and Parth
