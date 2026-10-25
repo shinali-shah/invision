@@ -1,8 +1,22 @@
 import { WebSocketServer } from 'ws';
+import { mkdirSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { createTurnAssembler } from './assemble.js';
+import { labelTurns, inferLabels } from './crowd.js';
+
+const MAX_CUES = 120000; // ~4 h at 8 fps; past that the phone has been left running
+
+// Lip-lock cue samples ride the same socket as the audio, as small JSON frames.
+// Keep only well-formed samples; a flaky phone must never take the stream down.
+function cleanCues(samples) {
+  if (!Array.isArray(samples)) return [];
+  return samples
+    .filter(s => s && typeof s === 'object' && Number.isFinite(s.t))
+    .map(s => ({ t: Math.round(s.t), face: !!s.face, mouth: Number.isFinite(s.mouth) ? s.mouth : 0, theirs: !!s.theirs, mine: !!s.mine }));
+}
 
 // Browser <-> Muse bridge. Audio only passes through memory here and is never written anywhere.
-export function attachTranscribeSocket({ server, store, log, config, openStream, stage = { publish() {} } }) {
+export function attachTranscribeSocket({ server, store, log, config, openStream, stage = { publish() {} }, recordingsDir = null }) {
   const wss = new WebSocketServer({ noServer: true });
 
   server.on('upgrade', (req, socket, head) => {
@@ -20,6 +34,7 @@ export function attachTranscribeSocket({ server, store, log, config, openStream,
     }
 
     const assembler = createTurnAssembler();
+    const cues = [];
     let finished = false;
     let browserGone = false; // the phone dropped the socket without sending "end"
     let stream;
@@ -27,17 +42,30 @@ export function attachTranscribeSocket({ server, store, log, config, openStream,
     const finish = () => {
       if (finished) return;
       finished = true;
-      const turns = assembler.flush();
+      const turns = labelTurns(assembler.flush(), cues);
       // The phone deletes the conversation when the user walks out of a recording;
       // what Muse heard after that isn't ours to keep or show on the stage.
       if (!store.getConversation(conversationId)) {
         log('transcribe', 'info', `conversation ${conversationId.slice(0, 8)} was deleted mid-stream; ${turns.length} turns dropped`);
         return ws.close(1000);
       }
-      store.updateConversation(conversationId, { turns });
+      const crowdTurns = turns.filter(t => t.source === 'crowd').length;
+      // The camera and the mic agree on whose voice is whose: no need to ask.
+      const picked = cues.length ? inferLabels(turns) : null;
+      store.updateConversation(conversationId, { turns, ...(picked ? { userLabel: picked.userLabel } : {}) });
+      if (cues.length && recordingsDir) {
+        try {
+          mkdirSync(recordingsDir, { recursive: true });
+          writeFileSync(join(recordingsDir, `${conversationId}.cues.json`), JSON.stringify(cues));
+        } catch (err) { log('transcribe', 'warn', `could not save lip-lock cues: ${err.message}`); }
+      }
       log('transcribe', 'info', `${turns.length} turns, speakers ${[...new Set(turns.map(t => t.speaker))].join('/') || 'none'}; audio discarded`);
-      send({ type: 'done', turns });
-      stage.publish({ type: 'done', conversationId, turns });
+      if (cues.length) {
+        log('lips', 'info', `lip lock: ${cues.length} cues, ${crowdTurns} background line${crowdTurns === 1 ? '' : 's'}${picked ? `, your voice is ${picked.userLabel} (${Math.round(picked.agreement * 100)}% of ${picked.n} lines agree)` : ', could not pick your voice'}`);
+      }
+      const done = { type: 'done', turns, userLabel: picked?.userLabel ?? null, crowdTurns };
+      send(done);
+      stage.publish({ ...done, conversationId });
       ws.close(1000);
     };
 
@@ -96,7 +124,9 @@ export function attachTranscribeSocket({ server, store, log, config, openStream,
       }
       let msg;
       try { msg = JSON.parse(data.toString()); } catch { return; }
-      if (msg.type === 'end') {
+      if (msg.type === 'cues') {
+        if (cues.length < MAX_CUES) cues.push(...cleanCues(msg.samples));
+      } else if (msg.type === 'end') {
         const s = await opening;
         try { await s?.end(); } catch (err) { log('transcribe', 'warn', `end failed: ${err.message}`); }
         finish();

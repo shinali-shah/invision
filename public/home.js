@@ -174,8 +174,9 @@ function convoView(c) {
     flags: awkward && Array.isArray(awkward.flags) ? awkward.flags : [],
     score: awkward && typeof awkward.score === 'number' ? awkward.score : null,
     userLabel: c.userLabel || null,
+    needsLabel: !!c.needsLabel, // recorded, two voices, nobody tapped theirs: nothing coached yet
     turns,
-    transcript: turns.map((t) => [fmtClock(t.startMs || 0), t.speaker === c.userLabel ? 'me' : 'them', t.text || '', t.turnId]),
+    transcript: turns.map((t) => [fmtClock(t.startMs || 0), t.speaker === c.userLabel ? 'me' : 'them', t.text || '', t.turnId, t.speaker]),
   };
 }
 
@@ -249,6 +250,10 @@ function goals() {
 
 function tasks() {
   const out = [];
+  // Unfinished first: nothing else about that conversation exists until it's done.
+  for (const c of state.convos) {
+    if (c.needsLabel) out.push({ key: `label:${c.id}`, text: `Finish coaching for ${c.first}`, convo: c, finish: true });
+  }
   for (const c of state.convos) {
     if (c.followUp && c.followUp.status === 'draft' && c.followUp.text) out.push({ key: `fu:${c.id}`, text: `Follow up with ${c.first}`, convo: c });
   }
@@ -423,7 +428,8 @@ function renderTasks() {
     progress('Tasks completed', done, list.length),
     ...(list.length ? list.map((t) => el('div', { class: 'task-row' },
       checkRow(t.key, t.text, renderTasks),
-      t.convo && el('button', { class: 'followup-btn', onclick: () => openFollowUp(t.convo) }, icon('spark', 13), ' Write me a follow up'),
+      t.finish ? finishButton(t.convo)
+        : t.convo && el('button', { class: 'followup-btn', onclick: () => openFollowUp(t.convo) }, icon('spark', 13), ' Write me a follow up'),
     )) : [el('p', { class: 'empty-row', text: 'Nothing waiting on you.' })]),
   );
 }
@@ -600,7 +606,21 @@ function tick() {
 
 // ---------- conversations ----------
 
+function finishButton(c) {
+  return el('button', { class: 'followup-btn finish-btn', onclick: () => openReplay(c.id) }, 'Finish on Replay ', icon('arrow', 13));
+}
+
+// Where the two reflection columns would go when nothing has been coached yet.
+function uncoachedCopy(c, extraClass = '') {
+  return el('div', { class: `uncoached ${extraClass}`.trim() },
+    el('span', { class: 'uncoached-dot', 'aria-hidden': 'true' }),
+    el('p', { text: 'Not coached yet: tap which voice is yours' }),
+    finishButton(c),
+  );
+}
+
 function reflectionCopy(c, extraClass = '') {
+  if (c.needsLabel) return uncoachedCopy(c, extraClass);
   return el('div', { class: `reflection-copy ${extraClass}`.trim() },
     el('div', {}, el('h4', { text: 'What worked well' }), el('p', { text: c.summary })),
     el('div', {}, el('h4', { text: 'What I’ll do next time' }), el('p', { text: c.next })),
@@ -793,10 +813,17 @@ function transcriptPage(index) {
         draftBtn),
     ),
 
+    c.needsLabel && el('section', { class: 'uncoached-hero', 'aria-label': 'Not coached yet' },
+      el('span', { class: 'label', text: 'Not coached yet' }),
+      el('h2', { text: 'Which voice is yours?' }),
+      el('p', { text: `Nothing is scored until you pick: we only coach you, never ${c.first}. Finish it on Replay, or tap one of your lines on the phone.` }),
+      el('button', { class: 'button', onclick: () => openReplay(c.id) }, 'Finish on Replay ', icon('arrow', 16))),
+
     an.takeaways.length > 0 && el('section', { class: 'takeaways', 'aria-label': 'Three takeaways' },
       ...an.takeaways.map((t, i) => takeawayArticle(c, t, i, an))),
 
-    el('section', { class: 'score-strip', 'aria-label': 'Score strip' },
+    // Counts and the timeline would call every line "them" until a voice is picked.
+    !c.needsLabel && el('section', { class: 'score-strip', 'aria-label': 'Score strip' },
       el('div', {}, el('b', { text: String(an.followUpCount) }), el('span', { text: 'Follow-ups' }), el('small', { text: prevFollowUps != null ? `Last time: ${prevFollowUps}` : 'First conversation on record' })),
       el('div', {}, el('b', { text: String(an.missed.length) }), el('span', { text: 'Missed moments' }), el('small', { text: 'Openings you moved past' })),
       el('div', {}, el('b', { text: an.talk != null ? `${an.talk}%` : '–' }), el('span', { text: 'You talked' }), el('small', { text: prevTalk != null ? `Last time: ${Math.round(prevTalk * 100)}%` : 'Half is the balance to aim for' })),
@@ -804,9 +831,9 @@ function transcriptPage(index) {
         el('small', {}, el('strong', { text: 'After your follow-ups: ' }), an.react.after),
         el('small', {}, el('strong', { text: 'After other lines: ' }), an.react.other)),
     ),
-    el('p', { class: 'cue-note', text: 'Face cues are observable only: smiling, facing and head movement. They never claim to know feelings.' }),
+    !c.needsLabel && el('p', { class: 'cue-note', text: 'Face cues are observable only: smiling, facing and head movement. They never claim to know feelings.' }),
 
-    c.turns.length > 0 && el('section', { class: 'timeline', 'aria-label': 'Timeline' },
+    c.turns.length > 0 && !c.needsLabel && el('section', { class: 'timeline', 'aria-label': 'Timeline' },
       el('div', { class: 'tl-head' },
         el('span', { class: 'label', text: 'Timeline' }),
         el('span', { class: 'tl-key' }, el('i', { class: 'you' }), 'You', el('i', { class: 'them' }), c.first, el('i', { class: 'fu' }), 'Follow-up', el('i', { class: 'ms' }), 'Missed moment')),
@@ -831,12 +858,14 @@ function transcriptPage(index) {
           el('div', {}, el('h3', { text: c.name }), el('span', { text: `${c.when} · ${c.duration}` })),
         ),
         el('p', { class: 'heat-note', text: heatByTurn.size ? 'Highlighted words are the few that mattered. Hover or focus one to see why.' : 'The words that mattered light up here once coaching has run.' }),
-        el('div', { class: 'transcript-lines' }, ...c.transcript.map(([time, who, text, turnId]) => {
+        el('div', { class: 'transcript-lines' }, ...c.transcript.map(([time, who, text, turnId, speaker]) => {
           const isFu = an.followUps.has(turnId);
           const isMs = an.missed.includes(turnId);
+          // Until a voice is picked every line would read as theirs, so keep the diarizer's letters.
+          const whoText = c.needsLabel ? (speaker && speaker !== 'unknown' ? `Speaker ${speaker}` : 'Unclear') : who === 'me' ? 'You' : c.first;
           return el('div', { class: `line ${who}${isFu ? ' is-fu' : ''}${isMs ? ' is-ms' : ''}`, id: `ln-${turnId}` },
             el('span', { class: 'line-time', text: time }),
-            el('span', { class: 'line-who', text: who === 'me' ? 'You' : c.first }),
+            el('span', { class: 'line-who', text: whoText }),
             el('p', {}, ...heatText(text, heatByTurn.get(turnId)),
               isFu && el('em', { class: 'tag fu', text: 'Follow-up' }),
               isMs && el('em', { class: 'tag ms', text: 'Missed moment' })),

@@ -154,3 +154,26 @@ test('a tag change that lands while coaching runs is what the note is coached fo
   assert.equal(c.tag, 'networking');
   assert.equal(coachedAs, 'networking');
 });
+
+// ---- lip lock: crowd lines stay in the transcript but out of the analysis ----
+
+test('crowd turns are excluded from signals, hooks and the coach prompt, and counted', async () => {
+  const deps = setup();
+  const base = createLlm({ mock: true });
+  const seen = {};
+  const spying = { mock: true, json: async args => { seen[args.name] = args.user; return base.json(args); } };
+  const turns = demoTurns().map(t => ({ ...t, source: t.speaker === 'A' ? 'you' : 'them' }));
+  const bystander = { turnId: 99, speaker: 'C', text: 'Hey can we get the bill over here please? The chess tournament is starting.', startMs: 15000, endMs: 17000, source: 'crowd' };
+  const id = liveConversation(deps.store, [...turns.slice(0, 4), bystander, ...turns.slice(4)]);
+  const clean = await processConversation({ ...deps, id: liveConversation(deps.store, turns), reflection: '' });
+  const c = await processConversation({ ...deps, llm: spying, id, reflection: '' });
+
+  assert.equal(c.signals.crowd, 1);
+  assert.equal(clean.signals.crowd, 0);
+  assert.equal(c.signals.otherTurns, clean.signals.otherTurns);
+  assert.equal(c.turns.length, turns.length + 1); // still in the transcript, flagged
+  assert.equal(c.turns.find(t => t.turnId === 99).source, 'crowd');
+  assert.ok(!c.hooks.topics.some(t => /chess|bill/i.test(t.term)), JSON.stringify(c.hooks.topics));
+  assert.ok(!seen.coach.turns.some(t => t.turnId === 99), 'coach never sees the bystander');
+  assert.ok(!seen.classify.turns.some(t => t.turnId === 99), 'classify never sees the bystander');
+});

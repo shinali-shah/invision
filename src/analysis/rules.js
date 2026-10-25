@@ -9,7 +9,10 @@ export function wordCount(text) {
 const round = (n, dp) => Math.round(n * 10 ** dp) / 10 ** dp;
 const duration = t => Math.max(0, (t.endMs ?? 0) - (t.startMs ?? 0));
 
-export function computeRuleSignals(turns, userLabel) {
+export function computeRuleSignals(allTurns, userLabel) {
+  // Lines the lip lock put down to bystanders are counted and otherwise ignored.
+  const turns = allTurns.filter(t => t.source !== 'crowd');
+  const crowd = allTurns.length - turns.length;
   let userTurns = 0, otherTurns = 0, userTalkMs = 0, otherTalkMs = 0;
   const questions = [];
 
@@ -53,6 +56,7 @@ export function computeRuleSignals(turns, userLabel) {
     reflections: null,
     storiesAfterQuestions: null,
     questions,
+    crowd,
     source: 'rules-only',
   };
 }

@@ -110,3 +110,12 @@ test('recorder mime list asks for AAC audio in mp4 before falling back', () => {
   assert.equal(pickRecorderMime((m) => m.startsWith('video/webm')), 'video/webm;codecs=vp8,opus');
   assert.equal(pickRecorderMime(() => { throw new Error('no MediaRecorder'); }), '');
 });
+
+test('leveler exposes the speech level it is tracking, in dB', () => {
+  const lev = createLeveler();
+  assert.equal(lev.levelDb, null);
+  lev(10 ** (-30 / 20));
+  assert.ok(Math.abs(lev.levelDb - -30) < 0.01, String(lev.levelDb));
+  lev(10 ** (-20 / 20)); // louder: tracks halfway up
+  assert.ok(Math.abs(lev.levelDb - -25) < 0.01, String(lev.levelDb));
+});

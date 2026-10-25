@@ -217,6 +217,16 @@ h1, h2, h3 { margin: 0; font-family: var(--font-display); font-weight: 900; text
 .st-line.spk-1 .st-who { color: var(--ink-3); }
 .st-ticket .st-line.spk-1 .st-who { color: var(--bone-2); }
 .st-line.partial .st-said { color: var(--bone-2); }
+/* Crowd lines from the lip lock: kept, greyed, tagged. */
+.st-line.is-crowd { opacity: .55; }
+.st-line.is-crowd .st-who { color: var(--ink-3); }
+.st-ticket .st-line.is-crowd .st-who { color: var(--bone-2); }
+.st-bg-tag {
+  display: inline-block; margin-left: .5em; padding: .05em .6em; border-radius: 99px; vertical-align: .15em;
+  border: 1.5px solid var(--line); color: var(--ink-3);
+  font: 700 max(10px, calc(var(--u) * .7)) / 1.5 var(--font-serif); letter-spacing: .1em; text-transform: uppercase;
+}
+.st-ticket .st-bg-tag { border-color: var(--night-line); color: var(--bone-2); }
 /* The blinking caret from the Figma live transcript. */
 .st-line.partial .st-said::after {
   content: ""; display: inline-block; width: .06em; height: 1em; margin-left: .1em;

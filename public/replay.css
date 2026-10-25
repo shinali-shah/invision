@@ -102,35 +102,51 @@ h1 { margin-bottom: 0; font-size: clamp(56px, 9vw, 112px); line-height: .84; }
 .rp-gone { font-size: 18px; color: var(--ink-2); }
 .rp-gone a { color: var(--you); }
 
-/* ---- which voice is yours (a card ahead of everything, nothing is scored until it's answered) ---- */
-.rp-voice { padding: 26px 30px; display: grid; gap: 10px; animation: card-in .36s var(--ease) both; }
-.rp-voice-title { margin: 0; font-size: 34px; }
-.rp-voice-lede { margin: 0; color: var(--ink-2); }
-.rp-voice-busy { margin: 0; font-size: 16px; color: var(--ink-3); }
+/* ---- which voice is yours: the hero until it's answered. A night card like the recording ticket,
+   full width above the video; nothing below it is scored (or even rendered) until a line is tapped. ---- */
+.rp-voice {
+  padding: 32px 36px 30px; display: grid; gap: 10px; animation: card-in .36s var(--ease) both;
+  background: var(--night); color: var(--bone); border-color: var(--night);
+}
+.rp-voice-kicker { color: var(--marigold); }
+.rp-voice-title { margin: 0; font-size: clamp(40px, 4.4vw, 64px); color: var(--bone); }
+.rp-voice-lede { margin: 0; font-size: 17px; line-height: 1.5; color: var(--bone-2); max-width: 60ch; }
+.rp-voice-count { margin: 4px 0 0; font: 900 20px/1 var(--font-display); text-transform: uppercase; letter-spacing: .02em; color: var(--marigold); }
+.rp-voice-crowd { margin: 0; font-size: 13.5px; color: var(--bone-2); }
+.rp-voice-busy { margin: 0; font-size: 18px; color: var(--bone-2); }
 .rp-voice-busy::after, .rp-tk-empty.busy::after { content: ""; display: inline-block; width: .45em; height: .45em; margin-left: .5em; border-radius: 50%; background: var(--marigold); animation: breathe 1.2s ease-in-out infinite; }
-.rp-voice-error { margin: 0; font-weight: 600; color: var(--red-ink); }
-.rp-voice-lines { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 8px; max-height: 340px; overflow-y: auto; }
+.rp-voice-error { margin: 0; font-weight: 600; color: #ff8a73; }
+.rp-voice-lines { list-style: none; margin: 14px 0 0; padding: 2px; display: grid; gap: 10px; max-height: 480px; overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--bone-2) transparent; }
 .rp-voice-line {
   width: 100%; text-align: left;
-  display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; gap: 14px; align-items: center;
-  padding: 8px 12px; min-height: 56px;
-  border: 1.5px solid var(--line); border-radius: 16px; background: var(--white);
-  transition: border-color .15s, background .15s;
+  display: grid; grid-template-columns: 48px minmax(0, 1fr) auto; gap: 18px; align-items: center;
+  padding: 12px 14px 12px 12px; min-height: 72px;
+  border: 1.5px solid var(--night-line); border-radius: 18px; background: var(--night-2); color: var(--bone);
+  font-size: 16px; line-height: 1.45;
+  transition: border-color .15s, background .15s, transform .15s;
 }
-.rp-voice-line:hover, .rp-voice-line:focus-visible { border-color: var(--ink); background: var(--paper); }
+.rp-voice-line:hover, .rp-voice-line:focus-visible { border-color: var(--marigold); background: #1d2521; transform: translateX(3px); }
+.rp-voice-line:focus-visible { outline: 2.5px solid var(--marigold); outline-offset: 2px; }
 .rp-voice-letter {
-  display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%;
-  background: var(--tint); color: var(--ink-2); font-size: 12px; font-weight: 700; letter-spacing: .06em;
+  display: grid; place-items: center; width: 48px; height: 48px; border-radius: 50%;
+  background: var(--marigold); color: var(--ink); font-size: 15px; font-weight: 800; letter-spacing: .06em;
 }
-.rp-voice-letter.spk-1 { background: var(--night); color: var(--marigold); }
+.rp-voice-letter.spk-1 { background: var(--bone); color: var(--night); }
+.rp-voice-letter.spk-2 { background: var(--you-d); color: var(--night); }
+.rp-voice-letter.spk-3 { background: transparent; color: var(--bone); border: 1.5px solid var(--bone-2); }
 .rp-voice-text { overflow-wrap: anywhere; }
 .rp-voice-pick {
-  height: 34px; padding: 0 14px; display: inline-flex; align-items: center; border-radius: 99px;
+  height: 44px; padding: 0 20px; display: inline-flex; align-items: center; border-radius: 99px;
   background: var(--marigold); color: var(--ink);
-  font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; white-space: nowrap;
-  opacity: 0; transition: opacity .15s;
+  font-size: 12px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; white-space: nowrap;
+  transition: background .15s;
 }
-.rp-voice-line:hover .rp-voice-pick, .rp-voice-line:focus-visible .rp-voice-pick { opacity: 1; }
+.rp-voice-line:hover .rp-voice-pick, .rp-voice-line:focus-visible .rp-voice-pick { background: #ffb73d; }
+@media (max-width: 650px) {
+  .rp-voice { padding: 24px 20px; }
+  .rp-voice-line { grid-template-columns: 40px minmax(0, 1fr); }
+  .rp-voice-pick { grid-column: 2; justify-self: start; height: 38px; }
+}
 
 /* ---- the video: a night ticket like the Figma recording card ---- */
 .rp-stage {
@@ -343,6 +359,10 @@ button.line-time:hover { color: var(--you); }
 .tag.ms { background: var(--marigold); color: var(--ink); }
 .tag.awk { border: 1.5px solid var(--red-ink); color: var(--red-ink); cursor: help; }
 .tag.awk.theirs { border-color: var(--line); color: var(--ink-3); }
+.tag.crowd { border: 1.5px solid var(--line); color: var(--ink-3); cursor: help; }
+/* Crowd lines from the lip lock: in the transcript, out of the analysis. */
+.line.is-crowd { opacity: .55; }
+.line.is-crowd .line-who { color: var(--ink-3); }
 .tag.react { border: 1.5px solid var(--line); color: var(--ink-2); }
 .tag.react.up { border-color: var(--you); color: var(--you); }
 .tag.react.down { border-color: var(--red-ink); color: var(--red-ink); }

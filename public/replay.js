@@ -720,6 +720,9 @@ async function upload(frames, recAt) {
   } finally {
     state.uploading = false;
     renderAnalysisBar();
+    // Both the stage echo and the response above rendered while uploading was still true, which
+    // left the takeaways box saying "Writing…" for good.
+    if (sameVideo(recAt)) renderTakeaways();
   }
 }
 
@@ -1372,7 +1375,8 @@ function renderTranscript() {
     const awkMain = seam ? awk.filter((f) => f.who !== 'you') : awk;
     const awkSeam = seam ? awk.filter((f) => f.who === 'you') : [];
     const tks = MARK_ORDER.filter((k) => k.startsWith('tk') && kinds.has(k));
-    const cls = ['line', sideCls, kinds.has('follow') ? 'is-fu' : '', kinds.has('missed') ? 'is-ms' : '', t.turnId === state.activeTurn ? 'active' : '']
+    const crowd = t.source === 'crowd';
+    const cls = ['line', sideCls, kinds.has('follow') ? 'is-fu' : '', kinds.has('missed') ? 'is-ms' : '', crowd ? 'is-crowd' : '', t.turnId === state.activeTurn ? 'active' : '']
       .filter(Boolean).join(' ');
     const seek = () => seekToTurn(t.turnId);
     return el('li', { class: cls, 'data-turn': t.turnId, id: `ln-${t.turnId}` },
@@ -1380,6 +1384,7 @@ function renderTranscript() {
       el('span', { class: 'line-who', text: speakerName(t, side, labels) }),
       el('p', { on: { click: seek } },
         ...words,
+        crowd ? el('em', { class: 'tag crowd', title: 'The lip lock put this line down to someone else in the room', text: 'Background' }) : null,
         kinds.has('follow') ? el('em', { class: 'tag fu', text: 'Follow-up' }) : null,
         kinds.has('missed') ? el('em', { class: 'tag ms', title: markerTitle(t.turnId, new Set(['missed'])), text: 'Missed moment' }) : null,
         ...tks.map((k) => el('em', { class: 'tag tk', title: markerTitle(t.turnId, new Set([k])), text: `Takeaway ${k.slice(2)}` })),
@@ -1949,28 +1954,36 @@ async function refreshConvo() {
 
 // ---------- which voice is yours ----------
 
+// The picker is the whole page until it's answered: takeaways, scores and the timeline would all be
+// about the wrong person, so they stay out of the DOM rather than rendering empty.
 function renderVoicePicker() {
   const box = $('voice');
   const c = state.convo;
-  if (!needsVoice() && !state.picking) { box.hidden = true; box.replaceChildren(); return; }
+  const waiting = needsVoice() || !!state.picking;
+  for (const id of ['takeaways', 'timeline']) $(id).hidden = waiting;
+  if (!waiting) { box.hidden = true; box.replaceChildren(); return; }
   box.hidden = false;
   const p = state.picking;
   if (p && !p.error) {
     put(box,
-      el('h2', { class: 'rp-voice-title', text: 'Which voice is yours?' }),
+      el('h2', { class: 'rp-voice-title', text: p.coaching ? 'Coaching you now' : 'Which voice is yours?' }),
       el('p', { class: 'rp-voice-busy', text: p.step }));
     return;
   }
   const turns = turnsOf(c).filter((t) => t.speaker && t.speaker !== 'unknown');
+  const labels = speakerLabels(turns);
   put(box,
+    el('span', { class: 'label rp-voice-kicker', text: 'Before anything is scored' }),
     el('h2', { class: 'rp-voice-title', text: 'Which voice is yours?' }),
-    el('p', { class: 'rp-voice-lede', text: 'We couldn’t tell which voice is you, so nothing here is scored yet. Tap one of your own lines.' }),
+    el('p', { class: 'rp-voice-lede', text: 'Nothing is scored until you pick: we only coach you, never them.' }),
+    labels.length >= 2 ? el('p', { class: 'rp-voice-count', text: `${labels.length} voices heard, one is you` }) : null,
+    labels.length >= 3 ? el('p', { class: 'rp-voice-crowd', text: 'Loud room? Lines from other people get filtered once you pick yours.' }) : null,
     p && p.error ? el('p', { class: 'rp-voice-error', text: p.error }) : null,
     el('ol', { class: 'rp-voice-lines' }, ...turns.map((t) => el('li', {},
-      el('button', { class: 'rp-voice-line', type: 'button', on: { click: () => pickVoice(t.speaker) } },
-        el('span', { class: `rp-voice-letter spk-${Math.max(0, speakerLabels(turns).indexOf(t.speaker))}`, text: t.speaker }),
+      el('button', { class: 'rp-voice-line', type: 'button', 'aria-label': `That’s me: voice ${t.speaker}, “${t.text || ''}”`, on: { click: () => pickVoice(t.speaker) } },
+        el('span', { class: `rp-voice-letter spk-${Math.max(0, labels.indexOf(t.speaker))}`, text: t.speaker }),
         el('span', { class: 'rp-voice-text', text: t.text || '' }),
-        el('span', { class: 'rp-voice-pick', text: `That’s me (voice ${t.speaker})` }),
+        el('span', { class: 'rp-voice-pick', 'aria-hidden': 'true', text: 'That’s me' }),
       )))),
   );
 }
@@ -1978,11 +1991,11 @@ function renderVoicePicker() {
 async function pickVoice(label) {
   if (state.picking && !state.picking.error) return;
   const id = state.id;
-  const step = (text) => { state.picking = { step: text, error: null }; renderVoicePicker(); };
+  const step = (text, coaching = false) => { state.picking = { step: text, error: null, coaching }; renderVoicePicker(); };
   try {
     step('Saving your voice…');
     await postJson(`/api/conversations/${enc(id)}/user-label`, { label });
-    step('Coaching… this takes about half a minute.');
+    step('Coaching… about 25 s', true);
     const c = await postJson(`/api/conversations/${enc(id)}/process`, { reflection: '' });
     if (state.id !== id) return;
     if (c && c.id === id) state.convo = { ...state.convo, ...c };

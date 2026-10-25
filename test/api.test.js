@@ -208,6 +208,24 @@ test('unnamed conversations are never "the same person"', async () => {
   assert.equal(normName('  Priya   Shah '), 'priya shah');
 });
 
+test('a recording nobody labelled is flagged needsLabel in the lists until a line is tapped', async () => {
+  const { body: convo } = await api('POST', '/api/conversations', { tag: 'friend', otherName: 'Shruti', consentConfirmed: true });
+  // Nothing recorded yet: nothing to label.
+  assert.equal((await api('GET', '/api/conversations')).body.find(c => c.id === convo.id).needsLabel, false);
+
+  await streamMockConversation(convo.id);
+  const listed = (await api('GET', '/api/conversations')).body.find(c => c.id === convo.id);
+  assert.equal(listed.needsLabel, true);
+  const inMemory = (await api('GET', '/api/memory')).body.conversations.find(c => c.id === convo.id);
+  assert.equal(inMemory.needsLabel, true);
+  // Seeded conversations came labelled.
+  assert.ok((await api('GET', '/api/memory')).body.conversations.filter(c => c.seeded).every(c => c.needsLabel === false));
+
+  await api('POST', `/api/conversations/${convo.id}/user-label`, { label: 'A' });
+  assert.equal((await api('GET', '/api/conversations')).body.find(c => c.id === convo.id).needsLabel, false);
+  await api('DELETE', `/api/conversations/${convo.id}`);
+});
+
 test('two taps on Get coaching share one run', async () => {
   const { body: convo } = await api('POST', '/api/conversations', { tag: 'friend', otherName: 'Sam', consentConfirmed: true });
   await streamMockConversation(convo.id);
@@ -222,4 +240,39 @@ test('two taps on Get coaching share one run', async () => {
   const logs = (await api('GET', '/api/logs')).body.filter(l => l.agent === 'coach' && /drafted/.test(l.message));
   assert.ok(logs.length >= 1);
   await api('DELETE', `/api/conversations/${convo.id}`);
+});
+
+// ---- lip lock: the cues file lives next to the video ----
+
+test('a video upload keeps the lip-lock cues; deleting the conversation removes them', async () => {
+  const { mkdtempSync, writeFileSync, existsSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const { join } = await import('node:path');
+  const { createApp } = await import('../src/routes.js');
+  const { openStore } = await import('../src/db.js');
+  const { createLogger } = await import('../src/log.js');
+  const { createLlm } = await import('../src/llm.js');
+  const http = await import('node:http');
+
+  const recordingsDir = mkdtempSync(join(tmpdir(), 'playback-cues-api-'));
+  const store = openStore();
+  const app = createApp({ store, llm: createLlm({ mock: true }), log: createLogger(store, { quiet: true }), config, recordingsDir });
+  const server = http.createServer(app);
+  await new Promise(r => server.listen(0, r));
+  const url = p => `http://localhost:${server.address().port}${p}`;
+  try {
+    const convo = store.createConversation({ tag: 'friend', otherName: 'Maya' });
+    const cuesFile = join(recordingsDir, `${convo.id}.cues.json`);
+    writeFileSync(cuesFile, '[]');
+    const up = await fetch(url(`/api/conversations/${convo.id}/recording?offsetMs=0`), { method: 'POST', headers: { 'Content-Type': 'video/webm' }, body: Buffer.alloc(64, 1) });
+    assert.equal(up.status, 201);
+    assert.ok(existsSync(cuesFile), 'cues survive the upload');
+    assert.ok(existsSync(join(recordingsDir, `${convo.id}.webm`)));
+    const del = await fetch(url(`/api/conversations/${convo.id}`), { method: 'DELETE' });
+    assert.equal(del.status, 204);
+    assert.equal(existsSync(cuesFile), false);
+    assert.equal(existsSync(join(recordingsDir, `${convo.id}.webm`)), false);
+  } finally {
+    server.close();
+  }
 });

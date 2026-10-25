@@ -66,3 +66,28 @@ test('no turns gives zeros', () => {
   assert.equal(s.otherAvgAnswerWords, 0);
   assert.deepEqual(s.questions, []);
 });
+
+test('background lines are counted as crowd and left out of everything else', () => {
+  const withCrowd = [
+    ...turns.slice(0, 2),
+    { turnId: 9, speaker: 'C', text: 'Did anyone order the fries?', startMs: 8100, endMs: 9000, source: 'crowd' },
+    ...turns.slice(2),
+  ];
+  const s = computeRuleSignals(withCrowd, 'A');
+  const clean = computeRuleSignals(turns, 'A');
+  assert.equal(s.crowd, 1);
+  assert.equal(clean.crowd, 0);
+  assert.equal(s.otherTurns, clean.otherTurns);
+  assert.equal(s.otherTalkMs, clean.otherTalkMs);
+  assert.deepEqual(s.questions, clean.questions);
+});
+
+test('a crowd line between a question and its answer does not steal the reply', () => {
+  const s = computeRuleSignals([
+    { turnId: 1, speaker: 'A', text: 'How was the trip?', startMs: 0, endMs: 1000 },
+    { turnId: 2, speaker: 'C', text: 'excuse me', startMs: 1000, endMs: 1500, source: 'crowd' },
+    { turnId: 3, speaker: 'B', text: words(10), startMs: 1500, endMs: 4000 },
+  ], 'A');
+  assert.equal(s.questions[0].replyTurnId, 3);
+  assert.equal(s.questions[0].replyWords, 10);
+});

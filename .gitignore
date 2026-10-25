@@ -7,4 +7,4 @@ demo/
 *.mp4
 *.mov
 *.webm
-brag-output/
+brag-output*/

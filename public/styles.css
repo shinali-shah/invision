@@ -259,6 +259,12 @@ main {
 .rec-tag.cam-tag { display: none; background: transparent; border: 1.5px solid var(--bone-2); color: var(--bone); padding: 1.5px 9px; }
 /* The preview is only unhidden while video is actually being captured, so it doubles as the camera flag. */
 .ticket:has(#rec-preview:not([hidden])) .cam-tag { display: inline-block; }
+/* Lip lock pill: outline while it looks, marigold while their mouth is moving, red-ink when it lost them. */
+.rec-tag.lip-tag { background: transparent; border: 1.5px solid var(--bone-2); color: var(--bone); padding: 1.5px 9px; transition: background .2s, border-color .2s, color .2s; }
+.rec-tag.lip-tag[hidden] { display: none; }
+.rec-tag.lip-tag.locked { background: var(--marigold); border-color: var(--marigold); color: var(--night); }
+.rec-tag.lip-tag.lost { border-color: var(--red-ink); color: #ffc2b8; }
+.rec-tag.lip-tag.off { border-color: var(--night-line); color: var(--bone-2); }
 .rec-word { font: 600 11.5px/1.3 var(--font-serif); letter-spacing: .14em; text-transform: uppercase; color: var(--bone-2); margin: 0; }
 /* "With Abuela. Family." is the ticket's h2. */
 #rec-with { margin: 0 0 8px; font: 900 40px/.86 var(--font-display); letter-spacing: -.01em; text-transform: uppercase; color: var(--bone); overflow-wrap: anywhere; }
@@ -314,6 +320,16 @@ main {
   border: 1.5px solid var(--night-line);
 }
 .rec-preview[hidden] { display: none; }
+.rec-preview-wrap { position: relative; flex: none; line-height: 0; }
+.rec-preview-wrap:has(> .rec-preview[hidden]) { display: none; }
+/* The lock reticle over their mouth. */
+.lip-reticle {
+  position: absolute; pointer-events: none;
+  border: 1.5px solid rgba(233, 234, 230, .75); border-radius: 5px;
+  transition: left .12s linear, top .12s linear, width .12s linear, height .12s linear, border-color .2s, box-shadow .2s;
+}
+.lip-reticle.locked { border-color: var(--marigold); box-shadow: 0 0 0 1px rgba(244, 165, 28, .4); }
+.lip-reticle[hidden] { display: none; }
 
 /* ---- video upload ---- */
 .video-status { margin: 0 0 14px; }
@@ -349,6 +365,17 @@ main {
 .line.spk-0 .who { color: var(--ink); }
 .line.spk-1 .who { color: var(--ink-3); }
 .line.partial .said { color: var(--ink-2); }
+/* Lines the lip lock put down to the crowd: still there, out of the way. */
+.line.is-crowd .who, .line.is-crowd .said { color: var(--ink-3); }
+.line.is-crowd .said { opacity: .75; }
+.bg-tag {
+  display: inline-block; margin-left: 6px; padding: 1px 7px; border-radius: 99px;
+  border: 1.5px solid var(--line); color: var(--ink-3);
+  font: 700 9.5px/1.4 var(--font-serif); letter-spacing: .1em; text-transform: uppercase; vertical-align: 2px;
+}
+.live .line.is-crowd .who, .live .line.is-crowd .said { color: var(--bone-2); }
+.live .bg-tag { border-color: var(--night-line); }
+.pickable .line.is-crowd button { border-color: var(--line); }
 /* Figma .line.flash: the moment the note is talking about. */
 .line.cited {
   background: var(--flash);
@@ -611,6 +638,38 @@ button.hook-chip:hover { background: var(--ink); color: var(--white); border-col
 .logs .log-meta { color: var(--ink-3); font-weight: 600; letter-spacing: .04em; }
 .logs .lv-warn .log-meta { color: #b57a10; }
 .logs .lv-error .log-meta { color: var(--red-ink); }
+
+/* ---- finish coaching: the way back to a recording left on the label step ---- */
+.finish-banner { display: grid; gap: 10px; margin: 0 0 22px; }
+.finish-banner[hidden] { display: none; }
+.finish-row {
+  display: grid; grid-template-columns: 10px minmax(0, 1fr) auto; align-items: center; gap: 12px;
+  padding: 16px 18px;
+  background: var(--white); border: 1.5px solid var(--ink); border-radius: 22px;
+  animation: card-in .36s var(--ease) both;
+}
+.finish-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--red-ink); }
+.finish-text { font-size: 14px; line-height: 1.45; color: var(--ink-2); overflow-wrap: anywhere; }
+.finish-text strong { color: var(--ink); font-weight: 700; }
+.finish-btn {
+  height: 40px; padding: 0 18px;
+  background: var(--marigold); color: var(--ink); border: 0; border-radius: 99px;
+  font: 700 12px/1 var(--font-serif); letter-spacing: .12em; text-transform: uppercase;
+}
+.finish-btn:hover { background: #ffb73d; }
+
+/* Figma .tag, the small uppercase chip; red when the row is waiting on you */
+.tag {
+  display: inline-block; padding: 3px 8px; border-radius: 99px; vertical-align: middle;
+  border: 1.5px solid var(--ink); color: var(--ink);
+  font: 700 10px/1.3 var(--font-serif); letter-spacing: .1em; text-transform: uppercase; white-space: nowrap;
+}
+.tag.needs-tap { border-color: var(--red-ink); color: var(--red-ink); }
+
+/* label view: the count of voices and the loud-room hint sit under the instruction */
+.label-voices { margin: -8px 0 12px; font: 900 22px/1 var(--font-display); text-transform: uppercase; letter-spacing: .01em; color: var(--ink); }
+.label-voices[hidden], .label-crowd[hidden] { display: none; }
+.label-crowd { color: var(--ink-3); font-size: 13px; }
 
 @keyframes card-in { from { opacity: 0; transform: translateY(14px); } }
 

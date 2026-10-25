@@ -105,9 +105,11 @@ export function rmsOf(samples) {
 
 // Tracks the speech level (falls fast when it gets loud, rises slowly) and returns the gain that
 // puts it at TARGET_DB. Silence leaves everything where it was, so pauses don't pump the noise up.
+// The tracked level is readable as `leveler.levelDb`: the lip lock compares each reading
+// against it to tell the close voice (yours) from everything further away.
 export function createLeveler({ target = TARGET_DB, gate = GATE_DB, maxGain = MAX_GAIN } = {}) {
   let levelDb = null;
-  return function next(rms) {
+  function next(rms) {
     const db = toDb(rms);
     if (db > gate) {
       if (levelDb === null) levelDb = db;
@@ -116,5 +118,7 @@ export function createLeveler({ target = TARGET_DB, gate = GATE_DB, maxGain = MA
     if (levelDb === null) return null;
     const gain = 10 ** ((target - levelDb) / 20);
     return Math.min(maxGain, Math.max(MIN_GAIN, gain));
-  };
+  }
+  Object.defineProperty(next, 'levelDb', { get: () => levelDb });
+  return next;
 }

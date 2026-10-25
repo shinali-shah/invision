@@ -29,6 +29,8 @@
       <span class="label">New conversation</span>
       <h1 id="start-title" class="title">Who are you talking with?</h1>
 
+      <div class="finish-banner" id="finish-banner-start" hidden></div>
+
       <fieldset class="segmented" id="tag-start">
         <legend class="sr-only">Kind of conversation</legend>
         <label><input type="radio" name="tag-start" value="family" checked><span>Family</span></label>
@@ -71,6 +73,7 @@
         <span class="rec-dot" aria-hidden="true"></span>
         <span class="rec-tag" aria-hidden="true">REC</span>
         <span class="rec-tag cam-tag" aria-hidden="true">Camera on</span>
+        <span class="rec-tag lip-tag" id="lip-pill" hidden>Lip lock</span>
         <h1 id="rec-title" class="rec-word">Recording</h1>
       </div>
       <p class="hint" id="rec-with"></p>
@@ -85,7 +88,10 @@
         <button type="button" class="disc disc-stop" id="stop-btn">
           <span class="disc-label">Stop</span>
         </button>
-        <video class="rec-preview" id="rec-preview" playsinline muted autoplay hidden aria-label="Camera preview"></video>
+        <div class="rec-preview-wrap">
+          <video class="rec-preview" id="rec-preview" playsinline muted autoplay hidden aria-label="Camera preview"></video>
+          <div class="lip-reticle" id="lip-reticle" hidden aria-hidden="true"></div>
+        </div>
       </div>
     </section>
 
@@ -93,7 +99,9 @@
     <section class="view" id="view-label" hidden aria-labelledby="label-title">
       <span class="label">After the talk</span>
       <h1 id="label-title" class="title">Which voice is yours?</h1>
-      <p class="hint" id="label-hint">Tap one of your own lines.</p>
+      <p class="hint label-sub" id="label-hint">Tap one of your lines. Coaching only starts after this.</p>
+      <p class="label-voices" id="label-voices" hidden></p>
+      <p class="hint label-crowd" id="label-crowd" hidden>Loud room? Lines from other people get filtered once you pick yours.</p>
       <div class="video-status" id="label-video" hidden></div>
       <ol class="transcript pickable" id="label-transcript"></ol>
       <p class="error" id="label-error" role="alert" hidden></p>
@@ -152,6 +160,8 @@
       <span class="label">Memory</span>
       <h1 id="memory-title" class="title" tabindex="-1">Over time</h1>
       <p class="error" id="memory-error" role="alert" hidden></p>
+
+      <div class="finish-banner" id="finish-banner-memory" hidden></div>
 
       <div id="pattern-block"></div>
 

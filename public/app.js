@@ -1,5 +1,6 @@
 import { api, transcribeSocketUrl } from './api.js';
-import { createResampler, micErrorMessage, isCameraError, pickRecorderMime, createLeveler, rmsOf } from './mic.js';
+import { createResampler, micErrorMessage, isCameraError, pickRecorderMime, createLeveler, rmsOf, toDb } from './mic.js';
+import { startLipLock } from './lips.js';
 
 // Spec copy, verbatim. Mirrors src/agents/context.js TAG_FOCUS.
 const TAG_FOCUS = {
@@ -125,14 +126,18 @@ function lineClass(speaker, convo, labels) {
   return idx === 0 || idx === 1 ? `line spk-${idx}` : 'line';
 }
 
+// A line the lip lock put down to the crowd: greyed, tagged, kept.
+const isCrowd = (t) => t.source === 'crowd';
+const crowdTag = () => el('span', { class: 'bg-tag', text: 'Background' });
+
 function renderTranscript(listId, turns, convo, { pickable = false, cited = [], onPick } = {}) {
   const list = $(listId);
   list.replaceChildren();
   const labels = speakerLabels(turns);
   for (const t of turns) {
-    const cls = lineClass(t.speaker, convo, labels) + (cited.includes(t.turnId) ? ' cited' : '');
+    const cls = lineClass(t.speaker, convo, labels) + (cited.includes(t.turnId) ? ' cited' : '') + (isCrowd(t) ? ' is-crowd' : '');
     const who = el('span', { class: 'who', text: speakerName(t.speaker, convo, labels) });
-    const said = el('span', { class: 'said', text: t.text });
+    const said = el('span', { class: 'said', text: t.text }, isCrowd(t) ? crowdTag() : null);
     if (pickable) {
       const btn = el('button', {
         type: 'button',
@@ -185,6 +190,37 @@ function resetStart() {
   updateRecordEnabled();
   showError('start-error', null);
   showView('start');
+  refreshFinishBanner();
+}
+
+// ---------- finish coaching banner ----------
+
+// Recordings left on the label step (phone put down right after Stop) have no coaching yet.
+// The server flags them needsLabel; start and memory carry the way back until a line is tapped.
+let unfinished = [];
+
+async function refreshFinishBanner() {
+  try {
+    const mem = await api.memory();
+    unfinished = (mem.conversations || []).filter((c) => c.needsLabel);
+  } catch { /* keep whatever we last knew */ }
+  renderFinishBanner();
+}
+
+function renderFinishBanner() {
+  const rows = [...unfinished].sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+  for (const id of ['finish-banner-start', 'finish-banner-memory']) {
+    const box = $(id);
+    box.hidden = !rows.length;
+    box.replaceChildren(...rows.map((c) => el('div', { class: 'finish-row' },
+      el('span', { class: 'finish-dot', 'aria-hidden': 'true' }),
+      el('span', { class: 'finish-text' },
+        el('strong', { text: `Finish coaching for ${c.otherName || 'them'}` }),
+        document.createTextNode(': tap which voice is yours'),
+      ),
+      el('button', { type: 'button', class: 'finish-btn', text: 'Finish', onclick: () => openConversation(c) }),
+    )));
+  }
 }
 
 // ---------- pre-meeting brief ----------
@@ -335,6 +371,7 @@ function beginCapture(convo, ctx, stream, videoNote = null) {
     recorder: null,
     chunks: [],
     videoAt: null,      // video time 0, from the recorder's start event
+    lips: null,         // lip lock, while the camera is on
   };
   state.rec = rec;
 
@@ -345,7 +382,7 @@ function beginCapture(convo, ctx, stream, videoNote = null) {
   const mute = ctx.createGain();
   mute.gain.value = 0;
   // mic → mono → auto level → limiter → (transcription, and the video's soundtrack)
-  const level = buildLevelChain(ctx, source);
+  const level = buildLevelChain(ctx, source, (db, levelDb) => rec.lips && rec.lips.level(db, levelDb));
   level.out.connect(node);
   node.connect(mute);
   mute.connect(ctx.destination);
@@ -404,6 +441,7 @@ function beginCapture(convo, ctx, stream, videoNote = null) {
   if (stream.getVideoTracks().length && !startVideo(rec)) {
     videoNote = 'This browser can’t record video, so this one is audio only.';
   }
+  if (rec.recorder) startLips(rec);
   $('rec-note').textContent = videoNote || '';
   $('rec-note').hidden = !videoNote;
   $('stop-btn').disabled = false;
@@ -420,7 +458,7 @@ function beginCapture(convo, ctx, stream, videoNote = null) {
 
 // Some mics show up as stereo with the voice on one side only, and with the phone's own voice
 // processing off they can sit ~30 dB under normal speech. Fold to mono, then level it.
-function buildLevelChain(ctx, source) {
+function buildLevelChain(ctx, source, onLevel = null) {
   const mono = ctx.createGain();
   mono.channelCount = 1;
   mono.channelCountMode = 'explicit';
@@ -451,8 +489,12 @@ function buildLevelChain(ctx, source) {
   const buf = new Float32Array(meter.fftSize);
   const timer = setInterval(() => {
     meter.getFloatTimeDomainData(buf);
-    const g = leveler(rmsOf(buf));
+    const rms = rmsOf(buf);
+    const g = leveler(rms);
     if (g != null) gain.gain.setTargetAtTime(g, ctx.currentTime, 0.4);
+    // The meter sits before the gain, so this is the mic as heard: the lip lock compares it with
+    // the speech level the leveler is tracking.
+    if (onLevel) onLevel(toDb(rms), leveler.levelDb);
   }, 100);
 
   return {
@@ -494,11 +536,64 @@ function hidePreview() {
   const preview = $('rec-preview');
   preview.hidden = true;
   preview.srcObject = null;
+  $('lip-pill').hidden = true;
+  $('lip-reticle').hidden = true;
+}
+
+// ---------- lip lock ----------
+
+const LIP_COPY = { tracking: 'Lip lock', locked: 'Lip lock', lost: 'Point at them', off: 'Lip lock off' };
+
+function startLips(rec) {
+  const pill = $('lip-pill');
+  pill.textContent = 'Lip lock';
+  pill.className = 'rec-tag lip-tag';
+  pill.hidden = false;
+  rec.lips = startLipLock({
+    video: $('rec-preview'),
+    timeBase: () => rec.firstAudioAt,
+    send: (samples) => {
+      if (rec.ws.readyState === WebSocket.OPEN) rec.ws.send(JSON.stringify({ type: 'cues', samples }));
+    },
+    onState: renderLipState,
+  });
+}
+
+function stopLips(rec) {
+  if (!rec.lips) return;
+  rec.lips.stop();
+  rec.lips = null;
+}
+
+function renderLipState({ status, box }) {
+  const pill = $('lip-pill');
+  pill.textContent = LIP_COPY[status] || 'Lip lock';
+  pill.className = `rec-tag lip-tag ${status}`;
+  const ret = $('lip-reticle');
+  const video = $('rec-preview');
+  if (!box || status === 'off' || video.hidden || !video.videoWidth) { ret.hidden = true; return; }
+  // The preview crops the frame (object-fit: cover), so map through the same scale and offset.
+  const ew = video.clientWidth, eh = video.clientHeight;
+  const scale = Math.max(ew / video.videoWidth, eh / video.videoHeight);
+  const ox = (ew - video.videoWidth * scale) / 2;
+  const oy = (eh - video.videoHeight * scale) / 2;
+  const pad = 0.04; // a little air around the lips
+  const x = (box.x - pad) * video.videoWidth * scale + ox;
+  const y = (box.y - pad) * video.videoHeight * scale + oy;
+  const w = (box.w + pad * 2) * video.videoWidth * scale;
+  const h = (box.h + pad * 2) * video.videoHeight * scale;
+  ret.style.left = `${Math.max(0, x)}px`;
+  ret.style.top = `${Math.max(0, y)}px`;
+  ret.style.width = `${Math.min(w, ew - Math.max(0, x))}px`;
+  ret.style.height = `${Math.min(h, eh - Math.max(0, y))}px`;
+  ret.className = `lip-reticle${status === 'locked' ? ' locked' : ''}`;
+  ret.hidden = false;
 }
 
 // keep = upload what we got; otherwise throw it away. Call before the tracks
 // are stopped so the recorder flushes its last chunk cleanly.
 function endVideo(rec, keep) {
+  stopLips(rec);
   hidePreview();
   const recorder = rec.recorder;
   if (!recorder) return;
@@ -652,7 +747,10 @@ function handleSocketMessage(rec, msg) {
       break;
     }
     case 'done':
-      finishRecording(rec, Array.isArray(msg.turns) ? msg.turns : rec.turns);
+      finishRecording(rec, Array.isArray(msg.turns) ? msg.turns : rec.turns, {
+        userLabel: typeof msg.userLabel === 'string' ? msg.userLabel : null,
+        crowdTurns: Number(msg.crowdTurns) || 0,
+      });
       break;
     case 'error':
       rec.lastError = msg.message || 'The transcriber hit a problem. Whatever was heard so far is kept.';
@@ -701,7 +799,7 @@ function stopRecording() {
   }, DONE_TIMEOUT_MS);
 }
 
-function finishRecording(rec, turns, { keepError = false } = {}) {
+function finishRecording(rec, turns, { keepError = false, userLabel = null, crowdTurns = 0 } = {}) {
   if (rec.finished) return;
   rec.finished = true;
   clearInterval(rec.timer);
@@ -716,7 +814,8 @@ function finishRecording(rec, turns, { keepError = false } = {}) {
   }
   try { if (rec.ws.readyState <= WebSocket.OPEN) rec.ws.close(1000); } catch { /* ignore */ }
   state.rec = null;
-  state.convo = { ...state.convo, turns, userLabel: null };
+  // The lip lock may already know which voice is yours; the label step then just confirms it.
+  state.convo = { ...state.convo, turns, userLabel, autoLabel: !!userLabel, crowdTurns };
   showLabelView(keepError);
 }
 
@@ -729,11 +828,17 @@ function showLabelView(keepError = false) {
   showError('coach-error', null);
   $('reflection').value = convo.reflection || '';
 
-  const hasVoices = speakerLabels(turns).length > 0;
-  $('label-title').textContent = hasVoices ? 'Which voice is yours?' : 'Nothing to label';
+  const voices = speakerLabels(turns).length;
+  const hasVoices = voices > 0;
+  const matched = hasVoices && !!convo.userLabel && !!convo.autoLabel;
+  $('label-title').textContent = !hasVoices ? 'Nothing to label' : matched ? 'We matched your voice to the camera' : 'Which voice is yours?';
   $('label-hint').textContent = hasVoices
-    ? (convo.userLabel ? 'Got it. Tap a different line if that was wrong.' : 'Tap one of your own lines.')
+    ? (matched ? 'Not you? Tap your line.' : convo.userLabel ? 'Got it. Tap a different line if that was wrong.' : 'Tap one of your lines. Coaching only starts after this.')
     : 'No speech came through. You can still finish up.';
+  // How many people the diarizer heard, so a loud room doesn't read as a bug.
+  $('label-voices').hidden = voices < 2 || !!convo.userLabel;
+  $('label-voices').textContent = `${voices} voices heard, one is you`;
+  $('label-crowd').hidden = voices < 3 || !!convo.userLabel;
   $('label-transcript').dataset.empty = 'No lines were transcribed.';
   renderTranscript('label-transcript', turns, convo, { pickable: true, onPick: pickLabel });
   // With nobody to pick, let them go straight on; the server will say it's too short.
@@ -750,7 +855,7 @@ async function pickLabel(label) {
   try {
     const updated = await api.setUserLabel(id, label);
     if (!stillOn('label', id)) return; // they left this conversation meanwhile
-    state.convo = { ...state.convo, ...updated, turns: updated.turns || state.convo.turns };
+    state.convo = { ...state.convo, ...updated, turns: updated.turns || state.convo.turns, autoLabel: false };
     showLabelView();
     $('reflection').focus({ preventScroll: true });
     $('reflect-block').scrollIntoView({ block: 'start', behavior: 'smooth' });
@@ -967,13 +1072,20 @@ function renderHooks(convo) {
     document.createTextNode(`${qs.filter((q) => q.isFollowUp).length} of ${qs.length} question${qs.length === 1 ? '' : 's'} built on what they said`),
   ) : null;
 
-  if (!groups.length && !detector) { card.hidden = true; card.replaceChildren(); return; }
+  const nCrowd = (convo.signals && convo.signals.crowd) || 0;
+  const crowd = nCrowd ? el('p', { class: 'hook-detector' },
+    el('span', { class: 'hook-label', text: 'Crowd filter: ' }),
+    document.createTextNode(`${nCrowd} line${nCrowd === 1 ? '' : 's'} ignored`),
+  ) : null;
+
+  if (!groups.length && !detector && !crowd) { card.hidden = true; card.replaceChildren(); return; }
   card.replaceChildren(
     el('div', { class: 'card-head' },
       el('h2', { class: 'subtitle', id: 'hooks-title', text: 'What we picked up' }),
       el('span', { class: 'card-meta', text: 'Measured from the transcript. No AI.' })),
     ...groups,
     detector,
+    crowd,
   );
   card.hidden = false;
 }
@@ -1173,6 +1285,8 @@ async function openMemory() {
   renderPattern(mem.pattern, mem.signalTable || []);
   renderNextStep(mem.nextStep);
   renderConvoList(mem.conversations || []);
+  unfinished = (mem.conversations || []).filter((c) => c.needsLabel);
+  renderFinishBanner();
   $('memory-title').focus({ preventScroll: true });
 }
 
@@ -1285,7 +1399,8 @@ function renderConvoList(convos) {
   list.replaceChildren(...sorted.map((c) => {
     const sub = [el('span', { class: 'tag-pill', text: TAG_NAMES[c.tag] || c.tag })];
     if (c.seeded) sub.push(document.createTextNode(' Sample'));
-    if (c.note && c.note.status === 'dropped') sub.push(document.createTextNode(' Counts only'));
+    if (c.needsLabel) sub.push(el('span', { class: 'tag needs-tap', text: 'Needs your tap' }));
+    else if (c.note && c.note.status === 'dropped') sub.push(document.createTextNode(' Counts only'));
     const name = c.otherName || 'Someone';
     // Up to two initials, like the avatars in the design. Whole code points: w[0] on an emoji is half a surrogate pair.
     const initials = name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => Array.from(w)[0].toUpperCase()).join('');
@@ -1391,6 +1506,7 @@ function init() {
   updateFocus();
   updateCamera();
   updateRecordEnabled();
+  refreshFinishBanner();
   api.stageFocus('start', null); // a reload lands on start, so tell the projector
 
   api.health()

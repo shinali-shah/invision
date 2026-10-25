@@ -128,13 +128,14 @@ function renderLines(listId, turns, convo, { cited = [], emptyText = '' } = {}) 
     const key = `${listId}:${convo ? convo.id : ''}:${t.turnId}`;
     let cls = lineClass(t.speaker, convo, labels);
     if (t.partial) cls += ' partial';
+    if (t.source === 'crowd') cls += ' is-crowd';
     if (cited.includes(t.turnId)) cls += ' cited';
     if (!state.rendered.has(key)) { cls += ' enter'; state.rendered.add(key); }
     return el('li', { class: cls, 'data-turn': t.turnId },
       // the Figma line is time | who | text; a partial has no time yet
       el('span', { class: 'st-time', text: Number.isFinite(t.startMs) ? fmtClock(t.startMs) : '' }),
       el('span', { class: 'st-who', text: speakerName(t.speaker, convo, labels) }),
-      el('span', { class: 'st-said', text: t.text || '' }),
+      el('span', { class: 'st-said' }, t.text || '', t.source === 'crowd' ? el('span', { class: 'st-bg-tag', text: 'Background' }) : null),
     );
   }));
 }
@@ -191,12 +192,14 @@ function renderScript(view, convo) {
   // The Figma ticket's "Session with Maya"; while the mic is off and nobody's labelled yet,
   // the picking step sits beside the REC caption.
   const name = convo && convo.otherName && convo.otherName !== 'them' ? convo.otherName : null;
-  $('script-title').textContent = name ? `Session with ${name}` : 'Live session';
+  const turns = recording ? (liveList(id).length ? liveList(id) : turnsFor(id)) : turnsFor(id, { withPartials: true });
+  // Once the mic is off and nobody has tapped their line, the one thing left to do is the headline.
+  const unlabelled = !recording && !(convo && convo.userLabel) && speakerLabels(turns).length >= 2;
+  $('script-title').textContent = unlabelled ? 'Tap your line on the phone to start coaching' : name ? `Session with ${name}` : 'Live session';
   const sub = $('script-sub');
   sub.hidden = recording || !!(convo && convo.userLabel);
-  sub.textContent = sub.hidden ? '' : 'Picking which voice is you…';
+  sub.textContent = sub.hidden ? '' : unlabelled ? `${speakerLabels(turns).length} voices heard, one is you` : 'Picking which voice is you…';
 
-  const turns = recording ? (liveList(id).length ? liveList(id) : turnsFor(id)) : turnsFor(id, { withPartials: true });
   renderLines('script-lines', turns, recording ? null : convo, {
     emptyText: recording ? 'Listening…' : 'No lines came through.',
   });

@@ -37,7 +37,7 @@ export function createServer({ config: cfg = config, quiet = false, mockSpeed = 
   });
   attachStageSocket({ server, hub: stage });
   const openStream = cfg.mock ? opts => openMockStream({ ...opts, speed: mockSpeed }) : openMuseStream;
-  const wss = attachTranscribeSocket({ server, store, log, config: cfg, openStream, stage });
+  const wss = attachTranscribeSocket({ server, store, log, config: cfg, openStream, stage, recordingsDir });
 
   return {
     app, server, store,

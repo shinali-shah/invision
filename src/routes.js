@@ -6,6 +6,7 @@ import { alignBehavior, cleanFrames } from './behavior/align.js';
 import { generateInsight } from './agents/insight.js';
 import { buildHeatmap } from './nlp/heatmap.js';
 import { inferUserLabel } from './behavior/speaker.js';
+import { speechTurns } from './transcribe/crowd.js';
 import { TAGS } from './agents/context.js';
 import { processConversation, recoach, refreshMemory, writeFollowUp } from './pipeline.js';
 import { compareConversations } from './nlp/compare.js';
@@ -17,6 +18,15 @@ import { STAGE_VIEWS } from './stage.js';
 const STEP_ACTIONS = { accept: 'accepted', change: 'changed', dismiss: 'dismissed' };
 
 const noStage = { publish() {}, focus() {} };
+
+// Recorded, two voices told apart, nobody tapped which one is theirs: coaching can't start yet.
+// Shruti and Sid sat like this for a day because every screen worked it out differently.
+export function needsLabel(convo) {
+  const turns = convo.turns ?? [];
+  if (turns.length < 2 || convo.userLabel) return false;
+  return new Set(turns.map(t => t.speaker).filter(s => s && s !== 'unknown')).size >= 2;
+}
+const flagged = convo => ({ ...convo, needsLabel: needsLabel(convo) });
 
 // The conversation this one gets measured against: last time with the same person, else just last time.
 function previousFor(store, convo) {
@@ -50,7 +60,7 @@ export function createApp({ store, llm, log, config, publicDir = 'public', stage
     res.status(201).json(convo);
   });
 
-  app.get('/api/conversations', (req, res) => res.json(store.listConversations()));
+  app.get('/api/conversations', (req, res) => res.json(store.listConversations().map(flagged)));
 
   app.get('/api/conversations/:id', (req, res) => {
     const convo = findConvo(req, res);
@@ -190,8 +200,14 @@ export function createApp({ store, llm, log, config, publicDir = 'public', stage
   const VIDEO_EXT = { 'video/mp4': 'mp4', 'video/quicktime': 'mp4', 'video/webm': 'webm' };
   const videoPath = convo => convo.recording && join(recordingsDir, `${convo.id}.${convo.recording.ext}`);
   const framesPath = id => join(recordingsDir, `${id}.frames.json`);
-  const removeMedia = id => {
+  // A new video replaces the old one and its face frames; the lip-lock cues came from the mic
+  // and camera live, not from the file, so only a delete removes them.
+  const removeVideo = id => {
     for (const ext of ['mp4', 'webm', 'frames.json']) rmSync(join(recordingsDir, `${id}.${ext}`), { force: true });
+  };
+  const removeMedia = id => {
+    removeVideo(id);
+    rmSync(join(recordingsDir, `${id}.cues.json`), { force: true });
   };
 
   app.post('/api/conversations/:id/recording', async (req, res, next) => {
@@ -216,7 +232,7 @@ export function createApp({ store, llm, log, config, publicDir = 'public', stage
       return next(err);
     }
     if (!bytes) { rmSync(tmp, { force: true }); return fail(res, 400, 'Video was empty'); }
-    removeMedia(convo.id);
+    removeVideo(convo.id);
     renameSync(tmp, join(recordingsDir, `${convo.id}.${ext}`));
     const offsetMs = Number.isFinite(Number(req.query.offsetMs)) ? Math.round(Number(req.query.offsetMs)) : 0;
     const recording = { mime, ext, bytes, offsetMs, uploadedAt: new Date().toISOString() };
@@ -236,8 +252,9 @@ export function createApp({ store, llm, log, config, publicDir = 'public', stage
     res.sendFile(file, { headers: { 'Content-Type': convo.recording.mime === 'video/quicktime' ? 'video/mp4' : convo.recording.mime } });
   });
 
+  // Background lines (lip lock) never reach the face alignment, the insight or the heatmap.
   const insightFor = convo => generateInsight({
-    llm, note: convo.note, behavior: convo.behavior, hooks: convo.hooks, signals: convo.signals, turns: convo.turns, userLabel: convo.userLabel,
+    llm, note: convo.note, behavior: convo.behavior, hooks: convo.hooks, signals: convo.signals, turns: speechTurns(convo.turns), userLabel: convo.userLabel,
   });
 
   app.post('/api/conversations/:id/behavior', async (req, res, next) => {
@@ -264,7 +281,7 @@ export function createApp({ store, llm, log, config, publicDir = 'public', stage
 
       const behavior = alignBehavior({
         model: req.body.model, fps: Number(req.body.fps), frames,
-        turns: labeled.turns ?? [], userLabel: labeled.userLabel, signals: labeled.signals, hooks: labeled.hooks,
+        turns: speechTurns(labeled.turns), userLabel: labeled.userLabel, signals: labeled.signals, hooks: labeled.hooks,
       });
       mkdirSync(recordingsDir, { recursive: true });
       writeFileSync(framesPath(convo.id), JSON.stringify(frames));
@@ -305,7 +322,7 @@ export function createApp({ store, llm, log, config, publicDir = 'public', stage
     if (!convo) return;
     const file = framesPath(convo.id);
     const frames = convo.behavior && existsSync(file) ? JSON.parse(readFileSync(file, 'utf8')) : [];
-    res.json(buildHeatmap({ turns: convo.turns, userLabel: convo.userLabel, hooks: convo.hooks, signals: convo.signals, behavior: convo.behavior, frames }));
+    res.json(buildHeatmap({ turns: speechTurns(convo.turns), userLabel: convo.userLabel, hooks: convo.hooks, signals: convo.signals, behavior: convo.behavior, frames }));
   });
 
   app.get('/api/memory', (req, res) => {
@@ -320,7 +337,7 @@ export function createApp({ store, llm, log, config, publicDir = 'public', stage
       otherAvgAnswerWords: c.signals.otherAvgAnswerWords,
       userTalkShare: c.signals.userTalkShare,
     }));
-    res.json({ conversations, pattern: store.getKv('pattern'), nextStep: store.latestNextStep(), signalTable });
+    res.json({ conversations: conversations.map(flagged), pattern: store.getKv('pattern'), nextStep: store.latestNextStep(), signalTable });
   });
 
   app.post('/api/next-step/:id', (req, res) => {

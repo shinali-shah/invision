@@ -296,3 +296,97 @@ test('a conversation deleted while its stream is open is not written back or ann
   assert.deepEqual(updates, []);
   assert.deepEqual(published, []);
 });
+
+// ---- lip lock: cue frames over the same socket ----
+
+// A fake Muse that answers "end" with a scripted exchange: you, them, a bystander, you, them.
+function scriptedStream(turnsSpec) {
+  return ({ onEvent, onClose }) => Promise.resolve({
+    sendAudio() {},
+    async end() {
+      for (const [turnId, speaker, startMs, endMs] of turnsSpec) {
+        onEvent({ type: 'speechStart', turnId, audioProcessedMs: startMs });
+        onEvent({ type: 'speaker', label: speaker, audioProcessedMs: startMs + 100 });
+        onEvent({ type: 'speechEnd', turnId, audioProcessedMs: endMs });
+        onEvent({ type: 'speechComplete', turnId, transcript: `line ${turnId}`, audioProcessedMs: endMs });
+      }
+      onClose(1000);
+    },
+  });
+}
+
+const cueRun = (from, to, flags) => Array.from({ length: Math.ceil((to - from) / 125) }, (_, i) => ({ t: from + i * 125, face: true, mouth: 0, theirs: false, mine: false, ...flags }));
+
+async function runWithCues({ cueBatches, turnsSpec, recordingsDir }) {
+  const http = await import('node:http');
+  const { WebSocket } = await import('ws');
+  const { attachTranscribeSocket } = await import('../src/transcribe/wsRoute.js');
+  const saved = {};
+  const store = { getConversation: () => ({ id: 'c1', ...saved }), updateConversation: (id, patch) => { Object.assign(saved, patch); return { id, ...saved }; } };
+  const published = [];
+  const server = http.createServer();
+  attachTranscribeSocket({ server, store, log: () => {}, config: { mock: false }, openStream: scriptedStream(turnsSpec), stage: { publish: m => published.push(m) }, recordingsDir });
+  await new Promise(r => server.listen(0, r));
+  const ws = new WebSocket(`ws://localhost:${server.address().port}/ws/transcribe?conversationId=c1`);
+  const done = await new Promise((resolve, reject) => {
+    ws.on('message', raw => {
+      const m = JSON.parse(raw.toString());
+      if (m.type === 'ready') {
+        ws.send(Buffer.alloc(3840));
+        for (const samples of cueBatches) ws.send(JSON.stringify({ type: 'cues', samples }));
+        ws.send(JSON.stringify({ type: 'end' }));
+      }
+      if (m.type === 'done') resolve(m);
+    });
+    ws.on('error', reject);
+  });
+  server.close();
+  return { done, saved, published };
+}
+
+test('cue frames label the turns, pick your voice and drop the bystander from the count', async () => {
+  const { mkdtempSync, existsSync, readFileSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const { join } = await import('node:path');
+  const recordingsDir = join(mkdtempSync(join(tmpdir(), 'playback-cues-')), 'rec');
+
+  const turnsSpec = [[1, 'A', 0, 2000], [2, 'B', 2200, 5000], [3, 'C', 5300, 6500], [4, 'A', 7000, 9000], [5, 'B', 9200, 12000]];
+  const cueBatches = [
+    cueRun(0, 2100, { mine: true }),
+    cueRun(2100, 5200, { theirs: true }),
+    cueRun(5200, 6900, {}),
+    cueRun(6900, 9100, { mine: true }),
+    cueRun(9100, 12100, { theirs: true }),
+  ];
+  const { done, saved, published } = await runWithCues({ cueBatches, turnsSpec, recordingsDir });
+
+  assert.deepEqual(done.turns.map(t => t.source), ['you', 'them', 'crowd', 'you', 'them']);
+  assert.equal(done.userLabel, 'A');
+  assert.equal(done.crowdTurns, 1);
+  assert.equal(saved.userLabel, 'A');
+  assert.deepEqual(saved.turns.map(t => t.source), done.turns.map(t => t.source));
+  // cues live next to the video, not on the conversation object
+  assert.equal(saved.cues, undefined);
+  const file = join(recordingsDir, 'c1.cues.json');
+  assert.ok(existsSync(file), 'cues file written');
+  assert.equal(JSON.parse(readFileSync(file, 'utf8')).length, cueBatches.flat().length);
+  const stageDone = published.find(m => m.type === 'done');
+  assert.equal(stageDone.userLabel, 'A');
+  assert.equal(stageDone.turns[2].source, 'crowd');
+});
+
+test('without cues the done message is as before: no label picked, nothing written', async () => {
+  const { done, saved } = await runWithCues({ cueBatches: [], turnsSpec: [[1, 'A', 0, 2000], [2, 'B', 2200, 5000]] });
+  assert.equal(done.userLabel, null);
+  assert.equal(done.crowdTurns, 0);
+  assert.ok(done.turns.every(t => t.source === 'unknown'));
+  assert.equal(saved.userLabel, undefined);
+});
+
+test('malformed cue frames are ignored rather than crashing the stream', async () => {
+  const { done } = await runWithCues({
+    cueBatches: [[{ t: 'nope' }, null, 42, { t: 100, face: true, theirs: true, mine: false }], 'not-an-array'],
+    turnsSpec: [[1, 'A', 0, 2000]],
+  });
+  assert.equal(done.turns.length, 1);
+});

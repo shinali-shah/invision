@@ -6,6 +6,7 @@ import { findPattern } from './agents/patternFinder.js';
 import { proposeNextStep } from './agents/nextStep.js';
 import { draftFollowUp, templateFollowUp } from './agents/followUp.js';
 import { extractHooks } from './nlp/hooks.js';
+import { speechTurns } from './transcribe/crowd.js';
 
 const TOO_SHORT = Object.freeze({
   text: null, suggestion: null, citedTurnIds: [], status: 'dropped', reason: 'too_short', source: 'fallback',
@@ -17,10 +18,12 @@ const userOwned = followUp => !!followUp && (followUp.status === 'sent' || follo
 // Steps 4–6 of the spec: analyze → coach → review → remember.
 export async function processConversation({ store, llm, log, id, reflection }) {
   let convo = store.updateConversation(id, { reflection: reflection ?? '' });
-  const turns = convo.turns ?? [];
+  // Background lines stay on the conversation for display but never reach the analysis;
+  // computeRuleSignals sees them all so it can count them.
+  const turns = speechTurns(convo.turns);
   const userLabel = convo.userLabel ?? turns[0]?.speaker ?? 'A';
 
-  const ruleSignals = computeRuleSignals(turns, userLabel);
+  const ruleSignals = computeRuleSignals(convo.turns ?? [], userLabel);
   const hooks = extractHooks(turns, userLabel, { otherName: convo.otherName });
   store.updateConversation(id, { hooks });
   log('nlp', 'info', 'hooks extracted', {
@@ -40,7 +43,7 @@ export async function processConversation({ store, llm, log, id, reflection }) {
   // take the process down.
   const drafting = userOwned(convo.followUp)
     ? Promise.resolve(convo.followUp)
-    : writeFollowUp({ llm, log, convo: { ...convo, hooks, userLabel } }).catch(err => {
+    : writeFollowUp({ llm, log, convo: { ...convo, turns, hooks, userLabel } }).catch(err => {
       log('followUp', 'warn', `follow-up failed, using the template: ${err.message}`);
       return { ...templateFollowUp({ hooks, otherName: convo.otherName, tag: convo.tag }), status: 'draft', sentAt: null };
     });
@@ -56,7 +59,7 @@ export async function processConversation({ store, llm, log, id, reflection }) {
   const remembering = refreshMemory({ store, llm, log }).catch(err => log('pattern', 'warn', `memory refresh failed: ${err.message}`));
   // The tag may have been switched while we were classifying; coach for the one that's there now.
   const tag = store.getConversation(id)?.tag ?? convo.tag;
-  const note = await coachAndReview({ store, llm, log, convo: { ...convo, tag, signals, userLabel, hooks } });
+  const note = await coachAndReview({ store, llm, log, convo: { ...convo, turns, tag, signals, userLabel, hooks } });
   convo = store.updateConversation(id, { note });
 
   const [followUp] = await Promise.all([drafting, remembering]);
@@ -82,7 +85,7 @@ export function withDetector(signals, detector, log) {
 
 export async function writeFollowUp({ llm, log, convo }) {
   const draft = await draftFollowUp({
-    llm, tag: convo.tag, otherName: convo.otherName, hooks: convo.hooks, turns: convo.turns, userLabel: convo.userLabel,
+    llm, tag: convo.tag, otherName: convo.otherName, hooks: convo.hooks, turns: speechTurns(convo.turns), userLabel: convo.userLabel,
   });
   log('followUp', draft.source === 'template' ? 'warn' : 'info',
     draft.source === 'template' ? 'follow-up from template (Muse draft missing or not grounded)' : 'follow-up drafted',
@@ -104,7 +107,7 @@ async function coachAndReview({ store, llm, log, convo }) {
     llm,
     tag: convo.tag,
     signals: convo.signals,
-    turns: convo.turns,
+    turns: speechTurns(convo.turns),
     userLabel: convo.userLabel,
     reflection: convo.reflection ?? '',
     hooks: convo.hooks,

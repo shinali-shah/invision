@@ -487,3 +487,19 @@ svg { display: block; vertical-align: middle; }
 .takeaway .play:disabled:hover { background:transparent; color:inherit; border-color:currentColor; }
 .who-field input:disabled { opacity:.6; }
 .brief[hidden] { display:none; }
+/* Not coached yet: the row's two reflection columns become one line and a way to finish on Replay. */
+.uncoached { display:flex; align-items:center; flex-wrap:wrap; gap:10px 14px; margin:18px 0 0 56px; }
+.uncoached p { margin:0; color:var(--ink-2); font-size:14.5px; line-height:1.55; }
+.uncoached-dot { width:9px; height:9px; border-radius:50%; background:var(--red-ink); flex:none; }
+.uncoached .followup-btn { margin:0; }
+.followup-btn.finish-btn { background:var(--marigold); border-color:var(--marigold); color:var(--ink); }
+.followup-btn.finish-btn:hover { background:#ffb73d; border-color:#ffb73d; color:var(--ink); }
+.task-row .followup-btn.finish-btn { margin-left:28px; }
+.uncoached.transcript-reflection { margin-left:0; padding-top:18px; border-top:1.5px solid var(--ink); }
+/* Transcript page: where the three takeaway cards would sit, a night card with the one thing left to do. */
+.uncoached-hero { display:grid; gap:12px; justify-items:start; margin-bottom:16px; padding:28px 32px; background:var(--night); color:var(--bone); border:1.5px solid var(--night); border-radius:22px; }
+.uncoached-hero .label { color:var(--marigold); }
+.uncoached-hero h2 { font-size:clamp(34px,4vw,52px); color:var(--bone); }
+.uncoached-hero p { max-width:62ch; color:var(--bone-2); font-size:15px; line-height:1.55; }
+.uncoached-hero .button { margin-top:4px; }
+@media (max-width:1000px) { .uncoached { margin-left:0; } }
