@@ -153,6 +153,38 @@ export function drawMesh(ctx, xy, r, { bone = '#f3ead8', marigold = '#f4a51c', a
   ctx.lineWidth = line * 1.25;
   ctx.globalAlpha = alpha;
   strokeSet(ctx, sets.lips, xy, r);
+
+  // Every landmark as a point: this is what reads as "it's scanning him" from across a room.
+  // The lines above give the face its shape; the points show the model's actual output.
+  let minY = 1; let maxY = 0;
+  for (let i = 1; i < xy.length; i += 2) { if (xy[i] < minY) minY = xy[i]; if (xy[i] > maxY) maxY = xy[i]; }
+  // One path, one fill: 478 separate fillRects every frame showed up on a 4K canvas.
+  const dot = Math.max(hair, Math.min(2.2, faceW / 150));
+  ctx.fillStyle = bone;
+  ctx.globalAlpha = alpha * 0.85;
+  ctx.beginPath();
+  for (let i = 0; i < xy.length; i += 2) {
+    ctx.rect(r.x + xy[i] * r.w - dot / 2, r.y + xy[i + 1] * r.h - dot / 2, dot, dot);
+  }
+  ctx.fill();
+
+  // corner brackets around the face, like a viewfinder locking on
+  const pad = 0.04;
+  const x0 = r.x + Math.max(0, minX - pad) * r.w;
+  const y0 = r.y + Math.max(0, minY - pad * 1.4) * r.h;
+  const x1 = r.x + Math.min(1, maxX + pad) * r.w;
+  const y1 = r.y + Math.min(1, maxY + pad) * r.h;
+  const arm = Math.min(x1 - x0, y1 - y0) * 0.2;
+  ctx.strokeStyle = marigold;
+  ctx.lineWidth = Math.max(1.5, line * 1.6);
+  ctx.globalAlpha = alpha;
+  ctx.beginPath();
+  for (const [cx, cy, dx, dy] of [[x0, y0, 1, 1], [x1, y0, -1, 1], [x0, y1, 1, -1], [x1, y1, -1, -1]]) {
+    ctx.moveTo(cx + dx * arm, cy);
+    ctx.lineTo(cx, cy);
+    ctx.lineTo(cx, cy + dy * arm);
+  }
+  ctx.stroke();
   ctx.restore();
 }
 
@@ -210,14 +242,15 @@ export function createFaceOverlay({ video, canvas, box, detect, enabled, onFrame
     clearCanvas();
   }
 
-  // After HOLD_MS without a face, fade the held mesh out over FADE_MS.
+  // After HOLD_MS without a face, fade the held mesh out over FADE_MS. The hold has to keep its
+  // own clock going too: on a paused or ended video there is no next frame to call this again,
+  // and the mesh used to stay up over a face-less frame until the next seek.
   function fadeOut(now) {
     const gone = now - lastFaceAt;
-    if (gone < HOLD_MS) { paint(1); return; }
-    const a = 1 - (gone - HOLD_MS) / FADE_MS;
+    const a = gone < HOLD_MS ? 1 : 1 - (gone - HOLD_MS) / FADE_MS;
     if (a <= 0) { drawn = null; smoother.reset(); clearCanvas(); return; }
     paint(a);
-    if (!fading) fading = requestAnimationFrame((t) => { fading = 0; if (!drawn || !enabled()) return; if (performance.now() - lastFaceAt >= HOLD_MS) fadeOut(t); });
+    if (!fading) fading = requestAnimationFrame((t) => { fading = 0; if (!destroyed && drawn && enabled()) fadeOut(t); });
   }
 
   // One frame: run the model (unless decimated), filter, draw.
@@ -229,7 +262,7 @@ export function createFaceOverlay({ video, canvas, box, detect, enabled, onFrame
     if (!force && stats.decimated && skipNext) {
       skipNext = false;
       stats.skipped += 1;
-      if (drawn) paint(1); // hold the filtered mesh on the in-between frame
+      if (drawn && !fading) paint(1); // hold the filtered mesh on the in-between frame; mid-fade the fade owns the paint
       return;
     }
     skipNext = true;
@@ -339,6 +372,8 @@ export function createFaceOverlay({ video, canvas, box, detect, enabled, onFrame
     destroy() {
       destroyed = true;
       stopLoop();
+      cancelAnimationFrame(fading);
+      fading = 0;
       ro.disconnect();
       document.removeEventListener('fullscreenchange', onFs);
       for (const [ev, fn] of [['play', onPlay], ['playing', onPlay], ['pause', onPause], ['ended', onPause], ['seeking', onSeeking], ['seeked', onSeeked], ['emptied', onEmptied], ['loadedmetadata', onMeta]]) video.removeEventListener(ev, fn);

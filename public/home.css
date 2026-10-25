@@ -203,7 +203,7 @@ h1 { margin-bottom:0; font-size:44px; line-height:1.1; font-weight:500; letter-s
 .transcript { scroll-margin-top:24px; }
 
 .live-transcript { height:190px; margin:20px 0 12px; padding:4px 2px; overflow-y:auto; display:flex; flex-direction:column; gap:12px; border-top:1px solid var(--line); border-bottom:1px solid var(--line); padding-top:14px; padding-bottom:14px; scrollbar-width:thin; }
-.live-transcript .line { display:grid; grid-template-columns:34px 44px 1fr; gap:10px; align-items:baseline; animation:card-in .3s ease both; }
+.live-transcript .line { display:grid; grid-template-columns:34px 68px 1fr; gap:10px; align-items:baseline; animation:card-in .3s ease both; }
 .live-transcript .line-time { font-family:var(--font-mono); font-size:10px; color:var(--ink-3); }
 .live-transcript .line-who { font-size:9px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-3); }
 .live-transcript .line.me .line-who { color:var(--accent); }
@@ -380,8 +380,6 @@ h1,.page-intro h1 { font-size:clamp(56px,9vw,112px); line-height:.84; }
 .before-row { display:flex; gap:14px; align-items:flex-end; flex-wrap:wrap; }
 .who-field { flex:1 1 220px; display:grid; }
 .who-field .label { color:var(--bone-2); }
-.who-field input { height:46px; padding:0 18px; border:1.5px solid var(--night-line); border-radius:99px; background:var(--night-2); color:var(--bone); font:inherit; font-size:16px; }
-.who-field input:focus { outline:none; border-color:var(--marigold); }
 .cam-toggle { height:46px; padding:0 18px; display:inline-flex; align-items:center; gap:9px; border:1.5px solid var(--night-line); border-radius:99px; background:transparent; color:var(--bone-2); font-size:12px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; }
 .cam-toggle .dot { width:9px; height:9px; border-radius:50%; border:2px solid currentColor; }
 .cam-toggle.on { color:var(--bone); border-color:var(--bone); }
@@ -485,7 +483,6 @@ svg { display: block; vertical-align: middle; }
 .page-intro:has(> .intro-actions) { align-items:flex-end; flex-wrap:wrap; }
 .takeaway .play:disabled { opacity:.45; cursor:default; }
 .takeaway .play:disabled:hover { background:transparent; color:inherit; border-color:currentColor; }
-.who-field input:disabled { opacity:.6; }
 .brief[hidden] { display:none; }
 /* Not coached yet: the row's two reflection columns become one line and a way to finish on Replay. */
 .uncoached { display:flex; align-items:center; flex-wrap:wrap; gap:10px 14px; margin:18px 0 0 56px; }

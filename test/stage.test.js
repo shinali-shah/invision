@@ -72,6 +72,79 @@ test('hub sends hello with the last focus and fans out to every subscriber', () 
   assert.equal(sent[2][0].focus.view, 'label');
 });
 
+test('hub replays the lines of a recording still going to a late joiner', () => {
+  const hub = createStageHub({ mock: true });
+  const sent = [];
+  const fake = () => ({ readyState: 1, OPEN: 1, send: s => sent.push(JSON.parse(s)), on() {} });
+  hub.focus({ view: 'recording', conversationId: 'c1' });
+  // Finished turns, out of order, with a partial for the open one and a stale partial for a closed one
+  hub.publish({ type: 'turn', conversationId: 'c1', turn: { turnId: 2, speaker: 'B', text: 'two', startMs: 3000, endMs: 5000 } });
+  hub.publish({ type: 'partial', conversationId: 'c1', turnId: 1, text: 'on', speaker: 'unknown' });
+  hub.publish({ type: 'turn', conversationId: 'c1', turn: { turnId: 1, speaker: 'A', text: 'one', startMs: 0, endMs: 2000 } });
+  hub.publish({ type: 'partial', conversationId: 'c1', turnId: 3, text: 'thr', speaker: 'unknown' });
+  hub.publish({ type: 'partial', conversationId: 'c1', turnId: 3, text: 'three so', speaker: 'A' });
+
+  hub.subscribe(fake());
+  assert.equal(sent[0].type, 'hello');
+  assert.deepEqual(sent.slice(1).map(m => [m.type, m.turnId ?? m.turn.turnId, m.text ?? m.turn.text]), [
+    ['turn', 1, 'one'], ['turn', 2, 'two'], ['partial', 3, 'three so'],
+  ]);
+
+  // Once the recording is over the store has the turns; nothing to replay
+  hub.publish({ type: 'done', conversationId: 'c1', turns: [] });
+  sent.length = 0;
+  hub.subscribe(fake());
+  assert.deepEqual(sent.map(m => m.type), ['hello']);
+});
+
+test('hub forgets a deleted conversation, including when it was the one in focus', () => {
+  const hub = createStageHub({ mock: true });
+  const sent = [];
+  const fake = () => ({ readyState: 1, OPEN: 1, send: s => sent.push(JSON.parse(s)), on() {} });
+  hub.focus({ view: 'coaching', conversationId: 'c1', otherName: 'Abuela' });
+  hub.publish({ type: 'turn', conversationId: 'c1', turn: { turnId: 1, speaker: 'A', text: 'one' } });
+  hub.publish({ type: 'deleted', conversationId: 'c1' });
+  hub.subscribe(fake());
+  assert.deepEqual(sent.map(m => m.type), ['hello']);
+  assert.equal(sent[0].focus.view, 'start');
+  assert.equal(sent[0].focus.conversationId, null);
+
+  // Memory stays memory: that screen doesn't depend on the deleted one
+  hub.focus({ view: 'memory', conversationId: 'c2' });
+  hub.publish({ type: 'deleted', conversationId: 'c2' });
+  sent.length = 0;
+  hub.subscribe(fake());
+  assert.equal(sent[0].focus.view, 'memory');
+  assert.equal(sent[0].focus.conversationId, null);
+
+  // Deleting something else leaves the focus alone
+  hub.focus({ view: 'coaching', conversationId: 'c3' });
+  hub.publish({ type: 'deleted', conversationId: 'c4' });
+  sent.length = 0;
+  hub.subscribe(fake());
+  assert.equal(sent[0].focus.conversationId, 'c3');
+});
+
+test('hub skips closed sockets and cuts off one that stopped reading', () => {
+  const hub = createStageHub({ mock: true });
+  const sent = [];
+  let terminated = 0;
+  const listeners = {};
+  const closed = { readyState: 3, OPEN: 1, send: () => { throw new Error('send on a closed socket'); }, on() {} };
+  const stuck = { readyState: 1, OPEN: 1, bufferedAmount: 2 << 20, send: s => sent.push(s), on() {}, terminate: () => { terminated++; } };
+  const fine = { readyState: 1, OPEN: 1, send: s => sent.push(JSON.parse(s)), on: (ev, fn) => { listeners[ev] = fn; } };
+  hub.subscribe(closed);
+  hub.subscribe(stuck);
+  hub.subscribe(fine);
+  assert.equal(terminated, 1);
+  hub.publish({ type: 'memory' });
+  assert.equal(terminated, 2);
+  assert.deepEqual(sent.map(m => m.type), ['hello', 'memory']);
+  // a client that sends garbage emits 'error'; without a listener that would crash the process
+  assert.equal(typeof listeners.error, 'function');
+  assert.doesNotThrow(() => listeners.error(new Error('invalid frame')));
+});
+
 test('focus endpoint validates the view and broadcasts it', async () => {
   const stage = await openStage();
   await stage.waitFor(m => m.type === 'hello');

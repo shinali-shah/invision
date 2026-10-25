@@ -29,7 +29,18 @@ const VOCATIVES = [
 
 // Capitalised words Muse hands us that are not names. STOPWORDS covers most 4+ letter fillers;
 // the kin words are pulled back out because "Hi Abuela" is exactly the case we want.
-const KIN = new Set(['abuela', 'abuelo', 'mom', 'mama', 'papa', 'dad', 'nana', 'tia', 'tio']);
+const KIN = new Set([
+  'abuela', 'abuelo', 'abuelita', 'abuelito', 'mom', 'mum', 'mommy', 'mama', 'mamá', 'papa', 'papá', 'dad', 'daddy',
+  'grandma', 'grandpa', 'grandmother', 'grandfather', 'granny', 'gramps', 'grandad', 'granddad', 'nana', 'nani', 'nanu',
+  'dada', 'dadi', 'dadaji', 'nanaji', 'tia', 'tía', 'tio', 'tío', 'auntie', 'aunty',
+]);
+// Family words are a closed list, so unlike a name they count however Muse cased them and
+// wherever they land in the line, as long as they are said *to* someone: "How are you doing
+// Grandpa?" and "okay Grandpa I'm going" yes; "Grandma really misses you" and "my grandpa is" no.
+const KIN_VOCATIVE = new RegExp(
+  `(?:^|[^\\p{L}])(?<!\\b(?:my|your|his|her|our|their|the|a|an|mi|tu|su|to|with|for|about|of|and|y|con|para|de)\\s+)(${[...KIN].sort((a, b) => b.length - a.length).join('|')})(?=\\s*[,!?.;:…]|\\s*$|\\s+${OPENER})`,
+  'giu',
+);
 const NOT_NAMES = new Set([
   'hi', 'hey', 'hello', 'hola', 'okay', 'ok', 'yes', 'yeah', 'yep', 'no', 'nope', 'so', 'oh', 'ah', 'um', 'uh', 'wow',
   'bro', 'dude', 'man', 'girl', 'guys', 'guy', 'buddy', 'pal', 'mate', 'honey', 'dear', 'love', 'babe', 'champ', 'boss',
@@ -82,6 +93,12 @@ function mentions(turns) {
       const m = text.match(re);
       const name = m && validName(m[1]);
       if (!name || seen.has(normName(name))) continue;
+      seen.add(normName(name));
+      out.push({ name, cue: 'vocative', addressedBy: t.speaker, turnId: t.turnId, how: `vocative "${m[0].trim()}" on turn ${t.turnId}` });
+    }
+    for (const m of text.matchAll(KIN_VOCATIVE)) {
+      const name = m[1][0].toUpperCase() + m[1].slice(1).toLowerCase();
+      if (seen.has(normName(name))) continue;
       seen.add(normName(name));
       out.push({ name, cue: 'vocative', addressedBy: t.speaker, turnId: t.turnId, how: `vocative "${m[0].trim()}" on turn ${t.turnId}` });
     }

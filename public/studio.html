@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="color-scheme" content="light dark">
+  <meta name="color-scheme" content="light">
   <title>Playback</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E%3Crect x=%224%22 y=%229%22 width=%2214%22 height=%225%22 rx=%222%22 fill=%22%232F6F66%22/%3E%3Crect x=%2214%22 y=%2218%22 width=%2214%22 height=%225%22 rx=%222%22 fill=%22%236B5B73%22/%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -256,6 +256,13 @@
     }
 
     listen();
+
+    // Same initials Home shows (USER_NAME on the server); "PS" is only the placeholder until it answers.
+    fetch('/api/me').then(r => r.json()).then(me => {
+      const words = typeof me?.name === 'string' ? me.name.trim().split(/\s+/).filter(Boolean) : [];
+      const initials = words.slice(0, 2).map(w => Array.from(w)[0].toUpperCase()).join('');
+      if (initials) $('avatar').textContent = initials;
+    }).catch(() => {});
 
     const [name, id] = location.hash.slice(1).split('=');
     if (name === 'replay') openReplay(id || null);

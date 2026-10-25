@@ -15,13 +15,26 @@ const TOO_SHORT = Object.freeze({
 // A message the user already sent or rewrote in their own words is theirs; no draft replaces it.
 const userOwned = followUp => !!followUp && (followUp.status === 'sent' || followUp.source === 'edited');
 
+// Whose lines are "you" when the analysis runs. Nobody tapped a line on a recording with one
+// voice (a mic test, a voice memo), so that voice is the user's; every reader of the turns
+// (coach, face alignment, insight, heatmap) has to agree on this or they describe different people.
+export function userLabelFor(convo) {
+  return convo.userLabel ?? speechTurns(convo.turns)[0]?.speaker ?? 'A';
+}
+
 // Steps 4–6 of the spec: analyze → coach → review → remember.
 export async function processConversation({ store, llm, log, id, reflection }) {
   let convo = store.updateConversation(id, { reflection: reflection ?? '' });
+  // The phone deletes a conversation when the user walks out; a tap that was already on its way
+  // here has nothing to coach, and must not fall over on the empty row.
+  if (!convo) {
+    log('pipeline', 'info', `conversation ${id.slice(0, 8)} is gone; nothing to coach`);
+    return null;
+  }
   // Background lines stay on the conversation for display but never reach the analysis;
   // computeRuleSignals sees them all so it can count them.
   const turns = speechTurns(convo.turns);
-  const userLabel = convo.userLabel ?? turns[0]?.speaker ?? 'A';
+  const userLabel = userLabelFor(convo);
 
   const ruleSignals = computeRuleSignals(convo.turns ?? [], userLabel);
   const hooks = extractHooks(turns, userLabel, { otherName: convo.otherName });
@@ -96,7 +109,9 @@ export async function writeFollowUp({ llm, log, convo }) {
 // Demo moment 1:45: same signals, different relationship, new note.
 export async function recoach({ store, llm, log, id, tag }) {
   const convo = store.updateConversation(id, { tag });
-  if (!convo.signals || (convo.turns ?? []).length < 2) return convo;
+  if (!convo) return null; // deleted between the tap and here
+  // Same bar as processConversation: a recording that was all bystanders stays "too short".
+  if (!convo.signals || speechTurns(convo.turns).length < 2) return convo;
   log('pipeline', 'info', `re-coaching ${id.slice(0, 8)} as ${tag}`);
   const note = await coachAndReview({ store, llm, log, convo });
   return store.updateConversation(id, { note });

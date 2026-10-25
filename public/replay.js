@@ -29,8 +29,12 @@ const MARKS = {
   tk2: { cls: 'tk', sym: '2', label: 'Keep doing this' },
   tk3: { cls: 'tk', sym: '3', label: 'Ask about it next time' },
   awk: { cls: 'awk', sym: '', label: 'Awkward moment' },
+  ask: { cls: 'q', sym: '', label: 'You asked' },
+  said: { cls: 'sd', sym: '', label: 'They brought up' },
+  promise: { cls: 'pr', sym: '', label: 'You promised' },
+  moment: { cls: 'mo', sym: '', label: 'On camera' },
 };
-const MARK_ORDER = ['tk1', 'tk2', 'tk3', 'awk', 'follow', 'missed'];
+const MARK_ORDER = ['tk1', 'tk2', 'tk3', 'moment', 'awk', 'follow', 'missed', 'ask', 'said', 'promise'];
 // The Figma's .tl-track (who's talking, with the moment dots above it) is DOM; the face cues
 // underneath it are still a canvas.
 const TRACK_TOP = 0;    // the dots overhang the tl-head margin, like the Figma
@@ -63,6 +67,7 @@ const state = {
   insightError: null,
   nods: [],             // transcript ms of each nod found in frames
   analysing: false,
+  analysisFailed: false, // the last pass over this video stopped early; the page carries on without cues
   autoStarted: false,
   pendingUpload: null,  // frames we couldn't post yet
   uploading: false,
@@ -73,7 +78,8 @@ const state = {
   overlay: null,        // the live mesh (overlay.js), once init has the elements
   videoSrc: null,
   compare: { id: null, data: null }, // /compare, for the "Last time" numbers
-  draftFor: null,       // conversation whose follow-up draft is in the modal's textarea
+  draftFor: null,       // { id, text }: whose draft is in the modal's textarea, and what we put there
+  drafting: false,      // POST /follow-up in flight for the modal
 };
 
 // ---------- helpers ----------
@@ -220,6 +226,15 @@ function markersByTurn(c) {
   if (needsVoice()) return new Map();
   for (const b of (c.hooks && c.hooks.missedBids) || []) add(b.turnId, 'missed');
   for (const f of awkward().flags) if (f.who === 'you') add(f.turnId, 'awk');
+  // the quieter beats: every question you asked, the things they brought up, what you promised
+  const followed = new Set([...out.entries()].filter(([, k]) => k.has('follow')).map(([id]) => id));
+  for (const q of qs) if (!followed.has(q.turnId)) add(q.turnId, 'ask');
+  const h = c.hooks || {};
+  const mentioned = new Set((h.events || []).map((e) => e.turnId));
+  for (const t of h.topics || []) for (const id of t.turnIds || []) mentioned.add(id);
+  for (const id of mentioned) if (!out.has(id) || !out.get(id).has('missed')) add(id, 'said');
+  for (const p of h.commitments || []) add(p.turnId, 'promise');
+  for (const m of cameraMoments()) add(m.turnId, 'moment');
   // numbered like the cards: 1 try, 2 keep, 3 ask
   const { tryT, keep, ask } = threeTakeaways();
   [tryT, keep, ask].forEach((t, i) => { if (t) add(t.turnId, `tk${i + 1}`); });
@@ -254,6 +269,26 @@ function markerTitle(turnId, kinds) {
     if (k.startsWith('tk')) {
       const t = tks[Number(k.slice(2)) - 1];
       return t && t.title ? `${MARKS[k].label}: ${t.title}` : MARKS[k].label;
+    }
+    if (k === 'ask') {
+      const line = turnsOf(state.convo).find((t) => t.turnId === turnId);
+      return line && line.text ? `You asked: “${line.text}”` : MARKS.ask.label;
+    }
+    if (k === 'said') {
+      const h = state.convo.hooks || {};
+      const what = [
+        ...(h.events || []).filter((e) => e.turnId === turnId).map((e) => e.text),
+        ...(h.topics || []).filter((t) => (t.turnIds || []).includes(turnId)).map((t) => t.term),
+      ].filter(Boolean);
+      return what.length ? `They brought up ${what.map((w) => `“${w}”`).join(', ')}: something to come back to` : MARKS.said.label;
+    }
+    if (k === 'promise') {
+      const p = ((state.convo.hooks && state.convo.hooks.commitments) || []).find((x) => x.turnId === turnId);
+      return p && p.text ? `You promised: “${p.text}”` : MARKS.promise.label;
+    }
+    if (k === 'moment') {
+      const m = cameraMoments().find((x) => x.turnId === turnId);
+      return m ? `${m.title}: ${m.observation}` : MARKS.moment.label;
     }
     return MARKS[k].label;
   }).join('\n');
@@ -297,6 +332,7 @@ function syncFrames() {
     state.recKey = recKey;
     state.framesAsked = null;
     state.autoStarted = false;
+    state.analysisFailed = false;
     abortAnalysis();
     document.body.classList.remove('is-analysing');
     clearOverlay();
@@ -361,7 +397,8 @@ function refPitch(pts, i) {
 
 function frameAt(t) {
   const fs = state.frames;
-  if (!fs) return null;
+  // during analysis this is the run's own array, empty until the first frame lands
+  if (!fs || !fs.length) return null;
   let lo = 0;
   let hi = fs.length - 1;
   while (lo < hi) {
@@ -590,6 +627,7 @@ async function analyse() {
   // a re-upload bumps runId through syncFrames, but check the video itself too
   const live = () => state.runId === run && !!state.convo && !!state.convo.recording && state.convo.recording.uploadedAt === recAt;
   state.analysing = true;
+  state.analysisFailed = false;
   state.pendingUpload = null;
   const main = $('video');
   main.pause();
@@ -598,6 +636,9 @@ async function analyse() {
   $('word-status').textContent = 'Loading the face model…';
   setProgress(0, 1);
   document.body.classList.add('is-analysing');
+  // Drop the live mesh now: overlay.js repaints what it last drew on resize and loadedmetadata,
+  // which would land on top of the frames painted below.
+  clearOverlay();
 
   const frames = [];
   state.frames = frames;
@@ -664,8 +705,9 @@ async function analyse() {
     if (!live()) { clearOverlay(); return; }
     console.error('analysis failed', err);
     state.analysing = false;
+    state.analysisFailed = true;
     clearOverlay();
-    showAnalysisMsg(`Analysis stopped: ${err && err.message ? err.message : 'something went wrong'}.`, true,
+    showAnalysisMsg(`Analysis stopped: ${err && err.message ? err.message.replace(/\.$/, '') : 'something went wrong'}.`, true,
       el('button', { class: 'rp-btn rp-btn-quiet', type: 'button', text: 'Try again', on: { click: () => analyse() } }));
   } finally {
     v.removeAttribute('src');
@@ -678,6 +720,12 @@ async function analyse() {
       drawLanes();
       updatePlayhead();
       if (state.overlay) state.overlay.sync();
+      // A pass that stopped early left the strip on "Analysing the video…" and the takeaways
+      // waiting for cues that aren't coming. Say so, and write the takeaways from the words alone.
+      renderScores();
+      renderTakeaways();
+      renderMoments();
+      ensureInsight();
     }
   }
 }
@@ -691,6 +739,7 @@ async function upload(frames, recAt) {
   showAnalysisMsg('');
   renderAnalysisBar();
   renderTakeaways();
+  renderMoments();
   $('word-status').textContent = 'Lining the cues up with the transcript…';
   try {
     const body = { model: MODEL, fps: FPS, frames, recordingUploadedAt: recAt };
@@ -724,7 +773,7 @@ async function upload(frames, recAt) {
     renderAnalysisBar();
     // Both the stage echo and the response above rendered while uploading was still true, which
     // left the takeaways box saying "Writing…" for good.
-    if (sameVideo(recAt)) renderTakeaways();
+    if (sameVideo(recAt)) { renderTakeaways(); renderMoments(); }
   }
 }
 
@@ -1010,10 +1059,13 @@ function drawLanes() {
 // Figma .tl-track: one segment per turn, yours in --you, theirs in ink-3.
 function renderSegments(D) {
   const bts = behaviorTurns();
-  put($('segs'), ...turnsOf(state.convo).map((t) => {
+  // A negative offset means the camera started after the mic: lines from before the video began
+  // would otherwise hang off the left edge, over the labels.
+  const clamp = (ms) => Math.max(0, Math.min(D, ms));
+  put($('segs'), ...turnsOf(state.convo).filter((t) => toVideoMs(t.endMs || t.startMs) > 0).map((t) => {
     const side = sideOf(t, bts.get(t.turnId));
-    const s = toVideoMs(t.startMs);
-    const e = Math.max(toVideoMs(t.endMs || t.startMs), s + 400);
+    const s = clamp(toVideoMs(t.startMs));
+    const e = clamp(Math.max(toVideoMs(t.endMs || t.startMs), s + 400));
     return el('i', {
       class: `seg ${side === 'you' ? 'me' : side === 'them' ? 'them' : 'unk'}`,
       style: `left:${(s / D) * 100}%;width:${((e - s) / D) * 100}%`,
@@ -1335,6 +1387,7 @@ function renderTranscript() {
         kinds.has('follow') ? el('em', { class: 'tag fu', text: 'Follow-up' }) : null,
         kinds.has('missed') ? el('em', { class: 'tag ms', title: markerTitle(t.turnId, new Set(['missed'])), text: 'Missed moment' }) : null,
         ...tks.map((k) => el('em', { class: 'tag tk', title: markerTitle(t.turnId, new Set([k])), text: `Takeaway ${k.slice(2)}` })),
+        kinds.has('moment') ? el('em', { class: 'tag mo', title: markerTitle(t.turnId, new Set(['moment'])), text: 'On camera' }) : null,
         ...awkMain.map(awkChip),
         side === 'you' ? reactionChip(bt, ht && ht.reaction) : null,
       ),
@@ -1387,7 +1440,49 @@ function takeaways() {
 }
 
 const turnById = (id) => turnsOf(state.convo).find((t) => t.turnId === id) || null;
+
+// The turns the insight said were worth replaying, with what the camera saw on them.
+// Nothing until we know whose lines are whose: an observation about the wrong person is worse than none.
+function cameraMoments() {
+  const ins = state.convo && state.convo.insight;
+  if (!ins || needsVoice() || !Array.isArray(ins.moments)) return [];
+  return ins.moments
+    .filter((m) => m && Number.isInteger(m.turnId) && turnById(m.turnId) && (m.title || m.observation))
+    .map((m) => ({ turnId: m.turnId, title: m.title || 'Worth a look', observation: m.observation || '', why: m.why || '' }))
+    .sort((a, b) => a.turnId - b.turnId);
+}
+
+function renderMoments() {
+  const box = $('moments');
+  const list = cameraMoments();
+  box.hidden = !list.length;
+  if (!list.length) { put(box); return; }
+  const first = firstName();
+  put(box,
+    el('div', { class: 'mo-head' },
+      el('span', { class: 'label', text: 'On camera · moments worth replaying' }),
+      el('small', { text: `What was said and what ${first === 'them' ? 'their' : `${first}’s`} face did, with the numbers. Each one plays the recording from there.` })),
+    el('div', { class: 'mo-list' }, ...list.map((m) => {
+      const turn = turnById(m.turnId);
+      const side = turn ? sideOf(turn, behaviorTurns().get(turn.turnId)) : null;
+      const who = side === 'you' ? 'You' : theirLabel(turn);
+      return el('article', { class: 'moment', 'data-turn': m.turnId },
+        el('div', { class: 'mo-when' }, el('i', { 'aria-hidden': 'true' }), turn ? fmtClock(turn.startMs) : ''),
+        el('h4', { text: m.title }),
+        turn && turn.text ? el('p', { class: 'mo-line' }, el('b', { text: who }), `“${turn.text}”`) : null,
+        m.observation ? el('p', { class: 'mo-obs', text: m.observation }) : null,
+        m.why ? el('p', { class: 'mo-why', text: m.why }) : null,
+        playButton(m.turnId));
+    })));
+}
 const firstOf = (arr) => (Array.isArray(arr) && arr.length ? arr[0] : null);
+
+// Who said one of their quoted lines on a card: the name, else the voice's letter, else just "Them".
+function theirLabel(turn) {
+  const first = firstName();
+  if (first !== 'them') return first;
+  return turn && turn.speaker && turn.speaker !== 'unknown' ? `Speaker ${turn.speaker}` : 'Them';
+}
 
 // The Figma's three cards: try / keep / ask. Each comes from the matching takeaway when the
 // server wrote one, else from the nearest thing we measured, so the page is rarely blank.
@@ -1430,14 +1525,14 @@ function playButton(turnId) {
   return el('button', { class: 'play', type: 'button', on: { click: () => play(turnId) } }, el('span', { 'aria-hidden': 'true', text: '▶' }), ' Play the moment');
 }
 
-function tryCard(t, first) {
+function tryCard(t) {
   const turn = t && Number.isInteger(t.turnId) ? turnById(t.turnId) : null;
   const kids = [el('span', { class: 'label', text: '1 · Try this next time' })];
   if (!t) {
     kids.push(el('p', { class: 'tk-note tk-empty', text: 'Nothing to redo this time.' }));
   } else {
     kids.push(
-      quoteLine('tk-them', first, t.theySaid || null),
+      quoteLine('tk-them', theirLabel(null), t.theySaid || null),
       quoteLine('tk-you', 'You', t.said || (turn ? turn.text : null)),
       t.tryInstead ? el('p', { class: 'tk-rewrite' }, el('b', { text: 'Try instead' }), t.tryInstead) : null,
       t.text ? el('p', { class: 'tk-note', text: t.text }) : (t.title ? el('p', { class: 'tk-note', text: t.title }) : null),
@@ -1448,7 +1543,7 @@ function tryCard(t, first) {
   return el('article', { class: 'takeaway try' }, ...kids);
 }
 
-function keepCard(t, first) {
+function keepCard(t) {
   const turn = t && Number.isInteger(t.turnId) ? turnById(t.turnId) : null;
   const kids = [el('span', { class: 'label', text: '2 · Keep doing this' })];
   if (!t) {
@@ -1457,7 +1552,7 @@ function keepCard(t, first) {
     const side = turn ? sideOf(turn, behaviorTurns().get(turn.turnId)) : null;
     kids.push(
       t.said ? quoteLine('tk-you', 'You', t.said)
-        : turn ? quoteLine(side === 'them' ? 'tk-them' : 'tk-you', side === 'them' ? first : 'You', turn.text) : null,
+        : turn ? quoteLine(side === 'them' ? 'tk-them' : 'tk-you', side === 'them' ? theirLabel(turn) : 'You', turn.text) : null,
       el('p', { class: 'tk-note', text: t.text || t.title || '' }),
       t.evidence ? el('p', { class: 'tk-note tk-evidence', text: evidenceText(t.evidence) }) : null,
       playButton(t.turnId),
@@ -1480,7 +1575,7 @@ function takeawaysPending() {
   const c = state.convo;
   if (needsVoice()) return { msg: 'Pick which voice is yours first. Until then we can’t tell your lines from theirs.' };
   if (state.uploading || state.insightBusy) return { msg: 'Writing takeaways…', busy: true };
-  if (state.analysing || (hasVideo() && !c.behavior)) return { msg: 'Takeaways show up once the video is analysed.' };
+  if (state.analysing || (hasVideo() && !c.behavior && !state.analysisFailed)) return { msg: 'Takeaways show up once the video is analysed.' };
   if (state.insightError) {
     return {
       msg: `Couldn't write takeaways: ${state.insightError}`,
@@ -1503,20 +1598,21 @@ function renderTakeaways() {
     put(box, el('p', { class: 'rp-tk-empty', text: 'No takeaways this time.' }));
     return;
   }
-  const first = firstName();
-  put(box, tryCard(tryT, first), keepCard(keep, first), askCard(ask));
+  put(box, tryCard(tryT), keepCard(keep), askCard(ask));
 }
 
 // No insight yet (no video, or an older conversation): ask for one, once per page view.
 function ensureInsight() {
   const c = state.convo;
   if (!c || c.insight || state.insightAsked === c.id || needsVoice() || state.picking) return;
-  if (state.analysing || state.uploading || (hasVideo() && !c.behavior) || !turnsOf(c).length) return;
+  // With a video, wait for its cues; if the pass failed, the transcript alone will do.
+  if (state.analysing || state.uploading || (hasVideo() && !c.behavior && !state.analysisFailed) || !turnsOf(c).length) return;
   const id = c.id;
   state.insightAsked = id;
   state.insightBusy = true;
   state.insightError = null;
   renderTakeaways();
+  renderMoments();
   postJson(`/api/conversations/${enc(id)}/insight`, {})
     .then((ins) => { if (state.convo && state.convo.id === id && ins && !state.convo.insight) state.convo.insight = ins; })
     .catch((err) => {
@@ -1590,7 +1686,7 @@ function renderScores() {
     after = 'No camera on this call';
     other = 'No camera on this call';
   } else if (!tally) {
-    after = state.analysing ? 'Analysing the video…' : 'Not analysed yet';
+    after = state.analysing ? 'Analysing the video…' : state.analysisFailed ? 'Video analysis stopped early' : 'Not analysed yet';
     other = after;
   } else {
     after = tally.fu[1] ? `Smiled or nodded after ${tally.fu[0]} of ${plural(tally.fu[1], 'follow-up')}` : 'No follow-ups to react to';
@@ -1746,8 +1842,8 @@ function fmtWhen(iso) {
 function renderHeader() {
   const c = state.convo;
   const first = firstName();
-  $('title').textContent = `Conversation with ${first}`;
-  document.title = c ? `Replay of ${c.otherName || 'a conversation'}` : 'Playback Replay';
+  $('title').textContent = first === 'them' ? 'Conversation' : `Conversation with ${first}`;
+  document.title = c ? `Replay of ${first === 'them' ? 'a conversation' : c.otherName}` : 'Playback Replay';
   $('side-title').textContent = first === 'them' ? 'How they responded' : `How ${first} responded`;
   const tag = $('tag');
   tag.hidden = !(c && c.tag);
@@ -1763,6 +1859,10 @@ function renderHeader() {
     el('i', { class: 'fu' }), 'Follow-up',
     el('i', { class: 'ms' }), 'Missed moment',
     el('i', { class: 'awk' }), 'Awkward',
+    el('i', { class: 'q' }), 'Asked',
+    el('i', { class: 'sd' }), 'They brought up',
+    el('i', { class: 'pr' }), 'Promised',
+    el('i', { class: 'mo' }), 'On camera',
     el('i', { class: 'tk' }), 'Takeaway');
 }
 
@@ -1773,17 +1873,46 @@ function openDraft() {
   if (!c) return;
   const fu = c.followUp;
   const first = firstName();
-  $('modal-label').textContent = `Draft for ${first}`;
+  $('modal-label').textContent = first === 'them' ? 'Draft' : `Draft for ${first}`;
   $('modal-note').textContent = `Based on your conversation on ${fmtWhen(c.createdAt) || fmtDate(c.createdAt)}. Edit it before you send.`;
   const ta = $('followup-text');
-  // keep the person's edits while the modal is closed and reopened on the same conversation
-  if (state.draftFor !== c.id) {
+  // Keep the person's edits while the modal is closed and reopened on the same conversation. If
+  // they haven't touched it, take the newest draft: opening this before the draft existed used to
+  // leave the box empty for good.
+  const d = state.draftFor;
+  if (!d || d.id !== c.id || ta.value === d.text) {
     ta.value = fu && fu.text ? fu.text : '';
-    state.draftFor = c.id;
+    state.draftFor = { id: c.id, text: ta.value };
   }
   $('modal-copy').textContent = 'Copy message';
   $('modal').hidden = false;
   ta.focus();
+  // Nothing written yet: ask the agent for one, like Home does, rather than open an empty box.
+  if (!ta.value && !state.drafting) fetchDraft(c);
+}
+
+async function fetchDraft(c) {
+  const ta = $('followup-text');
+  const was = ta.placeholder;
+  state.drafting = true;
+  ta.disabled = true;
+  ta.placeholder = 'Drafting…';
+  try {
+    const fu = await postJson(`/api/conversations/${enc(c.id)}/follow-up`, {});
+    if (state.convo && state.convo.id === c.id && fu && fu.text) {
+      state.convo.followUp = fu;
+      // only fill the box if they haven't started typing into it meanwhile
+      if (!ta.value) { ta.value = fu.text; state.draftFor = { id: c.id, text: fu.text }; }
+    }
+    ta.placeholder = was;
+  } catch (err) {
+    // 400 here means there's no coaching to write from yet; the box stays open for a hand-written one
+    ta.placeholder = `${err.message} Write one here.`;
+  } finally {
+    state.drafting = false;
+    ta.disabled = false;
+    if (!$('modal').hidden) ta.focus();
+  }
 }
 
 function closeDraft() {
@@ -1844,6 +1973,7 @@ function renderAll() {
   renderVoicePicker();
   renderAnalysisBar();
   renderTakeaways();
+  renderMoments();
   renderScores();
   renderTranscript();
   renderNote();
@@ -1945,9 +2075,10 @@ async function pickVoice(label) {
     if (c && c.id === id) state.convo = { ...state.convo, ...c };
     if (!state.convo.userLabel) state.convo.userLabel = label;
     state.labelNeeded = false;
-    // The old cues were lined up against the wrong voice (or not at all): send them again.
+    // The old cues were lined up against the wrong voice (or not at all): send them again. While
+    // a run is still going, state.frames is its half-filled array; that run posts when it finishes.
     const rec = state.convo.recording;
-    const frames = state.pendingUpload || (state.frames && state.frames.length ? state.frames : null);
+    const frames = state.pendingUpload || (!state.analysing && state.frames && state.frames.length ? state.frames : null);
     state.picking = null;
     state.heat.key = null;
     if (rec && frames) {
@@ -2063,6 +2194,8 @@ function handle(msg) {
     if (c.behavior === undefined) c.behavior = prev.behavior ?? null;
     if (c.insight === undefined) c.insight = prev.insight ?? null;
     state.convo = c;
+    // Picked on the phone (or by the lip lock) while this page was waiting: the picker can go.
+    if (c.userLabel) state.labelNeeded = false;
     $('v-convo').hidden = false;
     $('v-error').hidden = true;
     renderAll();

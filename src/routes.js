@@ -8,11 +8,11 @@ import { buildHeatmap } from './nlp/heatmap.js';
 import { inferUserLabel } from './behavior/speaker.js';
 import { speechTurns } from './transcribe/crowd.js';
 import { TAGS } from './agents/context.js';
-import { processConversation, recoach, refreshMemory, writeFollowUp } from './pipeline.js';
+import { processConversation, recoach, refreshMemory, writeFollowUp, userLabelFor } from './pipeline.js';
 import { compareConversations } from './nlp/compare.js';
 import { buildBrief } from './nlp/brief.js';
 import { groundedIn } from './agents/followUp.js';
-import { samePerson, coachable } from './names.js';
+import { samePerson, coachable, normName } from './names.js';
 import { STAGE_VIEWS } from './stage.js';
 
 const STEP_ACTIONS = { accept: 'accepted', change: 'changed', dismiss: 'dismissed' };
@@ -52,7 +52,11 @@ export function createApp({ store, llm, log, config, publicDir = 'public', stage
   app.get('/api/me', (req, res) => res.json({ name: config.userName }));
 
   // Nobody is called 'them'; it is what a conversation says until a name is typed or heard.
-  const cleanName = raw => (typeof raw === 'string' ? raw.trim().slice(0, 80) : '') || 'them';
+  // "Them" and "THEM" mean the same nobody, and the stream only fills in a name while it reads 'them'.
+  const cleanName = raw => {
+    const name = typeof raw === 'string' ? raw.trim().slice(0, 80) : '';
+    return !name || normName(name) === 'them' ? 'them' : name;
+  };
 
   app.post('/api/conversations', (req, res) => {
     const { tag, otherName, consentConfirmed } = req.body ?? {};
@@ -82,34 +86,41 @@ export function createApp({ store, llm, log, config, publicDir = 'public', stage
     res.json(updated);
   });
 
-  // One coaching run per conversation at a time: a double tap joins the run already going instead of
-  // paying Muse twice and racing on the result.
+  // One coaching run per conversation at a time: a double tap, or the Mac's replay page asking for
+  // behavior while the phone is still on "get coaching", joins the run already going instead of
+  // paying Muse twice and racing on the result. Every route that coaches goes through here.
+  // Resolves null when the conversation was deleted while it ran.
   const inFlight = new Map();
+  const coach = (id, reflection) => {
+    if (inFlight.has(id)) return inFlight.get(id);
+    stage.publish({ type: 'processing', conversationId: id });
+    const run = processConversation({ store, llm, log, id, reflection })
+      .then(done => {
+        // The note and the trend changed for every screen, whichever one asked for coaching.
+        if (done) {
+          stage.publish({ type: 'conversation', conversation: done });
+          stage.publish({ type: 'memory' });
+        }
+        return done;
+      }, err => {
+        // Give the screens a terminal message instead of leaving them on a spinner.
+        stage.publish({ type: 'processing', conversationId: id, failed: true });
+        throw err;
+      })
+      .finally(() => inFlight.delete(id));
+    inFlight.set(id, run);
+    return run;
+  };
+  const gone = res => fail(res, 404, 'Conversation not found');
 
   app.post('/api/conversations/:id/process', async (req, res, next) => {
     try {
       const convo = findConvo(req, res);
       if (!convo) return;
-      if (inFlight.has(convo.id)) return res.json(await inFlight.get(convo.id));
-      // Labelling only means something when diarization actually told two voices apart.
-      const voices = new Set((convo.turns ?? []).map(t => t.speaker).filter(s => s && s !== 'unknown')).size;
-      if ((convo.turns ?? []).length >= 2 && voices >= 2 && !convo.userLabel) return fail(res, 400, 'Tap one of your own lines first');
+      if (!inFlight.has(convo.id) && needsLabel(convo)) return fail(res, 400, 'Tap one of your own lines first');
       const reflection = typeof req.body?.reflection === 'string' ? req.body.reflection.slice(0, 2000) : '';
-      stage.publish({ type: 'processing', conversationId: convo.id });
-      const run = processConversation({ store, llm, log, id: convo.id, reflection });
-      inFlight.set(convo.id, run);
-      let done;
-      try {
-        done = await run;
-      } catch (err) {
-        // Give the screens a terminal message instead of leaving them on a spinner.
-        stage.publish({ type: 'processing', conversationId: convo.id, failed: true });
-        throw err;
-      } finally {
-        inFlight.delete(convo.id);
-      }
-      stage.publish({ type: 'conversation', conversation: done });
-      stage.publish({ type: 'memory' });
+      const done = await coach(convo.id, reflection);
+      if (!done) return gone(res);
       res.json(done);
     } catch (err) { next(err); }
   });
@@ -136,6 +147,7 @@ export function createApp({ store, llm, log, config, publicDir = 'public', stage
         stage.publish({ type: 'processing', conversationId: convo.id, failed: true });
         throw err;
       }
+      if (!done) return gone(res);
       stage.publish({ type: 'conversation', conversation: done });
       stage.publish({ type: 'memory' });
       res.json(done);
@@ -263,9 +275,10 @@ export function createApp({ store, llm, log, config, publicDir = 'public', stage
     res.sendFile(file, { headers: { 'Content-Type': convo.recording.mime === 'video/quicktime' ? 'video/mp4' : convo.recording.mime } });
   });
 
-  // Background lines (lip lock) never reach the face alignment, the insight or the heatmap.
+  // Background lines (lip lock) never reach the face alignment, the insight or the heatmap, and
+  // "you" is whoever the coach took it to be (the one voice, when there was only one).
   const insightFor = convo => generateInsight({
-    llm, note: convo.note, behavior: convo.behavior, hooks: convo.hooks, signals: convo.signals, turns: speechTurns(convo.turns), userLabel: convo.userLabel,
+    llm, note: convo.note, behavior: convo.behavior, hooks: convo.hooks, signals: convo.signals, turns: speechTurns(convo.turns), userLabel: userLabelFor(convo),
   });
 
   app.post('/api/conversations/:id/behavior', async (req, res, next) => {
@@ -281,18 +294,23 @@ export function createApp({ store, llm, log, config, publicDir = 'public', stage
       // Nobody said which voice is theirs: the video usually can. Without it, every line would be
       // read as the other person's and the advice would be about the wrong person.
       let labeled = convo;
-      if (!convo.userLabel && (convo.turns ?? []).length >= 2) {
+      // The lip lock often names the voice at the end of the recording, and then nobody taps
+      // "get coaching" on the phone: the hooks never get extracted and the timeline sits empty.
+      // A run the phone did start is joined, so the cues line up with the note it produces.
+      let unprocessed = inFlight.has(convo.id) || (!convo.hooks && (convo.turns ?? []).length > 0);
+      if (needsLabel(convo)) {
         const guess = inferUserLabel(convo.turns, frames);
         if (!guess) return res.status(409).json({ error: 'Which voice is yours? Tap one of your lines.', needsLabel: true });
         log('vision', 'info', `picked your voice (${guess.label}) from the video: ${guess.evidence}`);
         store.updateConversation(convo.id, { userLabel: guess.label });
-        stage.publish({ type: 'processing', conversationId: convo.id });
-        labeled = await processConversation({ store, llm, log, id: convo.id, reflection: convo.reflection ?? '' });
+        unprocessed = true;
       }
+      if (unprocessed) labeled = await coach(convo.id, convo.reflection ?? '');
+      if (!labeled) return gone(res);
 
       const behavior = alignBehavior({
         model: req.body.model, fps: Number(req.body.fps), frames,
-        turns: speechTurns(labeled.turns), userLabel: labeled.userLabel, signals: labeled.signals, hooks: labeled.hooks,
+        turns: speechTurns(labeled.turns), userLabel: userLabelFor(labeled), signals: labeled.signals, hooks: labeled.hooks,
       });
       mkdirSync(recordingsDir, { recursive: true });
       writeFileSync(framesPath(convo.id), JSON.stringify(frames));
@@ -320,8 +338,14 @@ export function createApp({ store, llm, log, config, publicDir = 'public', stage
     try {
       const convo = findConvo(req, res);
       if (!convo) return;
-      if (!convo.userLabel && (convo.turns ?? []).length >= 2) return res.status(409).json({ error: 'Which voice is yours? Tap one of your lines.', needsLabel: true });
-      const insight = await insightFor(convo);
+      if (needsLabel(convo)) return res.status(409).json({ error: 'Which voice is yours? Tap one of your lines.', needsLabel: true });
+      // same as /behavior: an insight with no hooks behind it would only have the face to go on,
+      // and one written mid-coaching would check advice the note hasn't given yet
+      const ready = inFlight.has(convo.id) || (!convo.hooks && (convo.turns ?? []).length > 0)
+        ? await coach(convo.id, convo.reflection ?? '')
+        : convo;
+      if (!ready) return gone(res);
+      const insight = await insightFor(ready);
       const updated = store.updateConversation(convo.id, { insight });
       stage.publish({ type: 'conversation', conversation: updated });
       res.json(insight);
@@ -333,7 +357,7 @@ export function createApp({ store, llm, log, config, publicDir = 'public', stage
     if (!convo) return;
     const file = framesPath(convo.id);
     const frames = convo.behavior && existsSync(file) ? JSON.parse(readFileSync(file, 'utf8')) : [];
-    res.json(buildHeatmap({ turns: speechTurns(convo.turns), userLabel: convo.userLabel, hooks: convo.hooks, signals: convo.signals, behavior: convo.behavior, frames }));
+    res.json(buildHeatmap({ turns: speechTurns(convo.turns), userLabel: userLabelFor(convo), hooks: convo.hooks, signals: convo.signals, behavior: convo.behavior, frames }));
   });
 
   app.get('/api/memory', (req, res) => {
@@ -376,6 +400,9 @@ export function createApp({ store, llm, log, config, publicDir = 'public', stage
 
   app.get('/api/logs', (req, res) => res.json(store.listLogs(100)));
 
+  // An API path nobody serves is still an API answer, not Express's HTML "Cannot GET" page.
+  app.use('/api', (req, res) => fail(res, 404, 'Not found'));
+
   // The Mac side: Live and Replay as sections of one page.
   app.get('/mac', (req, res) => res.sendFile(resolve(publicDir, 'studio.html')));
 
@@ -383,8 +410,14 @@ export function createApp({ store, llm, log, config, publicDir = 'public', stage
 
   // eslint-disable-next-line no-unused-vars
   app.use((err, req, res, next) => {
-    // body-parser errors (bad JSON, too large) are the client's fault, not ours
-    if (err.status >= 400 && err.status < 500) return fail(res, err.status, err.type === 'entity.too.large' ? 'Request body too large' : 'Request body was not valid JSON');
+    // body-parser errors (bad JSON, too large) are the client's fault, not ours; so is a page
+    // path sendFile could not serve, which arrives here with its own 4xx status
+    if (err.status >= 400 && err.status < 500) {
+      const why = err.type === 'entity.too.large' ? 'Request body too large'
+        : err.type === 'entity.parse.failed' ? 'Request body was not valid JSON'
+        : err.status === 404 ? 'Not found' : 'Bad request';
+      return fail(res, err.status, why);
+    }
     log('server', 'error', err.message);
     fail(res, 500, 'Something went wrong on our side');
   });

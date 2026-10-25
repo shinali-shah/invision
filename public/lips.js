@@ -32,9 +32,14 @@ export function createMouthGate() {
   let win = [];          // { t, mouth } inside the window
   let on = false;
   let lastActive = -Infinity;
+  let lastT = -Infinity;
   return {
     push({ t, face, mouth }) {
-      if (!face) { win = []; on = false; lastActive = -Infinity; return false; }
+      if (!face) { win = []; on = false; lastActive = -Infinity; lastT = t; return false; }
+      // A clock that runs backwards would leave the old samples in the window for as long as it
+      // takes the new one to catch up, and the hold would never run out. Start over instead.
+      if (t < lastT) { win = []; on = false; lastActive = -Infinity; }
+      lastT = t;
       win.push({ t, mouth });
       win = win.filter((s) => t - s.t <= MOUTH_WINDOW_MS);
       let motion = 0;
@@ -143,10 +148,11 @@ export function startLipLock({ video, timeBase, send, onState, fps = FPS }) {
     try { send(samples); } catch { /* socket gone; the cues are a bonus */ }
   };
 
+  // The gates only care how far apart their samples are, so they run on performance.now()
+  // throughout. The transcript clock is for the cues alone: it isn't there until audio starts,
+  // and switching a gate over to it mid-run threw its window and its hold off for half a minute.
   const level = (db, levelDb) => {
-    const base = timeBase();
-    if (base == null) return;
-    voiceGate.push(Date.now() - base, db, levelDb);
+    voiceGate.push(performance.now(), db, levelDb);
   };
 
   const step = (now) => {
@@ -175,9 +181,9 @@ export function startLipLock({ video, timeBase, send, onState, fps = FPS }) {
     }
     const m = readMouth(res);
     if (m.face) lastFaceAt = now;
-    const base = timeBase();
-    const theirs = mouthGate.push({ t: base == null ? now : Date.now() - base, face: m.face, mouth: m.mouth });
+    const theirs = mouthGate.push({ t: now, face: m.face, mouth: m.mouth });
     setState(m.face ? (theirs ? 'locked' : 'tracking') : now - lastFaceAt > LOST_MS ? 'lost' : 'tracking', m.box);
+    const base = timeBase();
     if (base == null) return; // no transcript clock yet; nothing to line these up with
     batch.push({ t: Math.round(Date.now() - base), face: m.face, mouth: m.mouth, theirs, mine: voiceGate.state });
     if (now - lastSent >= BATCH_MS) { lastSent = now; flush(); }

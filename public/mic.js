@@ -111,7 +111,9 @@ export function createLeveler({ target = TARGET_DB, gate = GATE_DB, maxGain = MA
   let levelDb = null;
   function next(rms) {
     const db = toDb(rms);
-    if (db > gate) {
+    // Only a finite reading moves the level. An infinite one would park it there and every
+    // later reading would turn into NaN, which is a NaN gain forever.
+    if (db > gate && db < Infinity) {
       if (levelDb === null) levelDb = db;
       else levelDb = db > levelDb ? levelDb + (db - levelDb) * 0.5 : levelDb + (db - levelDb) * 0.05;
     }

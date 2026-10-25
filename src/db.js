@@ -60,8 +60,10 @@ export function openStore(path = ':memory:') {
   if (path !== ':memory:') mkdirSync(dirname(path), { recursive: true });
   const db = new DatabaseSync(path);
   db.exec(SCHEMA);
-  // Databases from before hooks/follow-ups existed just get the new columns.
+  // Databases from before hooks/follow-ups existed just get the new columns. A table from before
+  // the other person had a name gets one too, or the seed insert fails and the server never boots.
   const have = new Set(db.prepare('PRAGMA table_info(conversations)').all().map(c => c.name));
+  if (!have.has('other_name')) db.exec("ALTER TABLE conversations ADD COLUMN other_name TEXT NOT NULL DEFAULT 'them'");
   for (const col of ['hooks', 'follow_up', 'recording', 'behavior', 'insight']) if (!have.has(col)) db.exec(`ALTER TABLE conversations ADD COLUMN ${col} TEXT`);
   // Demo rows made by src/synthetic are marked so nothing mistakes them for a real recording.
   if (!have.has('synthetic')) db.exec('ALTER TABLE conversations ADD COLUMN synthetic INTEGER NOT NULL DEFAULT 0');

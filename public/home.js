@@ -84,6 +84,9 @@ const readJson = (key, fallback) => { try { return JSON.parse(kv.get(key)) ?? fa
 const firstChar = (s) => (s ? Array.from(s)[0] : '');
 const cap = (s) => (s ? firstChar(s).toUpperCase() + s.slice(firstChar(s).length) : '');
 const cleanName = (name) => (name || '').trim() || 'them';
+// The server writes 'them' until a name is typed or heard. It's a placeholder, not somebody, so
+// it must never become "Session with Them" or match another unnamed conversation's brief.
+const realName = (name) => { const n = (name || '').trim(); return n && n.toLowerCase() !== 'them' ? n : null; };
 const firstName = (name) => cap(cleanName(name).split(/\s+/)[0]);
 const initialsOf = (name) => cleanName(name).split(/\s+/).slice(0, 2).map((w) => firstChar(w).toUpperCase()).join('');
 const pad2 = (n) => String(n).padStart(2, '0');
@@ -142,7 +145,6 @@ const state = {
   modal: null,           // the convo whose follow-up is open
   rec: { active: false, id: null, name: null, startedAt: null, lastElapsed: 0, lines: new Map() },
   doneId: null,          // last conversation the hub said `done` for; its late turns don't restart the card
-  who: '',               // "Before: who are you about to talk to?"
   extras: new Map(),     // conversation id -> { heat, compare } once fetched for the transcript page
   confirming: false,     // the delete confirm row on the transcript page
 };
@@ -159,12 +161,14 @@ function convoView(c) {
   const note = c.note && c.note.text ? c.note : null;
   const last = turns[turns.length - 1];
   const awkward = c.hooks && c.hooks.awkward ? c.hooks.awkward : null;
+  const who = realName(c.otherName);
   return {
     id: c.id,
     raw: c,
-    name: cap(c.otherName || 'them'),
-    first: firstName(c.otherName),
-    initials: initialsOf(c.otherName),
+    named: !!who,          // false: nobody typed or said a name, so copy says "Conversation", not "with them"
+    name: who ? cap(who) : 'Someone',
+    first: who ? firstName(who) : 'them',
+    initials: who ? initialsOf(who) : '?',
     createdAt: c.createdAt,
     when: fmtWhen(c.createdAt),
     duration: last ? fmtClock(last.endMs || 0, { padMinutes: true }) : '00:00',
@@ -179,6 +183,12 @@ function convoView(c) {
     turns,
     transcript: turns.map((t) => [fmtClock(t.startMs || 0), t.speaker === c.userLabel ? 'me' : 'them', t.text || '', t.turnId, t.speaker]),
   };
+}
+
+// Who said one of their lines: the name when we have one, else the diarizer's letter like the phone.
+function otherLabel(c, speaker) {
+  if (c.named) return c.first;
+  return speaker && speaker !== 'unknown' ? `Speaker ${speaker}` : 'Unclear';
 }
 
 function applyMemory(mem) {
@@ -222,10 +232,10 @@ function buildMonth(year, month, states) {
   });
 }
 
-// Today doesn't break the streak until it's over: with nothing yet today, count back from yesterday.
 function streak(states) {
   let n = 0;
   const d = today();
+  // Nothing logged yet today doesn't break the run; it only breaks once today has gone by.
   if (!stateFor(dayKey(d), states)) d.setDate(d.getDate() - 1);
   for (let i = 0; i < 400; i++) {
     if (!stateFor(dayKey(d), states)) break;
@@ -262,10 +272,10 @@ function tasks() {
   const recent = state.convos.filter((c) => new Date(c.createdAt) >= since);
   // Unfinished first: nothing else about that conversation exists until it's done.
   for (const c of state.convos) {
-    if (c.needsLabel) out.push({ key: `label:${c.id}`, text: `Finish coaching for ${c.first}`, convo: c, finish: true });
+    if (c.needsLabel) out.push({ key: `label:${c.id}`, text: c.named ? `Finish coaching for ${c.first}` : 'Finish coaching', convo: c, finish: true });
   }
   for (const c of recent) {
-    if (c.followUp && c.followUp.status === 'draft' && c.followUp.text) out.push({ key: `fu:${c.id}`, text: `Follow up with ${c.first}`, convo: c });
+    if (c.followUp && c.followUp.status === 'draft' && c.followUp.text) out.push({ key: `fu:${c.id}`, text: c.named ? `Follow up with ${c.first}` : 'Send the follow-up', convo: c });
   }
   for (const c of recent) {
     for (const k of c.commitments) if (k && k.text) out.push({ key: `commit:${c.id}:${k.turnId ?? k.text}`, text: `You said: ${k.text}` });
@@ -295,7 +305,10 @@ function parseHash() {
   if (!m[1]) return 0;
   const byId = state.convos.findIndex((c) => c.id === m[1]);
   if (byId >= 0) return byId;
-  const n = /^\d+$/.test(m[1]) ? Number(m[1]) : 0;
+  // An id we don't have (deleted from the phone, or not loaded yet) must not fall through to
+  // somebody else's transcript; past the end, the page says it's gone (or still loading).
+  if (!/^\d+$/.test(m[1])) return state.convos.length;
+  const n = Number(m[1]);
   return state.convos.length && n >= state.convos.length ? 0 : n;
 }
 
@@ -314,7 +327,10 @@ function renderPage() {
 function fitHeroLine() {
   const h1 = refs.heroH1;
   if (!h1 || !h1.isConnected) return;
-  const box = h1.parentElement.clientWidth;
+  // Measure against the hero band, not .hero-copy: that's a flex item, and a flex item is never
+  // narrower than its own nowrap line, so against it the text never looked too wide and a long
+  // name ran off under the clip-path at 121px.
+  const box = (h1.closest('.hero-intro') || h1.parentElement).clientWidth;
   if (!box) return;
   h1.style.fontSize = '';
   h1.style.whiteSpace = 'nowrap';
@@ -327,7 +343,11 @@ function fitHeroLine() {
 }
 let fitTimer = null;
 window.addEventListener('resize', () => { clearTimeout(fitTimer); fitTimer = setTimeout(fitHeroLine, 120); });
-if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitHeroLine);
+// Measured in the fallback face until Big Shoulders arrives, so fit again whenever a font lands.
+if (document.fonts) {
+  if (document.fonts.ready) document.fonts.ready.then(fitHeroLine);
+  document.fonts.addEventListener('loadingdone', fitHeroLine);
+}
 
 // ---------- home ----------
 
@@ -451,13 +471,13 @@ function recName() {
   const r = state.rec;
   if (r.name) return firstName(r.name);
   const known = state.convos.find((c) => c.id === r.id);
-  return known ? known.first : null;
+  return known && realName(known.raw.otherName) ? known.first : null;
 }
 
 // The pre-call brief: what memory holds on whoever they're about to talk to, by first name.
 function briefFor(name) {
   const key = name.trim().toLowerCase();
-  if (!key) return null;
+  if (!key || key === 'them') return null;
   // The one being recorded right now is the newest with this name and has nothing in it yet.
   const past = state.convos.filter((c) => c.first.toLowerCase() === key && c.id !== state.rec.id);
   if (!past.length) return { known: false };
@@ -473,23 +493,20 @@ function briefFor(name) {
   };
 }
 
-// Idle: whoever was typed into the card. Recording: whoever the phone heard, once there is history.
+// Nobody types a name any more, so the brief only shows while recording, once the phone has heard
+// who it is and there is history with them. Idle, and first conversations, show nothing.
 function renderBrief() {
   if (!refs.brief) return;
-  const r = state.rec;
-  const who = r.active ? (recName() || '') : state.who;
-  const name = who.trim() ? firstName(who) : 'them';
-  let b = briefFor(who);
-  if (r.active && b && !b.known) b = null;
-  refs.brief.hidden = !b;
-  if (!b) { refs.brief.replaceChildren(); return; }
-  refs.brief.setAttribute('aria-label', `Brief for ${name}`);
+  const who = state.rec.active ? (recName() || '') : '';
+  const b = who ? briefFor(who) : null;
+  const show = !!(b && b.known);
+  refs.brief.hidden = !show;
+  if (!show) { refs.brief.replaceChildren(); return; }
+  refs.brief.setAttribute('aria-label', `Brief for ${firstName(who)}`);
   fill(refs.brief,
-    ...(b.known ? [
-      el('div', {}, el('h4', { text: 'Promises you made' }), el('p', { text: b.promises })),
-      el('div', {}, el('h4', { text: 'Coming up for them' }), el('p', { text: b.upcoming })),
-      el('div', {}, el('h4', { text: 'Last time' }), el('p', { text: b.lit })),
-    ] : [el('p', { class: 'brief-empty', text: `No history with ${name} yet. This will be your first conversation, so the brief fills in afterwards.` })]),
+    el('div', {}, el('h4', { text: 'Promises you made' }), el('p', { text: b.promises })),
+    el('div', {}, el('h4', { text: 'Coming up for them' }), el('p', { text: b.upcoming })),
+    el('div', {}, el('h4', { text: 'Last time' }), el('p', { text: b.lit })),
   );
 }
 
@@ -557,15 +574,20 @@ function renderLive() {
   for (const [turnId, t] of ordered) {
     let line = box.querySelector(`[data-turn="${turnId}"]`);
     const who = userLabel ? (t.speaker === userLabel ? 'me' : 'them') : 'them';
-    const whoText = userLabel ? (who === 'me' ? 'You' : name) : (t.speaker && t.speaker !== 'unknown' ? t.speaker : '');
+    // Before a voice is picked the lines keep the diarizer's letters, worded like the phone and the wall.
+    const whoText = userLabel ? (who === 'me' ? 'You' : name) : (t.speaker && t.speaker !== 'unknown' ? `Speaker ${t.speaker}` : 'Unclear');
+    // A finished turn knows its own transcript time. Our clock only stands in for partials, and
+    // after a reload it starts late, so the time is written again on every pass rather than once.
+    const when = Number.isFinite(t.startMs) ? t.startMs : t.at - r.startedAt;
     if (!line) {
       line = el('div', { class: `line ${who}`, 'data-turn': String(turnId) },
-        el('span', { class: 'line-time', text: fmtClock(t.at - r.startedAt) }),
+        el('span', { class: 'line-time' }),
         el('span', { class: 'line-who', text: whoText }),
         el('p', {}, el('span', { class: 'said' }), el('span', { class: 'caret' })));
       box.append(line);
     }
     line.className = `line ${who}`;
+    line.querySelector('.line-time').textContent = fmtClock(when);
     line.querySelector('.line-who').textContent = whoText;
     line.querySelector('.said').textContent = t.text || '';
     line.querySelector('.caret').hidden = !t.partial;
@@ -577,6 +599,7 @@ function renderLive() {
 
 function startRec(id, name) {
   const r = state.rec;
+  name = realName(name); // a focus or conversation message carries the 'them' placeholder until a name is heard
   if (r.active && r.id === id) {
     if (name && r.name !== name) { r.name = name; renderRecording(); }
     return;
@@ -597,14 +620,24 @@ function stopRec() {
 }
 
 // Finished turns carry transcript time. After a reload mid-recording our clock started at the
-// reload, so the first turn that arrives pulls it back to where the session really began. One
-// shot only: turns flushed at stop carry times from the whole session, not from now.
+// reload, so each turn that arrives can pull it back to where the session really began. Every
+// turn, not just the first: the hub replays them oldest-first, and settling on turn 1's endMs
+// left a late joiner six seconds behind the phone for the rest of the recording.
 function syncStart(turn) {
   const r = state.rec;
-  if (!r.active || !r.syncPending || !turn || !(turn.endMs > 0)) return;
-  r.syncPending = false;
-  const impliedStart = Date.now() - turn.endMs;
-  if (impliedStart < r.startedAt) r.startedAt = impliedStart;
+  if (!r.active || !turn || !(turn.endMs > 0)) return;
+  syncStartTo(Date.now() - turn.endMs);
+}
+
+// The last finished turn can be a whole turn behind the mic, so the hub's own stamp for when the
+// phone went to recording is used too. Same Mac as the server, so the clocks agree; a stamp from
+// another day is a stale focus, not a six-hour recording.
+function syncStartTo(at) {
+  const r = state.rec;
+  if (!r.active || !(at > 0)) return;
+  const age = Date.now() - at;
+  if (age < 0 || age > 6 * 3600 * 1000) return;
+  if (at < r.startedAt) r.startedAt = at;
 }
 
 function tick() {
@@ -753,7 +786,7 @@ function takeawayArticle(c, t, i, an) {
   if (t.kind === 'try') {
     return el('article', { class: 'takeaway try' },
       el('span', { class: 'label', text: `${n}Try this next time` }),
-      t.theySaid && el('p', { class: 'tk-them' }, el('b', { text: c.first }), t.theySaid),
+      t.theySaid && el('p', { class: 'tk-them' }, el('b', { text: c.named ? c.first : 'Them' }), t.theySaid),
       t.said && el('p', { class: 'tk-you' }, el('b', { text: 'You' }), t.said),
       t.tryInstead && el('p', { class: 'tk-rewrite' }, el('b', { text: 'Try instead' }), t.tryInstead),
       !t.tryInstead && t.text && el('p', { class: 'tk-note', text: t.text }),
@@ -764,7 +797,7 @@ function takeawayArticle(c, t, i, an) {
     const line = t.turnId != null ? turnText(t.turnId) : null;
     return el('article', { class: 'takeaway keep' },
       el('span', { class: 'label', text: `${n}Keep doing this` }),
-      line && el('p', { class: 'tk-you' }, el('b', { text: line[1] === 'me' ? 'You' : c.first }), line[2]),
+      line && el('p', { class: 'tk-you' }, el('b', { text: line[1] === 'me' ? 'You' : otherLabel(c, line[4]) }), line[2]),
       el('p', { class: 'tk-note', text: t.text || '' }),
       playBtn(t.turnId),
     );
@@ -772,7 +805,7 @@ function takeawayArticle(c, t, i, an) {
   return el('article', { class: 'takeaway ask' },
     el('span', { class: 'label', text: `${n}Ask about it next time` }),
     el('p', { class: 'tk-note big', text: t.text || '' }),
-    el('button', { class: 'play', onclick: () => draftFollowUp(c) }, el('span', { 'aria-hidden': 'true', text: '✉' }), ' Use in follow-up'),
+    el('button', { class: 'play', onclick: (e) => draftFollowUp(c, e.currentTarget) }, el('span', { 'aria-hidden': 'true', text: '✉' }), ' Use in follow-up'),
   );
 }
 
@@ -826,7 +859,7 @@ function transcriptPage(index) {
   return el('main', { class: 'workspace' },
     back,
     el('div', { class: 'page-intro' },
-      el('div', {}, el('h1', { text: `Conversation with ${c.first}` }), el('p', { class: 'intro-subtitle', text: 'Replay: three takeaways, the moments behind them, and the full transcript.' })),
+      el('div', {}, el('h1', { text: c.named ? `Conversation with ${c.first}` : 'Conversation' }), el('p', { class: 'intro-subtitle', text: 'Replay: three takeaways, the moments behind them, and the full transcript.' })),
       el('div', { class: 'intro-actions' },
         el('button', { class: 'button ghost', onclick: () => openReplay(c.id) }, 'Open replay ', icon('arrow', 16)),
         draftBtn),
@@ -855,7 +888,7 @@ function transcriptPage(index) {
     c.turns.length > 0 && !c.needsLabel && el('section', { class: 'timeline', 'aria-label': 'Timeline' },
       el('div', { class: 'tl-head' },
         el('span', { class: 'label', text: 'Timeline' }),
-        el('span', { class: 'tl-key' }, el('i', { class: 'you' }), 'You', el('i', { class: 'them' }), c.first, el('i', { class: 'fu' }), 'Follow-up', el('i', { class: 'ms' }), 'Missed moment')),
+        el('span', { class: 'tl-key' }, el('i', { class: 'you' }), 'You', el('i', { class: 'them' }), c.first === 'them' ? 'Them' : c.first, el('i', { class: 'fu' }), 'Follow-up', el('i', { class: 'ms' }), 'Missed moment')),
       el('div', { class: 'tl-track' },
         ...c.turns.map((t, i) => {
           const start = times[i];
@@ -881,7 +914,7 @@ function transcriptPage(index) {
           const isFu = an.followUps.has(turnId);
           const isMs = an.missed.includes(turnId);
           // Until a voice is picked every line would read as theirs, so keep the diarizer's letters.
-          const whoText = c.needsLabel ? (speaker && speaker !== 'unknown' ? `Speaker ${speaker}` : 'Unclear') : who === 'me' ? 'You' : c.first;
+          const whoText = c.needsLabel ? (speaker && speaker !== 'unknown' ? `Speaker ${speaker}` : 'Unclear') : who === 'me' ? 'You' : otherLabel(c, speaker);
           return el('div', { class: `line ${who}${isFu ? ' is-fu' : ''}${isMs ? ' is-ms' : ''}`, id: `ln-${turnId}` },
             el('span', { class: 'line-time', text: time }),
             el('span', { class: 'line-who', text: whoText }),
@@ -908,13 +941,14 @@ function closeFollowUp() {
 // Opens the draft, writing one first if the agent hasn't yet.
 async function draftFollowUp(c, btn) {
   if (c.followUp && c.followUp.text) { openFollowUp(c); return; }
-  const label = btn ? btn.textContent : null;
+  // The button holds an icon beside its words; put the same nodes back, not their text.
+  const kids = btn ? [...btn.childNodes] : [];
   if (btn) { btn.disabled = true; btn.textContent = 'Drafting…'; }
   try {
     const res = await fetch(`/api/conversations/${encodeURIComponent(c.id)}/follow-up`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
     if (!res.ok) throw new Error(String(res.status));
     c.followUp = await res.json();
-    if (btn) { btn.disabled = false; btn.textContent = label; }
+    if (btn) { btn.disabled = false; btn.replaceChildren(...kids); }
     openFollowUp(c);
   } catch {
     if (btn) { btn.disabled = false; btn.textContent = 'No draft yet. Get coaching first'; }
@@ -949,7 +983,7 @@ function openFollowUp(c) {
   refs.modal = el('div', { class: 'modal-backdrop', onclick: closeFollowUp },
     el('div', { class: 'modal', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'followup-title', onclick: (e) => e.stopPropagation() },
       el('div', { class: 'modal-head' },
-        el('div', {}, el('span', { class: 'label', text: `DRAFT FOR ${c.first.toUpperCase()}` }), el('h2', { id: 'followup-title', text: 'Follow-up message' })),
+        el('div', {}, el('span', { class: 'label', text: c.named ? `DRAFT FOR ${c.first.toUpperCase()}` : 'DRAFT' }), el('h2', { id: 'followup-title', text: 'Follow-up message' })),
         el('button', { class: 'modal-close', 'aria-label': 'Close', text: '×', onclick: closeFollowUp }),
       ),
       el('p', { class: 'modal-note', text: `Based on your conversation on ${c.when}. Edit it before you send.` }),
@@ -998,11 +1032,12 @@ function handle(msg) {
   const id = msg.conversationId;
   switch (msg.type) {
     case 'hello':
+      // Joined mid-recording (reload, reconnect): the clock starts behind the phone's. The focus
+      // carries the server's clock from when the phone went to recording, and the turns the hub
+      // replays next pull it back further if they say so (syncStart).
       if (msg.focus && msg.focus.view === 'recording' && msg.focus.conversationId) {
-        // Joined mid-recording (reload, reconnect): our clock is behind the phone's.
-        const fresh = !(state.rec.active && state.rec.id === msg.focus.conversationId);
         startRec(msg.focus.conversationId, msg.focus.otherName);
-        if (fresh) state.rec.syncPending = true;
+        syncStartTo(msg.focus.at);
       } else stopRec();
       // First connect or a reconnect: anything that changed while we were away.
       refreshMemory();
@@ -1024,7 +1059,7 @@ function handle(msg) {
         lines.set(msg.turnId, { speaker: msg.speaker || (prev && prev.speaker) || null, text: msg.text || '', partial: true, at: prev ? prev.at : Date.now() });
       } else if (msg.turn) {
         const prev = lines.get(msg.turn.turnId);
-        lines.set(msg.turn.turnId, { speaker: msg.turn.speaker, text: msg.turn.text, partial: false, at: prev ? prev.at : Date.now() });
+        lines.set(msg.turn.turnId, { speaker: msg.turn.speaker, text: msg.turn.text, partial: false, at: prev ? prev.at : Date.now(), startMs: msg.turn.startMs });
         syncStart(msg.turn);
       }
       renderLive();
@@ -1034,6 +1069,9 @@ function handle(msg) {
       if (!id) break;
       state.doneId = id;
       if (state.rec.id === id) stopRec();
+      // The turns were just saved and nothing else announces them: without this the card shows
+      // "No reflection yet" instead of "tap which voice is yours" until the phone does something.
+      refreshMemory();
       break;
     case 'conversation':
       if (msg.conversation && state.rec.active && msg.conversation.id === state.rec.id && msg.conversation.otherName) startRec(state.rec.id, msg.conversation.otherName);
@@ -1106,7 +1144,7 @@ async function loadMe() {
     if (!me || typeof me.name !== 'string' || !me.name.trim()) return;
     USER.name = me.name.trim();
     USER.initials = initialsOf(USER.name) || USER.initials;
-    if (refs.heroH1) refs.heroH1.textContent = `${greeting()}, ${USER.name}`;
+    if (refs.heroH1) { refs.heroH1.textContent = `${greeting()}, ${USER.name}`; fitHeroLine(); }
     const avatar = document.querySelector('.avatar');
     if (avatar) avatar.textContent = USER.initials;
   } catch { /* the fallback name stays */ }

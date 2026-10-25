@@ -14,6 +14,9 @@ const PROCESSING_GIVE_UP_MS = 30000;
 const BRIEF_LABELS = { commitment: 'Follow through', event: 'Ask how it went', topic: 'Bring up', suggestion: 'Try' };
 // These two get the big numbers; the rest of the comparison sits underneath.
 const HERO_METRICS = ['followUps', 'missedBids'];
+// The ticket is overflow-hidden and pinned to the bottom, so lines further up than this are never
+// seen; redrawing a four-hour transcript on every partial would only make the projector stutter.
+const MAX_TICKET_LINES = 80;
 
 const $ = (id) => document.getElementById(id);
 
@@ -62,9 +65,14 @@ function fmtClock(ms) {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 }
 
+// The server stores 'them' until a name is typed or heard; it's a placeholder, not a name.
+const realName = (convo) => (convo && convo.otherName && convo.otherName !== 'them' ? convo.otherName : null);
+
+// Voices in the conversation. A background line (someone at the next table) has its own letter
+// but isn't a person we'd name or ask the user to pick from.
 function speakerLabels(turns) {
   const seen = [];
-  for (const t of turns) if (t.speaker && t.speaker !== 'unknown' && !seen.includes(t.speaker)) seen.push(t.speaker);
+  for (const t of turns) if (t.speaker && t.speaker !== 'unknown' && t.source !== 'crowd' && !seen.includes(t.speaker)) seen.push(t.speaker);
   return seen;
 }
 
@@ -76,7 +84,7 @@ function speakerName(speaker, convo, labels) {
   if (!userLabel) return `Speaker ${speaker}`;
   if (speaker === userLabel) return 'You';
   const others = labels.filter((l) => l !== userLabel);
-  if (others.length === 1 && convo.otherName) return convo.otherName;
+  if (others.length === 1 && realName(convo)) return convo.otherName;
   return `Speaker ${speaker}`;
 }
 
@@ -117,13 +125,15 @@ async function getJson(path) {
 
 // ---------- transcript ----------
 
-function renderLines(listId, turns, convo, { cited = [], emptyText = '' } = {}) {
+function renderLines(listId, turns, convo, { cited = [], emptyText = '', last = Infinity } = {}) {
   const list = $(listId);
+  // Labels come from the whole transcript so a clipped list keeps the same speaker colours.
   const labels = speakerLabels(turns);
   if (!turns.length) {
     list.replaceChildren(el('li', { class: 'st-empty', text: emptyText }));
     return;
   }
+  if (turns.length > last) turns = turns.slice(-last);
   list.replaceChildren(...turns.map((t) => {
     const key = `${listId}:${convo ? convo.id : ''}:${t.turnId}`;
     let cls = lineClass(t.speaker, convo, labels);
@@ -134,7 +144,8 @@ function renderLines(listId, turns, convo, { cited = [], emptyText = '' } = {}) 
     return el('li', { class: cls, 'data-turn': t.turnId },
       // the Figma line is time | who | text; a partial has no time yet
       el('span', { class: 'st-time', text: Number.isFinite(t.startMs) ? fmtClock(t.startMs) : '' }),
-      el('span', { class: 'st-who', text: speakerName(t.speaker, convo, labels) }),
+      // a background voice keeps its letter: it is never "You" and never the person we're talking to
+      el('span', { class: 'st-who', text: t.source === 'crowd' && t.speaker && t.speaker !== 'unknown' ? `Speaker ${t.speaker}` : speakerName(t.speaker, convo, labels) }),
       el('span', { class: 'st-said' }, t.text || '', t.source === 'crowd' ? el('span', { class: 'st-bg-tag', text: 'Background' }) : null),
     );
   }));
@@ -166,7 +177,7 @@ function render() {
   } else if (view === 'recording' || view === 'label') {
     showSection('v-script');
     renderScript(view, convo);
-    status.textContent = convo && convo.otherName ? `With ${convo.otherName}` : '';
+    status.textContent = realName(convo) ? `With ${convo.otherName}` : '';
   } else if (view === 'coaching') {
     showSection('v-coach');
     renderCoaching(convo);
@@ -191,7 +202,7 @@ function renderScript(view, convo) {
 
   // The Figma ticket's "Session with Maya"; while the mic is off and nobody's labelled yet,
   // the picking step sits beside the REC caption.
-  const name = convo && convo.otherName && convo.otherName !== 'them' ? convo.otherName : null;
+  const name = realName(convo);
   const turns = recording ? (liveList(id).length ? liveList(id) : turnsFor(id)) : turnsFor(id, { withPartials: true });
   // Once the mic is off and nobody has tapped their line, the one thing left to do is the headline.
   const unlabelled = !recording && !(convo && convo.userLabel) && speakerLabels(turns).length >= 2;
@@ -202,6 +213,7 @@ function renderScript(view, convo) {
 
   renderLines('script-lines', turns, recording ? null : convo, {
     emptyText: recording ? 'Listening…' : 'No lines came through.',
+    last: MAX_TICKET_LINES,
   });
   // The moment the phone hears who it is, what memory holds on them goes under the lines.
   setBriefName(recording ? name : null);
@@ -243,9 +255,28 @@ function updateTimer() {
   timer.replaceChildren(mm, el('span', { class: 'colon', text: ':' }), ss);
 }
 
-function startTimer(id) {
-  if (state.rec && state.rec.id === id) return;
-  state.rec = { id, startedAt: Date.now(), stoppedAt: null };
+function startTimer(id, at) {
+  if (!state.rec || state.rec.id !== id) {
+    // Joined (or reloaded) mid-recording: our clock starts behind the phone's until something says how far.
+    state.rec = { id, startedAt: Date.now(), stoppedAt: null };
+  }
+  // The focus carries the server's clock from when the phone went to recording (same Mac, same
+  // clock). A stamp from hours ago is a stale focus, not a long recording.
+  const age = at > 0 ? Date.now() - at : -1;
+  if (age >= 0 && age < 6 * 3600 * 1000) syncTimerTo(id, at);
+}
+
+// A finished turn says how much audio there has been. Every turn gets a say, because the hub
+// replays them oldest-first to a late joiner: settling on turn 1 left the wall six seconds behind.
+function syncTimer(id, turn) {
+  if (!turn || !(turn.endMs > 0)) return;
+  syncTimerTo(id, Date.now() - turn.endMs);
+}
+
+function syncTimerTo(id, at) {
+  const rec = state.rec;
+  if (!rec || rec.id !== id || rec.stoppedAt) return;
+  rec.startedAt = Math.min(rec.startedAt, at);
 }
 
 function stopTimer(id) {
@@ -266,9 +297,7 @@ function signalRows(s) {
 function renderCoaching(convo) {
   const id = state.convoId;
   const busy = id && state.processing.has(id);
-  $('coach-title').textContent = convo
-    ? `Your talk with ${convo.otherName || 'them'}`
-    : 'Your talk';
+  $('coach-title').textContent = realName(convo) ? `Your talk with ${convo.otherName}` : 'Your talk';
 
   const tagNode = $('coach-tag');
   const prev = id ? state.shownNote.get(id) : null;
@@ -392,7 +421,7 @@ function renderCompare(convo, cmp) {
   const same = cmp.samePerson ?? cmp.sameperson;
   const sub = [
     cmp.previousAt ? `vs. ${fmtDate(cmp.previousAt)}` : null,
-    same && convo.otherName ? `with ${convo.otherName}` : null,
+    same && realName(convo) ? `with ${convo.otherName}` : null,
   ].filter(Boolean).join(' ');
 
   let hero = metrics.filter((m) => HERO_METRICS.includes(m.key));
@@ -592,7 +621,7 @@ function renderMemory() {
       el('th', { scope: 'col', text: 'You talked' }),
     );
     const rows = table.slice(-6).map((r) => el('tr', {},
-      el('td', { text: `${fmtDate(r.createdAt)} ${r.otherName || TAG_NAMES[r.tag] || ''}`.trim() }),
+      el('td', { text: `${fmtDate(r.createdAt)} ${realName(r) || TAG_NAMES[r.tag] || ''}`.trim() }),
       el('td', { text: fmtNum(r.userQuestions) }),
       el('td', { text: fmtNum(r.followUps) }),
       el('td', { text: fmtNum(r.otherAvgAnswerWords) }),
@@ -636,7 +665,7 @@ function renderMemory() {
       if (c.seeded) sub.push(document.createTextNode(', sample'));
       if (c.note && c.note.status === 'dropped') sub.push(document.createTextNode(', counts only'));
       return el('li', { class: `st-convo${c.id === state.lastConvoId ? ' current' : ''}` },
-        el('span', { class: 'st-convo-name', text: c.otherName || 'Someone' }),
+        el('span', { class: 'st-convo-name', text: realName(c) || 'Someone' }),
         el('span', { class: 'st-convo-date', text: fmtDate(c.createdAt) }),
         el('span', { class: 'st-convo-sub' }, ...sub),
       );
@@ -671,16 +700,16 @@ async function fetchConvo(id) {
   } catch { /* deleted or server away; the WS will tell us */ }
 }
 
-function setFocus(view, conversationId, otherName) {
+function setFocus(view, conversationId, otherName, at = null) {
   if (!VIEWS.includes(view)) return;
   // While recording, renderScript asks for the brief under the conversation's own name.
-  if (view !== 'recording') setBriefName(view === 'start' ? otherName : null);
+  if (view !== 'recording') setBriefName(view === 'start' ? realName({ otherName }) : null);
   const prevView = state.view;
   state.view = view;
   state.jumpedTo = null; // the phone has spoken; we're no longer ahead of it
   state.convoId = conversationId || null;
   if (state.convoId) state.lastConvoId = state.convoId;
-  if (view === 'recording' && state.convoId) startTimer(state.convoId);
+  if (view === 'recording' && state.convoId) startTimer(state.convoId, at);
   if (view !== 'recording' && state.convoId) stopTimer(state.convoId);
   if (view === 'start') state.pendingTagId = null;
   if (view === 'memory' && prevView !== 'memory') refreshMemory();
@@ -698,6 +727,16 @@ function settleProcessing(id) {
   state.processing.delete(id);
 }
 
+// Nothing is coming back for this run (the server's /process failed, or never answered). If we
+// jumped ahead to coaching ourselves, go back to where the phone still is rather than spin on an empty page.
+function giveUpProcessing(id) {
+  settleProcessing(id);
+  const c = state.convos.get(id);
+  if (id === state.convoId && state.view === 'coaching' && state.jumpedTo === id && !(c && (c.note || c.signals))) state.view = 'label';
+  if (state.jumpedTo === id) state.jumpedTo = null;
+  if (id === state.convoId) render();
+}
+
 function handle(msg) {
   const id = msg.conversationId;
   switch (msg.type) {
@@ -705,11 +744,11 @@ function handle(msg) {
       state.mock = !!msg.mock;
       $('mock-badge').hidden = !state.mock;
       refreshMemory();
-      if (msg.focus) setFocus(msg.focus.view, msg.focus.conversationId, msg.focus.otherName);
+      if (msg.focus) setFocus(msg.focus.view, msg.focus.conversationId, msg.focus.otherName, msg.focus.at);
       else render();
       break;
     case 'focus':
-      setFocus(msg.view, id, msg.otherName);
+      setFocus(msg.view, id, msg.otherName, msg.at);
       break;
     case 'conversation': {
       const c = msg.conversation;
@@ -727,16 +766,9 @@ function handle(msg) {
     }
     case 'processing':
       if (!id) break;
+      if (msg.failed) { giveUpProcessing(id); break; }
       settleProcessing(id);
-      state.processing.set(id, setTimeout(() => {
-        state.processing.delete(id);
-        // Nothing came back (the server's /process failed). If we jumped ahead to coaching
-        // ourselves, go back to where the phone still is rather than spin on an empty page.
-        const c = state.convos.get(id);
-        if (id === state.convoId && state.view === 'coaching' && state.jumpedTo === id && !(c && (c.note || c.signals))) state.view = 'label';
-        state.jumpedTo = null;
-        if (id === state.convoId) render();
-      }, PROCESSING_GIVE_UP_MS));
+      state.processing.set(id, setTimeout(() => giveUpProcessing(id), PROCESSING_GIVE_UP_MS));
       // Coaching can take a few seconds live; get the room looking at it now
       // rather than waiting for the phone to switch.
       if (id === state.convoId && state.view === 'label') { state.view = 'coaching'; state.jumpedTo = id; }
@@ -745,6 +777,8 @@ function handle(msg) {
     case 'partial':
     case 'turn': {
       if (!id) break;
+      // A line flushed after `done` belongs to a recording that's over; `done` already has the lot.
+      if (state.doneTurns.has(id)) break;
       let m = state.live.get(id);
       if (!m) { m = new Map(); state.live.set(id, m); }
       if (msg.type === 'partial') {
@@ -755,6 +789,7 @@ function handle(msg) {
         m.set(msg.turn.turnId, { speaker: msg.turn.speaker, text: msg.turn.text, startMs: msg.turn.startMs, partial: false });
       }
       startTimer(id);
+      if (msg.type === 'turn') syncTimer(id, msg.turn);
       // If the focus call got lost, the transcript arriving is proof enough.
       if (state.view === 'start' && (!state.convoId || state.convoId === id)) {
         setFocus('recording', id);
@@ -763,15 +798,26 @@ function handle(msg) {
       }
       break;
     }
-    case 'done':
+    case 'done': {
       if (!id) break;
       stopTimer(id);
-      state.doneTurns.set(id, Array.isArray(msg.turns) ? msg.turns : turnsFor(id));
+      const turns = Array.isArray(msg.turns) ? msg.turns : turnsFor(id);
+      state.doneTurns.set(id, turns);
+      // The store was updated with these before `done` went out. A `conversation` message now
+      // comes first with the same turns and label, but an older server sends only this, and
+      // without the merge the wall kept asking for a tap the lip lock had already answered.
+      const c = state.convos.get(id);
+      if (c) {
+        c.turns = turns;
+        if (msg.userLabel) c.userLabel = msg.userLabel;
+        if (msg.otherName) c.otherName = msg.otherName;
+      }
       // The mic is off. If the phone never says so (it closed mid-recording), don't keep
       // the red "Recording" up on the wall.
       if (id === state.convoId && state.view === 'recording') state.view = 'label';
       if (id === state.convoId) render();
       break;
+    }
     case 'memory':
       refreshMemory();
       break;

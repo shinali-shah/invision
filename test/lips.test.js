@@ -42,6 +42,16 @@ test('losing the face releases the lock and clears the window', () => {
   assert.equal(g.push({ t: 1125, face: true, mouth: 0.3 }), false);
 });
 
+test('a clock that runs backwards starts the mouth gate over instead of wedging it on', () => {
+  // The lip lock used to feed the gate performance.now() until audio started and transcript
+  // ms after. The old samples never left the window and the hold never ran out.
+  const g = createMouthGate();
+  assert.equal(talking(g, 30000, 8), true);
+  assert.equal(still(g, 100, 40), false);
+  // and it locks again on the new clock
+  assert.equal(talking(g, 6000, 4), true);
+});
+
 test('the close loud voice is mine when it sits near the tracked speech level', () => {
   const g = createVoiceGate();
   assert.equal(g.push(0, -30, null), false);      // nothing tracked yet

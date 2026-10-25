@@ -76,6 +76,11 @@ function el(tag, props = {}, ...kids) {
   return node;
 }
 
+// replaceChildren prints a stray null as the text "null"; this skips the optional bits.
+function put(node, ...kids) {
+  node.replaceChildren(...kids.filter((k) => k != null && k !== false));
+}
+
 function checkedTag(name) {
   const input = document.querySelector(`input[name="${name}"]:checked`);
   return input ? input.value : 'family';
@@ -99,10 +104,16 @@ function talkSharePct(share) {
   return share === null || share === undefined ? null : Math.round(share * 100);
 }
 
-// Distinct real speaker labels in first-seen order.
+// A line the lip lock put down to the crowd: greyed, tagged, kept.
+const isCrowd = (t) => t.source === 'crowd';
+const crowdTag = () => el('span', { class: 'bg-tag', text: 'Background' });
+
+// Distinct real speaker labels in first-seen order. Crowd lines carry Muse letters too, but
+// those aren't voices in the conversation: one would cost the other person their name and
+// pad out "N voices heard".
 function speakerLabels(turns) {
   const seen = [];
-  for (const t of turns) if (t.speaker !== 'unknown' && !seen.includes(t.speaker)) seen.push(t.speaker);
+  for (const t of turns) if (t.speaker !== 'unknown' && !isCrowd(t) && !seen.includes(t.speaker)) seen.push(t.speaker);
   return seen;
 }
 
@@ -114,7 +125,7 @@ function speakerName(speaker, convo, labels) {
   if (!userLabel) return `Speaker ${speaker}`;
   if (speaker === userLabel) return 'You';
   const others = labels.filter((l) => l !== userLabel);
-  if (others.length === 1 && convo.otherName) return convo.otherName;
+  if (others.length === 1 && isNamed(convo)) return convo.otherName;
   return `Speaker ${speaker}`;
 }
 
@@ -126,17 +137,15 @@ function lineClass(speaker, convo, labels) {
   return idx === 0 || idx === 1 ? `line spk-${idx}` : 'line';
 }
 
-// A line the lip lock put down to the crowd: greyed, tagged, kept.
-const isCrowd = (t) => t.source === 'crowd';
-const crowdTag = () => el('span', { class: 'bg-tag', text: 'Background' });
-
 function renderTranscript(listId, turns, convo, { pickable = false, cited = [], onPick } = {}) {
   const list = $(listId);
   list.replaceChildren();
   const labels = speakerLabels(turns);
   for (const t of turns) {
     const cls = lineClass(t.speaker, convo, labels) + (cited.includes(t.turnId) ? ' cited' : '') + (isCrowd(t) ? ' is-crowd' : '');
-    const who = el('span', { class: 'who', text: speakerName(t.speaker, convo, labels) });
+    // A crowd line stays "Speaker X": it isn't you, and the Background tag already says it isn't them.
+    const whoText = isCrowd(t) && t.speaker && t.speaker !== 'unknown' ? `Speaker ${t.speaker}` : speakerName(t.speaker, convo, labels);
+    const who = el('span', { class: 'who', text: whoText });
     const said = el('span', { class: 'said', text: t.text }, isCrowd(t) ? crowdTag() : null);
     if (pickable) {
       const btn = el('button', {
@@ -223,7 +232,7 @@ function renderFinishBanner() {
     box.replaceChildren(...rows.map((c) => el('div', { class: 'finish-row' },
       el('span', { class: 'finish-dot', 'aria-hidden': 'true' }),
       el('span', { class: 'finish-text' },
-        el('strong', { text: `Finish coaching for ${c.otherName || 'them'}` }),
+        el('strong', { text: isNamed(c) ? `Finish coaching for ${c.otherName}` : 'Finish coaching' }),
         document.createTextNode(': tap which voice is yours'),
       ),
       el('button', { type: 'button', class: 'finish-btn', text: 'Finish', onclick: () => openConversation(c) }),
@@ -275,8 +284,8 @@ function renderBrief(brief, { card = $('brief-card'), title = null } = {}) {
     brief.lastMetAt ? `Last talked ${fmtDate(brief.lastMetAt)}` : null,
     brief.conversations ? `${brief.conversations} conversation${brief.conversations === 1 ? '' : 's'}` : null,
   ].filter(Boolean).join(', ');
-  card.replaceChildren(
-    el('h2', { class: 'subtitle', id: `${card.id}-title`, text: title || `Before you talk to ${brief.otherName || 'them'}` }),
+  put(card,
+    el('h2', { class: 'subtitle', id: `${card.id}-title`, text: title || (isNamed(brief) ? `Before you talk to ${brief.otherName}` : 'Before you talk') }),
     meta ? el('p', { class: 'card-meta', text: meta }) : null,
     el('ul', { class: 'brief-items' }, ...items.map((it) => {
       const [glyph, label] = BRIEF_KINDS[it.kind] || ['•', 'Note'];
@@ -330,12 +339,22 @@ async function startRecording() {
       }
     }
     if (!stream) stream = await navigator.mediaDevices.getUserMedia({ audio: AUDIO_CONSTRAINTS });
-    await ctx.audioWorklet.addModule('pcm-worklet.js');
   } catch (err) {
     if (stream) stream.getTracks().forEach((t) => t.stop());
     ctx.close().catch(() => {});
     btn.removeAttribute('aria-busy');
     showError('start-error', micErrorMessage(err, { isSecureContext: window.isSecureContext }));
+    return;
+  }
+  // The worklet is fetched from the server, so with the mic already live the only way this fails
+  // is the server being unreachable. That's not a microphone problem and shouldn't read like one.
+  try {
+    await ctx.audioWorklet.addModule('pcm-worklet.js');
+  } catch {
+    stream.getTracks().forEach((t) => t.stop());
+    ctx.close().catch(() => {});
+    btn.removeAttribute('aria-busy');
+    showError('start-error', "Couldn't reach the server. Check the connection and try again.");
     return;
   }
 
@@ -680,7 +699,14 @@ function startLips(rec) {
     video: $('rec-preview'),
     timeBase: () => rec.firstAudioAt,
     send: (samples) => {
-      if (rec.ws.readyState === WebSocket.OPEN) rec.ws.send(JSON.stringify({ type: 'cues', samples }));
+      // Same treatment as the audio frames: a batch from before the socket opened waits in the
+      // queue (ws.send takes strings and buffers alike), so the first seconds of cues aren't lost
+      // when a cached model comes up before a slow tunnel does.
+      const msg = JSON.stringify({ type: 'cues', samples });
+      if (rec.ws.readyState === WebSocket.OPEN) rec.ws.send(msg);
+      else if (rec.ws.readyState === WebSocket.CONNECTING) rec.queue.push(msg);
+      else return;
+      rec.cuesSent = true; // fallback for the label step's copy when the server doesn't say where the label came from
     },
     onState: renderLipState,
   });
@@ -722,12 +748,17 @@ function renderLipState({ status, box }) {
 function endVideo(rec, keep) {
   stopLips(rec);
   hidePreview();
+  // Walking out after Stop: the recorder was already told to stop and its flush is still on its
+  // way. Without this it would upload the video to a conversation we've just deleted and keep
+  // the blob around for good.
+  if (!keep) rec.discard = true;
   const recorder = rec.recorder;
   if (!recorder) return;
   rec.recorder = null;
   const id = state.convo && state.convo.id;
   if (keep && id) {
     const flush = () => {
+      if (rec.discard) { rec.chunks = []; return; }
       const blob = new Blob(rec.chunks, { type: recorder.mimeType || rec.chunks[0]?.type || 'video/mp4' });
       rec.chunks = [];
       if (!blob.size) return;
@@ -756,10 +787,11 @@ async function uploadVideo(id) {
   up.error = null;
   renderVideo();
   try {
-    const recording = await api.uploadRecording(id, up.blob, up.offsetMs, (p) => {
+    up.req = api.uploadRecording(id, up.blob, up.offsetMs, (p) => {
       up.pct = Math.round(p * 100);
       renderVideo();
     });
+    const recording = await up.req;
     if (state.uploads.get(id) !== up) return; // deleted meanwhile
     up.status = 'done';
     up.blob = null; // it's on the Mac now
@@ -771,6 +803,14 @@ async function uploadVideo(id) {
     up.error = err.message;
   }
   renderVideo();
+}
+
+// The conversation is going away: stop sending its video too, otherwise the whole blob still
+// crosses the tunnel to a 404.
+function dropUpload(id) {
+  const up = state.uploads.get(id);
+  if (up && up.req) up.req.abort();
+  state.uploads.delete(id);
 }
 
 // Upload status on the label view, plus the Replay link on coaching.
@@ -881,6 +921,7 @@ function handleSocketMessage(rec, msg) {
       if (typeof msg.otherName === 'string' && msg.otherName !== 'them' && !isNamed(state.convo)) state.convo = { ...state.convo, otherName: msg.otherName };
       finishRecording(rec, Array.isArray(msg.turns) ? msg.turns : rec.turns, {
         userLabel: typeof msg.userLabel === 'string' ? msg.userLabel : null,
+        labelSource: msg.labelSource, // 'camera' | 'name' | null; undefined from a server that predates it
         crowdTurns: Number(msg.crowdTurns) || 0,
       });
       break;
@@ -931,7 +972,7 @@ function stopRecording() {
   }, DONE_TIMEOUT_MS);
 }
 
-function finishRecording(rec, turns, { keepError = false, userLabel = null, crowdTurns = 0 } = {}) {
+function finishRecording(rec, turns, { keepError = false, userLabel = null, labelSource, crowdTurns = 0 } = {}) {
   if (rec.finished) return;
   rec.finished = true;
   clearInterval(rec.timer);
@@ -946,8 +987,12 @@ function finishRecording(rec, turns, { keepError = false, userLabel = null, crow
   }
   try { if (rec.ws.readyState <= WebSocket.OPEN) rec.ws.close(1000); } catch { /* ignore */ }
   state.rec = null;
-  // The lip lock may already know which voice is yours; the label step then just confirms it.
-  state.convo = { ...state.convo, turns, userLabel, autoLabel: !!userLabel, crowdTurns };
+  // The lip lock (or an "I'm Parth" in the transcript) may already know which voice is yours;
+  // the label step then just confirms it. The server says which; an older one doesn't, and then
+  // cues having gone out is the best guess.
+  if (labelSource === undefined) labelSource = userLabel ? (rec.cuesSent ? 'camera' : 'name') : null;
+  if (!userLabel) labelSource = null;
+  state.convo = { ...state.convo, turns, userLabel, autoLabel: !!labelSource, labelSource, crowdTurns };
   showLabelView(keepError);
 }
 
@@ -958,12 +1003,21 @@ function showLabelView(keepError = false) {
   const turns = convo.turns || [];
   if (!keepError) showError('label-error', null);
   showError('coach-error', null);
-  $('reflection').value = convo.reflection || '';
+  // This view re-renders after a tap or a rename; the half-typed reflection has to survive that.
+  // Only a different conversation starts the box over.
+  const reflection = $('reflection');
+  if (reflection.dataset.convo !== convo.id) {
+    reflection.dataset.convo = convo.id;
+    reflection.value = convo.reflection || '';
+  }
 
   const voices = speakerLabels(turns).length;
   const hasVoices = voices > 0;
   const matched = hasVoices && !!convo.userLabel && !!convo.autoLabel;
-  $('label-title').textContent = !hasVoices ? 'Nothing to label' : matched ? 'We matched your voice to the camera' : 'Which voice is yours?';
+  // Without the camera the only way we could know is that you said your own name.
+  const matchedTitle = convo.labelSource === 'camera' ? 'We matched your voice to the camera'
+    : convo.labelSource === 'name' ? 'We heard which voice is yours' : 'Which voice is yours?';
+  $('label-title').textContent = !hasVoices ? 'Nothing to label' : matched ? matchedTitle : 'Which voice is yours?';
   $('label-hint').textContent = hasVoices
     ? (matched ? 'Not you? Tap your line.' : convo.userLabel ? 'Got it. Tap a different line if that was wrong.' : 'Tap one of your lines. Coaching only starts after this.')
     : 'No speech came through. You can still finish up.';
@@ -1033,8 +1087,7 @@ function showCoaching(convo) {
   state.convo = convo;
   showError('coaching-error', null);
   const note = convo.note;
-  const who = convo.otherName || 'them';
-  $('coach-title').textContent = `Your talk with ${who}`;
+  $('coach-title').textContent = isNamed(convo) ? `Your talk with ${convo.otherName}` : 'Your conversation';
   $('coach-meta').textContent = [TAG_NAMES[convo.tag], fmtDate(convo.createdAt)].filter(Boolean).join(', ');
 
   const dropped = !note || note.status === 'dropped' || !note.text;
@@ -1155,7 +1208,7 @@ function renderCompare(convo, cmp) {
     );
   }
 
-  card.replaceChildren(
+  put(card,
     el('div', { class: 'card-head' },
       el('h2', { class: 'subtitle', id: 'compare-title', text: 'Compared with last time' }),
       el('span', { class: 'card-meta', text: sub })),
@@ -1212,7 +1265,7 @@ function renderHooks(convo) {
   ) : null;
 
   if (!groups.length && !detector && !crowd) { card.hidden = true; card.replaceChildren(); return; }
-  card.replaceChildren(
+  put(card,
     el('div', { class: 'card-head' },
       el('h2', { class: 'subtitle', id: 'hooks-title', text: 'What we picked up' }),
       el('span', { class: 'card-meta', text: 'Measured from the transcript. No AI.' })),
@@ -1333,7 +1386,7 @@ function renderFollowUp(convo) {
   });
 
   card.removeAttribute('aria-busy');
-  card.replaceChildren(head, ta, used, el('div', { class: 'follow-actions' }, send, rewrite), status, err);
+  put(card, head, ta, used, el('div', { class: 'follow-actions' }, send, rewrite), status, err);
   card.hidden = false;
 }
 
@@ -1389,7 +1442,7 @@ async function deleteConversation() {
   showError('coaching-error', null);
   try {
     await api.remove(convo.id);
-    state.uploads.delete(convo.id);
+    dropUpload(convo.id);
     state.convo = null;
     await openMemory();
   } catch (err) {
@@ -1534,9 +1587,10 @@ function renderConvoList(convos) {
     if (c.seeded) sub.push(document.createTextNode(' Sample'));
     if (c.needsLabel) sub.push(el('span', { class: 'tag needs-tap', text: 'Needs your tap' }));
     else if (c.note && c.note.status === 'dropped') sub.push(document.createTextNode(' Counts only'));
-    const name = c.otherName || 'Someone';
+    // 'them' is the server's placeholder, not a name.
+    const name = isNamed(c) ? c.otherName : 'Someone';
     // Up to two initials, like the avatars in the design. Whole code points: w[0] on an emoji is half a surrogate pair.
-    const initials = name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => Array.from(w)[0].toUpperCase()).join('');
+    const initials = isNamed(c) ? name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => Array.from(w)[0].toUpperCase()).join('') : '?';
     return el('li', {}, el('button', {
       type: 'button',
       onclick: () => openConversation(c),
@@ -1608,7 +1662,7 @@ function abandonRecording() {
   // for the server to fill in with whatever Muse still had.
   const id = state.convo && state.convo.id;
   if (id) {
-    state.uploads.delete(id);
+    dropUpload(id);
     state.convo = null;
     api.remove(id).catch(() => {});
   }
