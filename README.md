@@ -88,11 +88,12 @@ npm run synthetic       # writes data/synthetic.db and data/synthetic-recordings
 npm run dev:synthetic   # serves it (mock mode) on http://localhost:3000
 ```
 
-It holds a conversation on every day from the first of last month to today (55 when built on Oct 25),
+It covers the first of last month to today (39 conversations when built on Oct 25), with about a third
+of days left empty the way a real calendar would be (more of them at weekends),
 in English, Spanish and both mixed, with eleven people: Abuela, Mamá, Papá, Tía Lupe and Diego (family);
 Jordan, Priya, Marcus, Ana, Kevin and Sam (friends); Daniel, Elena, Maya, Luis and Professor Hale
 (networking). Twelve are the long, connected ones in `src/synthetic/conversations.js`; the rest are
-everyday calls from `src/synthetic/everyday.js`, each written to land on the Home calendar as went well,
+everyday calls from `src/synthetic/everyday.js` on most of the other days, each written to land on the calendar as went well,
 a few bumps or a rough one (gossip, cutting in, short replies). Every field is filled in: diarized turns
 with lip-lock sources (including bystander lines filtered out), signals, hooks, awkward flags, coaching
 notes, follow-up messages (sent, edited, and drafts for the last two days), face cues and Replay takeaways,

@@ -16,10 +16,13 @@ test('synthetic account: every conversation goes through the real agents without
     assert.deepEqual(problems, []);
     assert.equal(built.length, plan.length);
 
-    // The Home calendar has something on every day from the first of last month to today.
+    // The Home calendar is mostly filled in, with some days off, and today always has a conversation.
     const day = iso => new Date(iso).toDateString();
     const days = new Set(store.listConversations().map(c => day(c.createdAt)));
-    for (const d = new Date(2026, 8, 1); d <= new Date(now); d.setDate(d.getDate() + 1)) assert.ok(days.has(d.toDateString()), d.toDateString());
+    let total = 0;
+    for (const d = new Date(2026, 8, 1); d <= new Date(now); d.setDate(d.getDate() + 1)) total++;
+    assert.ok(days.size >= total * 0.55 && days.size <= total * 0.8, `${days.size} of ${total} days`);
+    assert.ok(days.has(new Date(now).toDateString()));
 
     // Plan is oldest first, same as the store lists them.
     store.listConversations().forEach((c, i) => {

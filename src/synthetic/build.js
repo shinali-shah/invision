@@ -335,9 +335,10 @@ function everydaySpec(e, index, key, start, now) {
 }
 
 /**
- * Every day from the first of last month to today gets at least one conversation, so the Home
- * calendar is filled in: the big ones from conversations.js on their own days, everyday ones on the
- * rest (reused, oldest first, if a long month runs out of them). Oldest first.
+ * Conversations from the first of last month to today, the way a real person records them: the big
+ * ones from conversations.js on their own days, everyday ones on most of the rest, and about a
+ * third of days with nothing (more of them at weekends). Which days are skipped depends only on the
+ * date, so a rebuild gives the same calendar. Today always has one. Oldest first.
  */
 export function schedule(now) {
   // nothing starts in the future, even when the build runs in the morning
@@ -356,6 +357,8 @@ export function schedule(now) {
   for (; d.getTime() <= dayOf(now); d.setDate(d.getDate() + 1)) {
     const day = d.getTime();
     if (taken.has(day)) continue;
+    const weekend = d.getDay() === 0 || d.getDay() === 6;
+    if (day < dayOf(now) && rng(d.toDateString())() < (weekend ? 0.5 : 0.3)) continue;
     const pick = pool.find(p => !p.used && fits(p.e, day))
       ?? [...pool].filter(p => fits(p.e, day)).sort((a, b) => a.used - b.used)[0]
       ?? [...pool].sort((a, b) => a.used - b.used)[0];
