@@ -1,640 +1,662 @@
-// Home on the Mac: what to try next time, the planner, the phone's live transcript, and every
-// conversation so far. Everything comes from /api/memory and /ws/stage. User text goes in via textContent only.
+// Home. This is the team's Figma Make App.tsx rendered as plain DOM: same elements, same class
+// names, same order, so home.css (the Figma's index.css) applies untouched. The only thing that
+// changed is where the words come from: /api/memory instead of the hardcoded reflections, and
+// /ws/stage for the recording card, since the phone does the actual recording.
 
-const $ = (id) => document.getElementById(id);
-const SVG = 'http://www.w3.org/2000/svg';
-
-const state = {
-  memory: null,
-  month: null,          // { year, month } on show in the calendar
-  drew: false,          // the hero strand draws in once per page load, never again
-  drafts: new Map(),    // id -> edited follow-up text, so closing the modal doesn't lose it
-  socketUp: false,
-  live: null,           // { id, startedAt, convo, lines: Map(turnId -> { speaker, text, partial }) }
-};
-
-// What to work on next, by awkward kind. Only the ones that are about you.
-const GOALS = {
+const USER = { name: 'Parth', initials: 'PS' };
+const MONTHS = ['JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE', 'JULY', 'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER'];
+const FIGMA_GOALS = ['Ask one open question', 'Pause before replying', 'Reflect one detail'];
+const FLAG_GOALS = {
   'cut-in': 'Let them finish before you talk',
   gossip: 'Leave stories about other people out',
   undersell: 'Say one real thing about what you do',
-  'short-reply': 'Answer, then ask one back',
-  hedge: 'Say what you think once, without hedging',
-  fizzle: 'End with a reason to talk again',
 };
+const EMBEDDED = window.self !== window.top;
 
-// ---------- helpers ----------
+// ---------- DOM helpers ----------
 
 function el(tag, props = {}, ...kids) {
   const node = document.createElement(tag);
   for (const [k, v] of Object.entries(props)) {
+    if (v === undefined || v === null || v === false) continue;
     if (k === 'class') node.className = v;
     else if (k === 'text') node.textContent = v;
-    else if (v !== undefined && v !== null && v !== false) node.setAttribute(k, v === true ? '' : v);
+    else if (k.startsWith('on')) node.addEventListener(k.slice(2), v);
+    else if (k === 'disabled' || k === 'checked') node[k] = v;
+    else node.setAttribute(k, v === true ? '' : v);
   }
-  for (const kid of kids) if (kid != null) node.append(kid);
+  for (const kid of kids) if (kid != null && kid !== false) node.append(kid);
   return node;
 }
 
-function svg(tag, attrs = {}) {
-  const node = document.createElementNS(SVG, tag);
-  for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, String(v));
+// replaceChildren() would print a literal "false" for a skipped child; this drops them like el() does.
+function fill(node, ...kids) {
+  node.replaceChildren(...kids.filter((kid) => kid != null && kid !== false));
+}
+
+const SVG_NS = 'http://www.w3.org/2000/svg';
+function svgEl(tag, attrs, ...kids) {
+  const node = document.createElementNS(SVG_NS, tag);
+  for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, v);
+  for (const kid of kids) node.append(kid);
   return node;
 }
 
-async function getJson(url, opts) {
-  const res = await fetch(url, opts);
-  const body = res.status === 204 ? null : await res.json().catch(() => null);
-  if (!res.ok) throw new Error((body && body.error) || `Request failed (${res.status})`);
-  return body;
-}
-
-const postJson = (url, data) => getJson(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
-
-const store = {
-  get(key) { try { return localStorage.getItem(key); } catch { return null; } },
-  set(key, value) { try { if (value == null) localStorage.removeItem(key); else localStorage.setItem(key, value); } catch { /* private mode */ } },
-};
-
-// Names come in however they were typed on the phone: "shinali", "Dr. okafor".
-function displayName(c) {
-  const n = c && typeof c.otherName === 'string' ? c.otherName.trim() : '';
-  if (!n || n === 'them') return 'them';
-  return n.charAt(0).toUpperCase() + n.slice(1);
-}
-
-const dayKey = (d) => `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
-
-function startOfDay(d) { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; }
-
-function relDate(iso) {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '';
-  const days = Math.round((startOfDay(new Date()) - startOfDay(d)) / 86400000);
-  if (days === 0) return 'Today';
-  if (days === 1) return 'Yesterday';
-  const opts = { month: 'short', day: 'numeric' };
-  if (d.getFullYear() !== new Date().getFullYear()) opts.year = 'numeric';
-  return d.toLocaleDateString(undefined, opts);
-}
-
-function clock(ms) {
-  const s = Math.max(0, Math.floor(ms / 1000));
-  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
-}
-
-const quoted = (s) => `“${String(s).trim().replace(/\.\.\./g, '…')}”`;
-
-// The insight builder joins its evidence with middle dots; read it as a sentence instead.
-function evidenceLine(s) {
-  const parts = String(s || '').split(/\s*·\s*/).map((p) => p.trim()).filter(Boolean);
-  if (!parts.length) return '';
-  return parts.map((p, i) => (i ? p.charAt(0).toLowerCase() + p.slice(1) : p)).join(', ');
-}
-
-const takeaway = (c, kind) => ((c.insight && c.insight.takeaways) || []).find((t) => t && t.kind === kind) || null;
-const yourFlags = (c) => (((c.hooks && c.hooks.awkward) || {}).flags || []).filter((f) => f && f.who === 'you');
-const hasTurns = (c) => Array.isArray(c.turns) && c.turns.some((t) => Number.isFinite(t.startMs) && Number.isFinite(t.endMs));
-const newestFirst = (list) => [...list].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-
-function howItWent(score) {
-  if (!Number.isFinite(score)) return null;
-  if (score < 30) return 'well';
-  if (score < 70) return 'some';
-  return 'rough';
-}
-const WENT = { well: 'went well', some: 'some awkward moments', rough: 'awkward' };
-
-// ---------- the strand ----------
-
-// Two lanes, you over them, bar length is how long each spoke. Brick for your awkward moments,
-// amber for moments you missed, a teal dot over each follow-up question.
-function strand(c, { width, size }) {
-  const big = size === 'big';
-  const g = big
-    ? { h: 84, dotY: 7, dotR: 4, youY: 18, laneH: 22, gap: 6, tick: 3 }
-    : { h: 30, dotY: 3, dotR: 2.2, youY: 7, laneH: 8, gap: 2, tick: 2 };
-  const themY = g.youY + g.laneH + g.gap;
-  const turns = (c.turns || []).filter((t) => Number.isFinite(t.startMs) && Number.isFinite(t.endMs) && t.endMs > t.startMs);
-  const t0 = Math.min(...turns.map((t) => t.startMs));
-  const t1 = Math.max(...turns.map((t) => t.endMs));
-  const span = Math.max(1, t1 - t0);
-  const x = (ms) => ((ms - t0) / span) * width;
-  const you = c.userLabel || (turns[0] && turns[0].speaker);
-  const byId = new Map(turns.map((t) => [t.turnId, t]));
-
-  const root = svg('svg', { class: `hm-strand is-${size}`, width, height: g.h, viewBox: `0 0 ${width} ${g.h}`, role: 'img' });
-
-  root.append(svg('line', { class: 'hm-strand-axis', x1: 0, x2: width, y1: themY - g.gap / 2, y2: themY - g.gap / 2 }));
-  for (const t of turns) {
-    if (!t.speaker || t.speaker === 'unknown') continue;
-    const mine = t.speaker === you;
-    const x0 = x(t.startMs);
-    const w = Math.max(big ? 2 : 1.5, x(t.endMs) - x0 - (big ? 1.5 : 0.75));
-    root.append(svg('rect', { class: mine ? 'hm-bar-you' : 'hm-bar-them', x: x0.toFixed(1), y: mine ? g.youY : themY, width: w.toFixed(1), height: g.laneH, rx: big ? 3 : 1.5 }));
-  }
-
-  const flagged = new Set();
-  for (const f of yourFlags(c)) {
-    const t = byId.get(f.turnId);
-    if (!t || flagged.has(t.turnId)) continue;
-    flagged.add(t.turnId);
-    root.append(svg('rect', { class: 'hm-mark-awk', x: (x(t.startMs) - g.tick / 2).toFixed(1), y: g.youY - (big ? 6 : 3), width: g.tick, height: g.laneH + (big ? 10 : 5), rx: 1 }));
-  }
-  const bids = (c.hooks && c.hooks.missedBids) || [];
-  for (const b of bids) {
-    const t = byId.get(b.replyTurnId) || byId.get(b.turnId);
-    if (!t) continue;
-    root.append(svg('rect', { class: 'hm-mark-missed', x: (x(t.startMs) - g.tick / 2).toFixed(1), y: themY - (big ? 4 : 2), width: g.tick, height: g.laneH + (big ? 10 : 5), rx: 1 }));
-  }
-  const follows = ((c.signals && c.signals.questions) || []).filter((q) => q && q.isFollowUp);
-  for (const q of follows) {
-    const t = byId.get(q.turnId);
-    if (!t) continue;
-    root.append(svg('circle', { class: 'hm-mark-follow', cx: x((t.startMs + t.endMs) / 2).toFixed(1), cy: g.dotY, r: g.dotR }));
-  }
-
-  const n = flagged.size;
-  const bits = [`${clock(span)} of talking, you on top and ${displayName(c)} below`];
-  if (n) bits.push(`${n} awkward ${n === 1 ? 'moment' : 'moments'}`);
-  if (bids.length) bits.push(`${bids.length} missed ${bids.length === 1 ? 'moment' : 'moments'}`);
-  if (follows.length) bits.push(`${follows.length} follow-up ${follows.length === 1 ? 'question' : 'questions'}`);
-  root.setAttribute('aria-label', bits.join(', '));
-  return root;
-}
-
-// ---------- hero ----------
-
-function openReplay(id) {
-  if (window.parent !== window) window.parent.postMessage({ type: 'playback:open-replay', id }, location.origin);
-  else location.href = `replay.html?id=${encodeURIComponent(id)}`;
-}
-
-let heroConvo = null;
-
-function renderHero(convos) {
-  const hero = $('hero');
-  const sorted = newestFirst(convos);
-  const withTry = sorted.find((c) => takeaway(c, 'try') && takeaway(c, 'try').tryInstead && hasTurns(c));
-  const withNote = sorted.find((c) => c.note && (c.note.suggestion || c.note.text));
-  heroConvo = withTry || withNote || null;
-
-  if (!heroConvo) {
-    hero.replaceChildren(
-      el('h1', { class: 'hm-hero-lead', id: 'hero-lead', text: 'Record your first conversation on your phone' }),
-      el('p', { class: 'hm-hero-empty', text: 'Afterwards you’ll see here what to try next time, drawn from what they actually said.' }),
-    );
-    return;
-  }
-
-  const c = heroConvo;
-  const kids = [];
-  if (withTry) {
-    const t = takeaway(c, 'try');
-    kids.push(el('h1', { class: 'hm-hero-lead', id: 'hero-lead', text: `Next time with ${displayName(c)}, try` }));
-    kids.push(el('blockquote', { class: 'hm-hero-try', text: quoted(t.tryInstead) }));
-    kids.push(el('div', { class: 'hm-hero-strand', id: 'hero-strand' }));
-    const ev = evidenceLine(t.evidence) || t.title || '';
-    kids.push(el('div', { class: 'hm-hero-foot' },
-      el('p', { class: 'hm-hero-ev' },
-        ev ? el('span', { text: `${ev}.` }) : null,
-        t.theySaid ? el('span', { class: 'hm-hero-ctx' }, `${displayName(c)} had just said `, el('q', { class: 'hm-speech', text: t.theySaid.trim() }), '.') : null),
-      replayButton(c)));
-  } else {
-    kids.push(el('h1', { class: 'hm-hero-lead', id: 'hero-lead', text: `Next time with ${displayName(c)}` }));
-    kids.push(el('p', { class: 'hm-hero-advice', text: c.note.suggestion || c.note.text }));
-    if (hasTurns(c)) kids.push(el('div', { class: 'hm-hero-strand', id: 'hero-strand' }));
-    kids.push(el('div', { class: 'hm-hero-foot' },
-      el('p', { class: 'hm-hero-ev', text: `From your conversation ${relDate(c.createdAt).toLowerCase()}.` }),
-      replayButton(c)));
-  }
-  hero.replaceChildren(...kids);
-  drawHeroStrand();
-}
-
-function replayButton(c) {
-  const b = el('button', { type: 'button', class: 'hm-btn is-primary', text: 'Open replay' });
-  b.addEventListener('click', () => openReplay(c.id));
-  return b;
-}
-
-function drawHeroStrand() {
-  const box = $('hero-strand');
-  if (!box || !heroConvo) return;
-  const width = Math.max(200, Math.floor(box.clientWidth - 72));
-  const s = strand(heroConvo, { width, size: 'big' });
-  const turns = heroConvo.turns.filter((t) => Number.isFinite(t.startMs));
-  const total = Math.max(...turns.map((t) => t.endMs)) - Math.min(...turns.map((t) => t.startMs));
-  if (!state.drew) { s.classList.add('draws'); state.drew = true; }
-  box.replaceChildren(
-    el('span', { class: 'hm-lane-name is-you', text: 'You', 'aria-hidden': 'true' }),
-    el('span', { class: 'hm-lane-name is-them', text: displayName(heroConvo), 'aria-hidden': 'true' }),
-    el('div', { class: 'hm-strand-wrap' }, s),
-    el('span', { class: 'hm-strand-t is-start', text: '0:00', 'aria-hidden': 'true' }),
-    el('span', { class: 'hm-strand-t is-end', text: clock(total), 'aria-hidden': 'true' }),
+// <Logo /> from App.tsx
+function logo(size = 36) {
+  const p = (attrs) => svgEl('path', attrs);
+  return svgEl('svg', { width: size, height: size * 0.62, viewBox: '0 0 56 35', fill: 'none', 'aria-hidden': 'true' },
+    p({ d: 'M28 17.500C21 6 7 4 5 17.500c2 13.500 16 11.500 23 0Z', stroke: 'var(--accent)', 'stroke-width': '5.500', 'stroke-linejoin': 'round', opacity: '.55' }),
+    p({ d: 'M28 17.500C35 6 49 4 51 17.500c-2 13.500-16 11.500-23 0Z', stroke: 'var(--accent)', 'stroke-width': '5.500', 'stroke-linejoin': 'round' }),
+    p({ d: 'M20.500 18.500 27 13h5.500l4.500 3.500-3 5-6.500 4-3-2.500-3.500 1Z', fill: 'var(--paper)' }),
+    p({ d: 'M22 17.500 27.500 13H32l3.500 3.500', stroke: 'var(--accent)', 'stroke-width': '2.200', 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }),
+    p({ d: 'm23 21.500 2.500 2.500M26 20l2.500 2.500M29 18.500l2.500 2.500', stroke: 'var(--accent)', 'stroke-width': '1.800', 'stroke-linecap': 'round' }),
   );
 }
 
-let resizeTimer = null;
-new ResizeObserver(() => {
-  clearTimeout(resizeTimer);
-  resizeTimer = setTimeout(drawHeroStrand, 120);
-}).observe($('hero'));
+// <Icon /> from App.tsx
+const ICON_PATHS = {
+  spark: [['path', { d: 'm12 3-1.2 4.1a5.3 5.3 0 0 1-3.7 3.7L3 12l4.1 1.2a5.3 5.3 0 0 1 3.7 3.7L12 21l1.2-4.1a5.3 5.3 0 0 1 3.7-3.7L21 12l-4.1-1.2a5.3 5.3 0 0 1-3.7-3.7L12 3Z' }], ['path', { d: 'M5 3v4M3 5h4' }]],
+  stop: [['rect', { x: '6', y: '6', width: '12', height: '12', rx: '1.5', fill: 'currentColor' }]],
+  check: [['path', { d: 'm5 12 4 4L19 6', pathLength: '1' }]],
+  arrow: [['path', { d: 'M5 12h14M13 6l6 6-6 6' }]],
+  back: [['path', { d: 'M19 12H5M11 6l-6 6 6 6' }]],
+  flame: [['path', { d: 'M12 3c1 3.5 4.5 5.5 4.5 9.5a4.5 4.5 0 0 1-9 0c0-2 1-3.2 2.2-4.3.1 1.6.9 2.3 1.6 2.3C11.800 8.500 11 6 12 3Z' }]],
+  calendar: [['rect', { x: '3', y: '5', width: '18', height: '16', rx: '2' }], ['path', { d: 'M16 3v4M8 3v4M3 10h18' }]],
+};
+function icon(name, size = 18) {
+  return svgEl('svg', { width: size, height: size, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '1.8', 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'aria-hidden': 'true' },
+    ...ICON_PATHS[name].map(([tag, attrs]) => svgEl(tag, attrs)));
+}
 
-// ---------- calendar ----------
+const kv = {
+  get(key) { try { return localStorage.getItem(key); } catch { return null; } },
+  set(key, value) { try { localStorage.setItem(key, value); } catch { /* private mode */ } },
+};
+const readJson = (key, fallback) => { try { return JSON.parse(kv.get(key)) ?? fallback; } catch { return fallback; } };
 
-function dayMap(convos) {
-  const days = new Map();
-  for (const c of convos) {
-    if (!hasTurns(c)) continue;
+// ---------- formatting ----------
+
+const cap = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : '');
+const firstName = (name) => cap((name || 'them').trim().split(/\s+/)[0]);
+const initialsOf = (name) => (name || 'them').trim().split(/\s+/).slice(0, 2).map((w) => w.charAt(0).toUpperCase()).join('');
+const pad2 = (n) => String(n).padStart(2, '0');
+
+function dayKey(d) {
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+}
+
+const TODAY = new Date();
+const TODAY_KEY = dayKey(TODAY);
+
+function fmtTime(d) {
+  return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+}
+
+// "Today, 10:30 AM" / "Yesterday, 4:15 PM" / "Oct 20, 12:40 PM"
+function fmtWhen(iso) {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  const key = dayKey(d);
+  const yesterday = new Date(TODAY); yesterday.setDate(TODAY.getDate() - 1);
+  const day = key === TODAY_KEY ? 'Today' : key === dayKey(yesterday) ? 'Yesterday'
+    : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  return `${day}, ${fmtTime(d)}`;
+}
+
+// "0:04" for transcript lines, "14:32" for durations and the timer.
+function fmtClock(ms, { padMinutes = false } = {}) {
+  const s = Math.max(0, Math.floor(ms / 1000));
+  const m = Math.floor(s / 60);
+  return `${padMinutes ? pad2(m) : m}:${pad2(s % 60)}`;
+}
+
+// "Saturday · Oct 25, 2026"
+function heroDate(d) {
+  return `${d.toLocaleDateString('en-US', { weekday: 'long' })} · ${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+}
+
+function greeting() {
+  const h = new Date().getHours();
+  return h < 5 ? 'Good evening' : h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
+}
+
+// ---------- state ----------
+
+const state = {
+  memory: null,
+  convos: [],            // newest first, shaped for the cards (see convoView)
+  view: { year: TODAY.getFullYear(), month: TODAY.getMonth() },
+  savedPop: false,
+  logged: new Set(readJson('playback-logged-days', [])),
+  checks: readJson('playback-home-checks', {}),
+  modal: null,           // the convo whose follow-up is open
+  rec: { active: false, id: null, name: null, startedAt: null, lastElapsed: 0, lines: new Map() },
+};
+
+const refs = {}; // long-lived nodes we update in place
+
+// ---------- data shaping ----------
+
+function convoView(c) {
+  const turns = Array.isArray(c.turns) ? c.turns : [];
+  const takeaways = (c.insight && Array.isArray(c.insight.takeaways)) ? c.insight.takeaways : [];
+  const keep = takeaways.find((t) => t.kind === 'keep');
+  const tryT = takeaways.find((t) => t.kind === 'try' && t.tryInstead);
+  const note = c.note && c.note.text ? c.note : null;
+  const last = turns[turns.length - 1];
+  const awkward = c.hooks && c.hooks.awkward ? c.hooks.awkward : null;
+  return {
+    id: c.id,
+    raw: c,
+    name: cap(c.otherName || 'them'),
+    first: firstName(c.otherName),
+    initials: initialsOf(c.otherName),
+    createdAt: c.createdAt,
+    when: fmtWhen(c.createdAt),
+    duration: last ? fmtClock(last.endMs || 0, { padMinutes: true }) : '00:00',
+    summary: keep ? keep.text : note ? note.text : 'No reflection yet. Coaching lands here once the phone finishes.',
+    next: tryT ? tryT.tryInstead : note && note.suggestion ? note.suggestion : 'Nothing to change yet.',
+    followUp: c.followUp || null,
+    commitments: c.hooks && Array.isArray(c.hooks.commitments) ? c.hooks.commitments : [],
+    flags: awkward && Array.isArray(awkward.flags) ? awkward.flags : [],
+    score: awkward && typeof awkward.score === 'number' ? awkward.score : null,
+    userLabel: c.userLabel || null,
+    transcript: turns.map((t) => [fmtClock(t.startMs || 0), t.speaker === c.userLabel ? 'me' : 'them', t.text || '']),
+  };
+}
+
+function applyMemory(mem) {
+  state.memory = mem;
+  state.convos = [...(mem.conversations || [])]
+    .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)))
+    .map(convoView);
+}
+
+// Calendar colour per day: the worst awkward score of that day's conversations.
+function dayStates() {
+  const worst = new Map();
+  for (const c of state.convos) {
     const d = new Date(c.createdAt);
     if (Number.isNaN(d.getTime())) continue;
     const key = dayKey(d);
-    const score = c.hooks && c.hooks.awkward ? c.hooks.awkward.score : null;
-    const prev = days.get(key) || { count: 0, worst: null };
-    prev.count += 1;
-    // A day is as good as its roughest conversation.
-    if (Number.isFinite(score)) prev.worst = prev.worst == null ? score : Math.max(prev.worst, score);
-    days.set(key, prev);
+    const score = c.score ?? 0;
+    worst.set(key, Math.max(worst.get(key) ?? -1, score));
   }
-  return days;
+  const states = new Map();
+  for (const [key, score] of worst) states.set(key, score < 30 ? 'green' : score < 70 ? 'yellow' : 'red');
+  return states;
 }
 
-function streak(days) {
-  const d = startOfDay(new Date());
-  // Nothing yet today doesn't break it; today just hasn't happened.
-  if (!days.has(dayKey(d))) d.setDate(d.getDate() - 1);
+function stateFor(key, states) {
+  return states.get(key) || (state.logged.has(key) ? 'green' : '');
+}
+
+// buildMonth from App.tsx; Monday-first grid, days after today left plain.
+function buildMonth(year, month, states) {
+  const offset = (new Date(year, month, 1).getDay() + 6) % 7;
+  const total = new Date(year, month + 1, 0).getDate();
+  const cells = Math.ceil((offset + total) / 7) * 7;
+  return Array.from({ length: cells }, (_, index) => {
+    const day = index - offset + 1;
+    if (day < 1 || day > total) return { day: '', state: '', key: null };
+    const key = dayKey(new Date(year, month, day));
+    if (key > TODAY_KEY) return { day, state: '', key };
+    return { day, state: stateFor(key, states), key };
+  });
+}
+
+function streak(states) {
   let n = 0;
-  while (days.has(dayKey(d))) { n += 1; d.setDate(d.getDate() - 1); }
+  const d = new Date(TODAY);
+  for (let i = 0; i < 400; i++) {
+    if (!stateFor(dayKey(d), states)) break;
+    n++;
+    d.setDate(d.getDate() - 1);
+  }
   return n;
 }
 
-function renderCalendar(convos) {
-  const now = new Date();
-  if (!state.month) state.month = { year: now.getFullYear(), month: now.getMonth() };
-  const { year, month } = state.month;
-  const days = dayMap(convos);
-  const first = new Date(year, month, 1);
-  const total = new Date(year, month + 1, 0).getDate();
-  const offset = (first.getDay() + 6) % 7; // weeks start on Monday
-  const atNow = year === now.getFullYear() && month === now.getMonth();
-
-  $('cal-month').textContent = first.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
-  $('cal-next').disabled = atNow;
-
-  const grid = $('cal-grid');
-  const cells = [];
-  for (const w of ['M', 'T', 'W', 'T', 'F', 'S', 'S']) cells.push(el('span', { class: 'hm-cal-wd', text: w, 'aria-hidden': 'true' }));
-  for (let i = 0; i < offset; i += 1) cells.push(el('span', { class: 'hm-cal-pad', 'aria-hidden': 'true' }));
-  for (let day = 1; day <= total; day += 1) {
-    const date = new Date(year, month, day);
-    const info = days.get(dayKey(date));
-    const went = info ? howItWent(info.worst) || 'well' : null;
-    const isToday = atNow && day === now.getDate();
-    const label = date.toLocaleDateString(undefined, { month: 'long', day: 'numeric' });
-    const said = info ? `, ${info.count} ${info.count === 1 ? 'conversation' : 'conversations'}, ${WENT[went]}` : '';
-    cells.push(el('span', {
-      class: `hm-cal-day${went ? ` is-${went}` : ''}${isToday ? ' is-today' : ''}${date > now ? ' is-future' : ''}`,
-      text: String(day),
-      role: 'img',
-      'aria-label': `${label}${isToday ? ', today' : ''}${said}`,
-    }));
-  }
-  grid.replaceChildren(...cells);
-
-  const n = streak(days);
-  $('streak').replaceChildren(...(n
-    ? [el('strong', { text: `${n}-day streak` }), el('span', { text: `Talk to someone ${days.has(dayKey(now)) ? 'tomorrow' : 'today'} to keep it` })]
-    : [el('span', { text: 'Talk to someone today to start a streak' })]));
-}
-
-$('cal-prev').addEventListener('click', () => {
-  const d = new Date(state.month.year, state.month.month - 1, 1);
-  state.month = { year: d.getFullYear(), month: d.getMonth() };
-  if (state.memory) renderCalendar(state.memory.conversations || []);
-});
-$('cal-next').addEventListener('click', () => {
-  const d = new Date(state.month.year, state.month.month + 1, 1);
-  state.month = { year: d.getFullYear(), month: d.getMonth() };
-  if (state.memory) renderCalendar(state.memory.conversations || []);
-});
-
-// ---------- goal ----------
-
-function renderGoal(step, convos) {
-  const box = $('goal');
-  if (!step) {
-    box.replaceChildren(el('p', { class: 'hm-quiet', text: 'Your weekly goal appears after your first coached conversation.' }));
-  } else {
-    const done = step.status === 'dismissed';
-    const err = el('p', { class: 'hm-err', role: 'alert', hidden: true });
-    const act = async (action, buttons) => {
-      err.hidden = true;
-      buttons.forEach((b) => { b.disabled = true; });
-      try {
-        const updated = await postJson(`/api/next-step/${encodeURIComponent(step.id)}`, { action });
-        if (state.memory) state.memory.nextStep = updated;
-        renderGoal(updated, convos);
-      } catch (e) {
-        buttons.forEach((b) => { b.disabled = false; });
-        err.textContent = e.message;
-        err.hidden = false;
-      }
-    };
-    const actions = el('div', { class: 'hm-goal-actions' });
-    if (!done) {
-      const accept = el('button', { type: 'button', class: 'hm-btn is-primary', text: 'Accept' });
-      const finish = el('button', { type: 'button', class: 'hm-btn', text: 'Done' });
-      const both = [accept, finish];
-      accept.addEventListener('click', () => act('accept', both));
-      finish.addEventListener('click', () => act('dismiss', both));
-      if (step.status === 'proposed') actions.append(accept, finish);
-      else actions.append(finish);
-    }
-    const status = done ? 'Done for this week.' : step.status === 'accepted' ? 'You’re on it this week.' : step.status === 'changed' ? 'Your own version.' : null;
-    box.replaceChildren(
-      el('p', { class: `hm-goal-text${done ? ' is-done' : ''}`, text: step.text }),
-      ...(status ? [el('p', { class: 'hm-quiet', text: status })] : []),
-      ...(actions.childElementCount ? [actions] : []),
-      err,
-    );
-  }
-
-  // Small, concrete things from the latest conversation's rough spots.
-  const latest = newestFirst(convos).find((c) => c.hooks && c.hooks.awkward);
-  const list = $('goal-checks');
-  const kinds = [];
+function goals() {
+  const out = [];
+  const step = state.memory && state.memory.nextStep;
+  if (step && step.text && step.status !== 'dismissed') out.push(step.text);
+  const latest = state.convos[0];
   if (latest) {
-    for (const f of [...yourFlags(latest)].sort((a, b) => b.weight - a.weight)) {
-      if (GOALS[f.kind] && !kinds.includes(f.kind)) kinds.push(f.kind);
-      if (kinds.length === 2) break;
+    for (const f of latest.flags) {
+      const text = FLAG_GOALS[f.kind];
+      if (text && !out.includes(text)) out.push(text);
+      if (out.length >= 3) break;
     }
   }
-  list.replaceChildren(...kinds.map((kind) => {
-    const key = `playback-goal:${latest.id}:${kind}`;
-    const id = `goal-${kind}`;
-    const box = el('input', { type: 'checkbox', id });
-    box.checked = store.get(key) === '1';
-    box.addEventListener('change', () => store.set(key, box.checked ? '1' : null));
-    return el('li', { class: 'hm-check' }, box, el('label', { for: id, text: GOALS[kind] }));
-  }));
+  for (const text of FIGMA_GOALS) { if (out.length >= 3) break; if (!out.includes(text)) out.push(text); }
+  return out.slice(0, 3);
 }
 
-// ---------- follow-ups ----------
+function tasks() {
+  const out = [];
+  for (const c of state.convos) {
+    if (c.followUp && c.followUp.status === 'draft' && c.followUp.text) out.push({ key: `fu:${c.id}`, text: `Follow up with ${c.first}`, convo: c });
+  }
+  for (const c of state.convos) {
+    for (const k of c.commitments) if (k && k.text) out.push({ key: `commit:${c.id}:${k.turnId ?? k.text}`, text: `You said: ${k.text}` });
+  }
+  return out;
+}
 
-function renderFollowUps(convos) {
-  const list = $('followups');
-  const rows = [];
-  for (const c of newestFirst(convos)) {
-    if (c.followUp && c.followUp.status === 'draft' && c.followUp.text) {
-      const open = el('button', { type: 'button', class: 'hm-btn is-small', text: 'Write', 'aria-label': `Write the follow-up to ${displayName(c)}` });
-      open.addEventListener('click', () => openFollowUp(c, open));
-      rows.push(el('li', { class: 'hm-todo-row' },
-        el('span', { class: 'hm-todo-what' }, el('strong', { text: displayName(c) }), el('span', { class: 'hm-quiet', text: 'Draft ready' })),
-        open));
+function toggleCheck(key) {
+  state.checks[key] = !state.checks[key];
+  kv.set('playback-home-checks', JSON.stringify(state.checks));
+}
+
+// ---------- shell ----------
+
+function header() {
+  return el('header', { class: 'header' },
+    el('div', { class: 'brand' }, el('span', { class: 'brand-mark' }, logo(38)), el('span', { text: 'Playback' })),
+    el('div', { class: 'header-actions' }, el('button', { class: 'avatar', 'aria-label': 'Open your profile', text: USER.initials })),
+  );
+}
+
+function parseHash() {
+  const m = window.location.hash.match(/^#conversations(?:\/(\d+))?$/);
+  if (!m) return -1;
+  const n = m[1] ? Number(m[1]) : 0;
+  return state.convos.length && n >= state.convos.length ? 0 : n;
+}
+
+function renderPage() {
+  const index = parseHash();
+  const home = index < 0;
+  refs.shell.classList.toggle('with-wash', home);
+  const main = home ? homePage() : transcriptPage(index);
+  if (refs.main) refs.main.replaceWith(main); else refs.shell.append(main);
+  refs.main = main;
+  if (home) { renderCalendar(); renderGoals(); renderTasks(); renderRecording(); renderConversations(); }
+}
+
+// ---------- home ----------
+
+function homePage() {
+  refs.calendar = el('section', { class: 'card calendar-card' });
+  refs.goals = el('section', { class: 'card list-card' });
+  refs.tasks = el('section', { class: 'card list-card' });
+  refs.recording = el('section', { class: 'card recording-card is-idle' });
+  refs.conversations = el('section', { class: 'card conversations-card' });
+  refs.live = el('div', { class: 'live-transcript idle', role: 'log', 'aria-live': 'polite', 'aria-label': 'Live transcription' });
+  return el('main', { class: 'workspace' },
+    el('div', { class: 'page-intro hero-intro' },
+      el('span', { class: 'cloud c1', 'aria-hidden': 'true' }), el('span', { class: 'cloud c2', 'aria-hidden': 'true' }), el('span', { class: 'cloud c3', 'aria-hidden': 'true' }),
+      el('div', { class: 'hero-copy' },
+        el('span', { class: 'hero-date', text: heroDate(TODAY) }),
+        el('span', { class: 'label', text: 'OVERVIEW' }),
+        el('h1', { text: `${greeting()}, ${USER.name}` }),
+        el('p', { class: 'intro-subtitle', text: 'Review your practice and recent conversations.' }),
+      ),
+    ),
+    el('div', { class: 'dashboard' },
+      el('aside', { class: 'planner' }, refs.calendar, refs.goals, refs.tasks),
+      el('div', { class: 'activity' }, refs.recording, refs.conversations),
+    ),
+  );
+}
+
+function shiftMonth(delta) {
+  const d = new Date(state.view.year, state.view.month + delta, 1);
+  state.view = { year: d.getFullYear(), month: d.getMonth() };
+  renderCalendar();
+}
+
+function logToday() {
+  state.logged.add(TODAY_KEY);
+  kv.set('playback-logged-days', JSON.stringify([...state.logged]));
+  state.savedPop = true;
+  renderCalendar();
+  window.setTimeout(() => { state.savedPop = false; renderCalendar(); }, 900);
+}
+
+function renderCalendar() {
+  if (!refs.calendar) return;
+  const { year, month } = state.view;
+  const states = dayStates();
+  const atCurrent = year === TODAY.getFullYear() && month === TODAY.getMonth();
+  const todayState = stateFor(TODAY_KEY, states);
+  const n = streak(states);
+  const cells = buildMonth(year, month, states);
+  fill(refs.calendar,
+    el('div', { class: 'section-heading' },
+      el('div', {}, el('span', { class: 'label', text: `${MONTHS[month]} ${year}` }), el('h2', { text: 'Your calendar' })),
+      el('div', { class: 'month-nav' },
+        el('button', { 'aria-label': 'Previous month', onclick: () => shiftMonth(-1) }, icon('back', 14)),
+        el('button', { 'aria-label': 'Next month', disabled: atCurrent, onclick: () => shiftMonth(1) }, icon('arrow', 14)),
+      ),
+    ),
+    atCurrent && el('div', { class: 'streak-row' },
+      el('span', { class: 'streak' }, icon('flame', 13), n > 0 ? `${n}-day practice streak` : 'Start a streak today'),
+      !todayState && el('button', { class: 'log-today', onclick: logToday, text: 'Log today' }),
+    ),
+    el('div', { class: 'weekdays' }, ...['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((d) => el('span', { text: d }))),
+    el('div', { class: 'month-grid' }, ...cells.map((c) => {
+      const isToday = atCurrent && c.key === TODAY_KEY;
+      const cls = `${c.state}${isToday ? ' today' : ''}${state.savedPop && isToday ? ' saved' : ''}`;
+      return el('span', { class: cls || null, text: c.day === '' ? '' : String(c.day) });
+    })),
+    el('div', { class: 'calendar-key' },
+      el('span', {}, el('i', { class: 'key-green' }), 'Went well'),
+      el('span', {}, el('i', { class: 'key-yellow' }), 'A few bumps'),
+      el('span', {}, el('i', { class: 'key-red' }), 'Rough one'),
+    ),
+  );
+}
+
+function progress(label, done, total) {
+  const pct = total ? (done / total) * 100 : 0;
+  const bar = el('i');
+  bar.style.width = `${pct}%`;
+  return el('div', { class: 'progress', role: 'progressbar', 'aria-label': label, 'aria-valuemin': '0', 'aria-valuemax': String(total), 'aria-valuenow': String(done), 'aria-valuetext': `${done} of ${total} done` }, bar);
+}
+
+function checkRow(key, text, onToggle) {
+  const on = !!state.checks[key];
+  return el('button', { class: `check-row ${on ? 'completed' : ''}`, onclick: () => { toggleCheck(key); onToggle(); } },
+    el('span', { class: 'checkbox' }, on ? icon('check', 13) : null), el('span', { text }));
+}
+
+function renderGoals() {
+  if (!refs.goals) return;
+  const list = goals();
+  const done = list.filter((t) => state.checks[t]).length;
+  fill(refs.goals,
+    el('div', { class: 'list-title' }, el('div', {}, el('span', { class: 'label', text: 'YOUR FOCUS' }), el('h2', { text: 'Goals' }))),
+    progress('Goals completed', done, list.length),
+    ...list.map((text) => checkRow(text, text, renderGoals)),
+  );
+}
+
+function renderTasks() {
+  if (!refs.tasks) return;
+  const list = tasks();
+  const done = list.filter((t) => state.checks[t.key]).length;
+  fill(refs.tasks,
+    el('div', { class: 'list-title' }, el('div', {}, el('span', { class: 'label', text: 'UP NEXT' }), el('h2', { text: 'Pending tasks' }))),
+    progress('Tasks completed', done, list.length),
+    ...(list.length ? list.map((t) => el('div', { class: 'task-row' },
+      checkRow(t.key, t.text, renderTasks),
+      t.convo && el('button', { class: 'followup-btn', onclick: () => openFollowUp(t.convo) }, icon('spark', 13), ' Write me a follow up'),
+    )) : [el('p', { class: 'empty-row', text: 'Nothing waiting on you.' })]),
+  );
+}
+
+// ---------- recording card ----------
+
+function recName() {
+  const r = state.rec;
+  if (r.name) return firstName(r.name);
+  const known = state.convos.find((c) => c.id === r.id);
+  return known ? known.first : null;
+}
+
+function renderRecording() {
+  if (!refs.recording) return;
+  const r = state.rec;
+  const name = recName();
+  refs.recording.className = `card recording-card ${r.active ? 'is-recording' : 'is-idle'}`;
+  refs.time = el('time', { text: fmtClock(r.active && r.startedAt ? Date.now() - r.startedAt : r.lastElapsed, { padMinutes: true }) });
+  fill(refs.recording,
+    el('div', { class: 'recording-top' },
+      el('div', {},
+        el('div', { class: 'live-label' },
+          el('span', { class: r.active ? 'pulse' : 'quiet-dot' }),
+          r.active && el('span', { class: 'rec-tag', text: 'REC' }),
+          r.active ? 'Recording in progress' : 'Not recording'),
+        el('h2', { text: r.active ? (name ? `Session with ${name}` : 'Session in progress') : 'Ready when you are' }),
+      ),
+      r.active && el('button', { class: 'button stop-button', disabled: true, text: 'Recording on your phone' }),
+    ),
+    !r.active && el('div', { class: 'consent-step static' },
+      el('span', {}, el('strong', { text: 'Start on your phone.' }), ' Tell them you’re recording before you tap Record.')),
+    refs.live,
+    el('div', { class: 'recording-meta' },
+      el('span', { class: 'elapsed' }, refs.time, ' ', el('small', { text: 'elapsed' })),
+      r.active && name && el('span', { class: 'consent-ok' }, icon('check', 13), ` ${name} agreed to be recorded`),
+      el('span', { class: 'private-note', text: 'Private to you' }),
+    ),
+  );
+  renderLive();
+}
+
+// The LiveTranscript. Lines are kept rather than rebuilt so card-in only plays for new ones
+// and the caret sits on whichever line the phone is still filling in.
+function renderLive() {
+  const box = refs.live;
+  if (!box) return;
+  const r = state.rec;
+  box.classList.toggle('idle', !r.active);
+  if (!r.active) {
+    box.replaceChildren(el('p', { class: 'live-empty', text: 'Live transcription will appear here once the session starts.' }));
+    return;
+  }
+  box.querySelector('.live-empty')?.remove();
+  const known = state.convos.find((c) => c.id === r.id);
+  const userLabel = known ? known.userLabel : null;
+  const name = recName() || 'Them';
+  const ordered = [...r.lines.entries()].sort((a, b) => a[0] - b[0]);
+  for (const [turnId, t] of ordered) {
+    let line = box.querySelector(`[data-turn="${turnId}"]`);
+    const who = userLabel ? (t.speaker === userLabel ? 'me' : 'them') : 'them';
+    const whoText = userLabel ? (who === 'me' ? 'You' : name) : (t.speaker && t.speaker !== 'unknown' ? t.speaker : '');
+    if (!line) {
+      line = el('div', { class: `line ${who}`, 'data-turn': String(turnId) },
+        el('span', { class: 'line-time', text: fmtClock(t.at - r.startedAt) }),
+        el('span', { class: 'line-who', text: whoText }),
+        el('p', {}, el('span', { class: 'said' }), el('span', { class: 'caret' })));
+      box.append(line);
     }
+    line.className = `line ${who}`;
+    line.querySelector('.line-who').textContent = whoText;
+    line.querySelector('.said').textContent = t.text || '';
+    line.querySelector('.caret').hidden = !t.partial;
   }
-  // Promises they made out loud. Ticking one off stays on this Mac.
-  for (const c of newestFirst(convos).slice(0, 8)) {
-    for (const p of (c.hooks && c.hooks.commitments) || []) {
-      if (!p || !p.text) continue;
-      const key = `playback-promise:${c.id}:${p.turnId}`;
-      const id = `promise-${c.id}-${p.turnId}`;
-      const box = el('input', { type: 'checkbox', id });
-      box.checked = store.get(key) === '1';
-      box.addEventListener('change', () => store.set(key, box.checked ? '1' : null));
-      rows.push(el('li', { class: 'hm-check is-promise' }, box,
-        el('label', { for: id },
-          el('span', { class: 'hm-promise-to', text: `You said to ${displayName(c)}` }),
-          el('span', { class: 'hm-speech', text: quoted(p.text) }))));
-    }
-  }
-  if (!rows.length) rows.push(el('li', { class: 'hm-quiet', text: 'Nothing to send. Drafts show up here after each conversation.' }));
-  list.replaceChildren(...rows);
+  // The phone can stop sending a turn id; drop lines that no longer exist.
+  for (const line of box.querySelectorAll('[data-turn]')) if (!r.lines.has(Number(line.dataset.turn))) line.remove();
+  box.scrollTo({ top: box.scrollHeight, behavior: 'smooth' });
 }
 
-let modalConvo = null;
-let modalOpener = null;
-
-function openFollowUp(c, opener) {
-  modalConvo = c;
-  modalOpener = opener;
-  $('fu-modal-title').textContent = `Follow-up for ${displayName(c)}`;
-  $('fu-modal-note').textContent = `Drafted from your conversation ${relDate(c.createdAt).toLowerCase()}. Change anything before you send it.`;
-  $('fu-text').value = state.drafts.get(c.id) ?? c.followUp.text;
-  $('fu-copy').textContent = 'Copy message';
-  $('fu-err').hidden = true;
-  $('fu-sent').disabled = false;
-  $('fu-modal').showModal();
-  $('fu-text').focus();
+function startRec(id, name) {
+  const r = state.rec;
+  if (r.active && r.id === id) {
+    if (name && r.name !== name) { r.name = name; renderRecording(); }
+    return;
+  }
+  state.rec = { active: true, id, name: name || null, startedAt: Date.now(), lastElapsed: r.lastElapsed, lines: new Map() };
+  renderRecording();
 }
 
-$('fu-text').addEventListener('input', () => {
-  if (modalConvo) state.drafts.set(modalConvo.id, $('fu-text').value);
-  $('fu-copy').textContent = 'Copy message';
-});
+function stopRec() {
+  const r = state.rec;
+  if (!r.active) return;
+  r.active = false;
+  // Only a session that actually produced lines counts as finished; a focus blip (or a reload
+  // mid-recording followed by the phone going back to start) keeps the previous duration.
+  if (r.lines.size && r.startedAt) r.lastElapsed = Date.now() - r.startedAt;
+  r.lines = new Map();
+  renderRecording();
+}
 
-$('fu-copy').addEventListener('click', async () => {
-  const text = $('fu-text').value;
-  try {
-    await navigator.clipboard.writeText(text);
-  } catch {
-    // Clipboard API can be blocked in a frame; selecting lets Cmd+C do it.
-    $('fu-text').select();
-    try { document.execCommand('copy'); } catch { /* left selected */ }
-  }
-  $('fu-copy').textContent = 'Copied';
-});
-
-$('fu-sent').addEventListener('click', async () => {
-  if (!modalConvo) return;
-  const text = $('fu-text').value.trim();
-  if (!text) { $('fu-err').textContent = 'The message is empty. Write something or close.'; $('fu-err').hidden = false; return; }
-  $('fu-sent').disabled = true;
-  try {
-    const followUp = await postJson(`/api/conversations/${encodeURIComponent(modalConvo.id)}/follow-up/sent`, { text });
-    state.drafts.delete(modalConvo.id);
-    const c = state.memory && (state.memory.conversations || []).find((x) => x.id === modalConvo.id);
-    if (c) c.followUp = followUp;
-    $('fu-modal').close();
-    render();
-  } catch (e) {
-    $('fu-sent').disabled = false;
-    $('fu-err').textContent = e.message;
-    $('fu-err').hidden = false;
-  }
-});
-
-$('fu-modal').addEventListener('close', () => {
-  const back = modalOpener;
-  modalConvo = null;
-  modalOpener = null;
-  if (back && back.isConnected) back.focus();
-  else $('followups').querySelector('button')?.focus();
-});
-// A click on the backdrop lands on the dialog itself.
-$('fu-modal').addEventListener('click', (e) => { if (e.target === $('fu-modal')) $('fu-modal').close(); });
+function tick() {
+  const r = state.rec;
+  if (r.active && refs.time && r.startedAt) refs.time.textContent = fmtClock(Date.now() - r.startedAt, { padMinutes: true });
+}
 
 // ---------- conversations ----------
 
-function worksMark() {
-  const m = svg('svg', { class: 'hm-worked-mark', viewBox: '0 0 16 16', 'aria-hidden': 'true' });
-  m.append(svg('path', { d: 'M3.5 8.5l3 3 6-7' }));
-  return m;
+function reflectionCopy(c, extraClass = '') {
+  return el('div', { class: `reflection-copy ${extraClass}`.trim() },
+    el('div', {}, el('h4', { text: 'What worked well' }), el('p', { text: c.summary })),
+    el('div', {}, el('h4', { text: 'What I’ll do next time' }), el('p', { text: c.next })),
+  );
 }
 
-function renderConvos(convos) {
-  const list = $('convos');
-  const rows = newestFirst(convos).filter(hasTurns).map((c) => {
-    const keep = takeaway(c, 'keep');
-    const tryT = takeaway(c, 'try');
-    const happened = (c.note && c.note.text) || '';
-    const next = tryT && tryT.tryInstead
-      ? el('span', { class: 'hm-speech', text: quoted(tryT.tryInstead) })
-      : el('span', { text: (c.note && c.note.suggestion) || '' });
-    const awk = yourFlags(c).length;
-    const btn = el('button', { type: 'button', class: 'hm-convo' },
-      el('span', { class: 'hm-convo-who' },
-        el('span', { class: 'hm-convo-name', text: displayName(c) }),
-        el('span', { class: 'hm-convo-date', text: relDate(c.createdAt) })),
-      el('span', { class: 'hm-convo-strand' }, strand(c, { width: 148, size: 'mini' })),
-      el('span', { class: 'hm-convo-col' },
-        el('span', { class: 'hm-sr', text: 'What happened: ' }),
-        el('span', { class: 'hm-clamp', text: happened }),
-        keep && keep.text ? el('span', { class: 'hm-worked' }, worksMark(), el('span', {}, el('strong', { text: 'Worked: ' }), keep.text)) : null),
-      el('span', { class: 'hm-convo-col' }, el('span', { class: 'hm-sr', text: 'Next time: ' }), el('span', { class: 'hm-clamp' }, next)),
-      el('span', { class: 'hm-convo-awk', text: awk > 0 ? `${awk} awkward` : '' }),
-      el('span', { class: 'hm-sr', text: '. Open replay' }));
-    btn.addEventListener('click', () => openReplay(c.id));
-    return el('li', {}, btn);
-  });
-  if (!rows.length) rows.push(el('li', { class: 'hm-quiet hm-convo-empty', text: 'No conversations yet. They’ll be listed here once you record one on your phone.' }));
-  list.replaceChildren(...rows);
+function renderConversations() {
+  if (!refs.conversations) return;
+  fill(refs.conversations,
+    el('div', { class: 'section-heading conversations-heading' },
+      el('div', {}, el('span', { class: 'label', text: 'REFLECTIONS' }), el('h2', { text: 'Recent conversations' }))),
+    el('div', { class: 'conversation-scroll' },
+      ...(state.convos.length ? state.convos.map((c, i) => el('article', { class: 'conversation' },
+        el('div', { class: 'person-row' },
+          el('span', { class: 'person-avatar', text: c.initials }),
+          el('div', {}, el('h3', { text: c.name }), el('span', { text: c.when })),
+          el('button', { class: 'deck-chip', 'aria-label': `View full conversation with ${c.name}`, onclick: () => { window.location.hash = `conversations/${i}`; } }, 'View full ', icon('arrow', 14)),
+        ),
+        reflectionCopy(c),
+      )) : [el('p', { class: 'empty-row', text: state.memory ? 'No conversations yet. Record one on your phone.' : 'Loading your conversations…' })]),
+    ),
+  );
 }
 
-// ---------- recording, mirrored from the phone ----------
+// ---------- transcript page ----------
 
-function speakerName(speaker, c) {
-  if (!speaker || speaker === 'unknown') return { who: 'Unclear', lane: null };
-  if (!c || !c.userLabel) return { who: `Speaker ${speaker}`, lane: null };
-  if (speaker === c.userLabel) return { who: 'You', lane: 'you' };
-  return { who: displayName(c) === 'them' ? `Speaker ${speaker}` : displayName(c), lane: 'them' };
+function openReplay(id) {
+  if (EMBEDDED) window.parent.postMessage({ type: 'playback:open-replay', id }, location.origin);
+  else window.location.href = `replay.html?id=${encodeURIComponent(id)}`;
 }
 
-function renderRec() {
-  const live = state.live;
-  const rec = $('rec');
-  rec.classList.toggle('is-live', !!live);
-  $('rec-clock').hidden = !live;
-  $('rec-lines').hidden = !live;
-  $('rec-how').hidden = !!live;
-  if (!live) {
-    $('rec-title').textContent = 'Start a conversation on your phone';
-    return;
-  }
-  const name = live.convo ? displayName(live.convo) : live.otherName;
-  $('rec-title').textContent = name && name !== 'them' ? `Recording with ${name} on your phone` : 'Recording on your phone';
-  updateClock();
-  const lines = [...live.lines.values()].filter((l) => l.text && l.text.trim()).slice(-6);
-  const items = lines.map((l) => {
-    const { who, lane } = speakerName(l.speaker, live.convo);
-    return el('li', { class: `hm-line${lane ? ` is-${lane}` : ''}${l.partial ? ' is-partial' : ''}` },
-      el('span', { class: 'hm-line-who', text: who }),
-      el('p', { class: 'hm-speech', text: l.text }));
-  });
-  if (!items.length) items.push(el('li', { class: 'hm-quiet', text: 'Listening. Lines appear as each of you speaks.' }));
-  $('rec-lines').replaceChildren(...items);
+function transcriptPage(index) {
+  const c = state.convos[index];
+  return el('main', { class: 'workspace' },
+    el('button', { class: 'back-link', onclick: () => { window.location.hash = ''; } }, icon('back', 15), ' Back to overview'),
+    el('div', { class: 'page-intro' },
+      el('div', {}, el('h1', { text: c ? `Conversation with ${c.first}` : 'Conversation' }), el('p', { class: 'intro-subtitle', text: 'Full transcript and reflection.' }))),
+    el('div', { class: 'transcripts' },
+      c && el('article', { class: 'transcript', id: `conv-${index}` },
+        el('div', { class: 'person-row' },
+          el('span', { class: 'person-avatar', text: c.initials }),
+          el('div', {}, el('h3', { text: c.name }), el('span', { text: `${c.when} · ${c.duration}` })),
+          el('button', { class: 'view-all', onclick: () => openReplay(c.id) }, 'Open replay ', icon('arrow', 14)),
+        ),
+        el('div', { class: 'transcript-lines' }, ...c.transcript.map(([time, who, text]) => el('div', { class: `line ${who}` },
+          el('span', { class: 'line-time', text: time }),
+          el('span', { class: 'line-who', text: who === 'me' ? 'You' : c.first }),
+          el('p', { text }),
+        ))),
+        reflectionCopy(c, 'transcript-reflection'),
+      ),
+    ),
+  );
 }
 
-function updateClock() {
-  if (state.live) $('rec-clock').textContent = clock(Date.now() - state.live.startedAt);
-}
-setInterval(updateClock, 500);
+// ---------- follow-up modal ----------
 
-function startLive(id, otherName) {
-  if (state.live && state.live.id === id) return;
-  state.live = { id, startedAt: Date.now(), convo: null, otherName: otherName || null, lines: new Map() };
-  getJson(`/api/conversations/${encodeURIComponent(id)}`).then((c) => {
-    if (state.live && state.live.id === id) { state.live.convo = c; renderRec(); }
-  }).catch(() => { /* the lines still show, just without names */ });
+function closeFollowUp() {
+  state.modal = null;
+  refs.modal?.remove();
+  refs.modal = null;
 }
 
-function stopLive() {
-  if (!state.live) return;
-  state.live = null;
-  renderRec();
-}
-
-// ---------- data and socket ----------
-
-let refreshTimer = null;
-function refreshSoon() {
-  clearTimeout(refreshTimer);
-  refreshTimer = setTimeout(refresh, 300);
-}
-
-async function refresh() {
-  try {
-    state.memory = await getJson('/api/memory');
-    render();
-  } catch (e) {
-    if (!state.memory) {
-      $('hero').replaceChildren(
-        el('h1', { class: 'hm-hero-lead', id: 'hero-lead', text: 'Can’t reach Playback on this Mac' }),
-        el('p', { class: 'hm-hero-empty', text: `${e.message}. Check the server is running; this page retries when it reconnects.` }),
-      );
+function openFollowUp(c) {
+  closeFollowUp();
+  state.modal = c;
+  const textarea = el('textarea', { class: 'followup-text', rows: '9' });
+  textarea.value = c.followUp.text;
+  const copyBtn = el('button', { class: 'button', text: 'Copy message', onclick: () => { navigator.clipboard?.writeText(textarea.value); copyBtn.textContent = 'Copied'; } });
+  const sentBtn = el('button', { class: 'button secondary', text: 'Mark sent', onclick: async () => {
+    sentBtn.disabled = true;
+    try {
+      const res = await fetch(`/api/conversations/${encodeURIComponent(c.id)}/follow-up/sent`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: textarea.value }) });
+      if (!res.ok) throw new Error(String(res.status));
+      closeFollowUp();
+      refreshMemory();
+    } catch {
+      sentBtn.disabled = false;
+      sentBtn.textContent = 'Couldn’t mark it. Try again';
     }
-  }
+  } });
+  refs.modal = el('div', { class: 'modal-backdrop', onclick: closeFollowUp },
+    el('div', { class: 'modal', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'followup-title', onclick: (e) => e.stopPropagation() },
+      el('div', { class: 'modal-head' },
+        el('div', {}, el('span', { class: 'label', text: `DRAFT FOR ${c.first.toUpperCase()}` }), el('h2', { id: 'followup-title', text: 'Follow-up message' })),
+        el('button', { class: 'modal-close', 'aria-label': 'Close', text: '×', onclick: closeFollowUp }),
+      ),
+      el('p', { class: 'modal-note', text: `Based on your conversation on ${c.when}. Edit it before you send.` }),
+      textarea,
+      el('div', { class: 'modal-actions' },
+        el('button', { class: 'button ghost', text: 'Close', onclick: closeFollowUp }),
+        copyBtn,
+        sentBtn,
+      ),
+    ),
+  );
+  refs.shell.append(refs.modal);
+  textarea.focus();
 }
 
-function render() {
-  const convos = (state.memory && state.memory.conversations) || [];
-  renderHero(convos);
-  renderCalendar(convos);
-  renderGoal(state.memory && state.memory.nextStep, convos);
-  renderFollowUps(convos);
-  renderConvos(convos);
-  renderRec();
+// ---------- data ----------
+
+async function getJson(path) {
+  const res = await fetch(path, { cache: 'no-store' });
+  if (!res.ok) throw new Error(`${path} ${res.status}`);
+  return res.json();
 }
+
+let memoryTimer = null;
+function refreshMemory() {
+  clearTimeout(memoryTimer);
+  memoryTimer = setTimeout(async () => {
+    try {
+      applyMemory(await getJson('/api/memory'));
+    } catch {
+      if (!state.memory) applyMemory({ conversations: [] });
+    }
+    // Everything on screen reads from state.convos, so redraw whichever page is up.
+    if (parseHash() >= 0) renderPage();
+    else { renderCalendar(); renderGoals(); renderTasks(); renderConversations(); renderRecording(); }
+    if (state.modal) {
+      const still = state.convos.find((c) => c.id === state.modal.id);
+      if (!still || !still.followUp || still.followUp.status !== 'draft') closeFollowUp();
+    }
+  }, 120);
+}
+
+// ---------- /ws/stage ----------
 
 function handle(msg) {
   const id = msg.conversationId;
   switch (msg.type) {
     case 'hello':
-      if (msg.focus && msg.focus.view === 'recording' && msg.focus.conversationId) startLive(msg.focus.conversationId, msg.focus.otherName);
-      renderRec();
+      if (msg.focus && msg.focus.view === 'recording' && msg.focus.conversationId) startRec(msg.focus.conversationId, msg.focus.otherName);
+      else stopRec();
       break;
     case 'focus':
-      if (msg.view === 'recording' && id) startLive(id, msg.otherName);
-      else stopLive();
-      renderRec();
+      if (msg.view === 'recording' && id) startRec(id, msg.otherName);
+      else stopRec();
       break;
     case 'partial':
     case 'turn': {
       if (!id) break;
-      if (!state.live || state.live.id !== id) startLive(id);
-      const lines = state.live.lines;
+      startRec(id, state.rec.id === id ? state.rec.name : null);
+      const lines = state.rec.lines;
       if (msg.type === 'partial') {
         const prev = lines.get(msg.turnId);
         if (prev && !prev.partial) break;
-        lines.set(msg.turnId, { speaker: msg.speaker || (prev && prev.speaker) || 'unknown', text: msg.text || '', partial: true });
+        lines.set(msg.turnId, { speaker: msg.speaker || (prev && prev.speaker) || null, text: msg.text || '', partial: true, at: prev ? prev.at : Date.now() });
       } else if (msg.turn) {
-        lines.set(msg.turn.turnId, { speaker: msg.turn.speaker, text: msg.turn.text, partial: false });
+        const prev = lines.get(msg.turn.turnId);
+        lines.set(msg.turn.turnId, { speaker: msg.turn.speaker, text: msg.turn.text, partial: false, at: prev ? prev.at : Date.now() });
       }
-      renderRec();
+      renderLive();
       break;
     }
     case 'done':
-      if (state.live && state.live.id === id) stopLive();
-      refreshSoon();
+      if (id && state.rec.id === id) stopRec();
       break;
     case 'conversation':
-      if (state.live && msg.conversation && msg.conversation.id === state.live.id) { state.live.convo = msg.conversation; renderRec(); }
-      refreshSoon();
+      if (msg.conversation && state.rec.active && msg.conversation.id === state.rec.id && msg.conversation.otherName) startRec(state.rec.id, msg.conversation.otherName);
+      refreshMemory();
       break;
     case 'memory':
     case 'deleted':
-      refreshSoon();
+      refreshMemory();
       break;
     default:
       break;
@@ -647,28 +669,42 @@ function connect() {
   try {
     ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws/stage`);
   } catch {
-    setTimeout(connect, 2000);
+    scheduleReconnect();
     return;
   }
-  ws.onopen = () => {
-    // Anything that happened while we were away.
-    if (attempt > 0) refresh();
-    attempt = 0;
-  };
+  ws.onopen = () => { attempt = 0; };
   ws.onmessage = (e) => {
     if (typeof e.data !== 'string') return;
     let msg;
     try { msg = JSON.parse(e.data); } catch { return; }
-    try { handle(msg); } catch (err) { console.error('home: stage message failed', msg.type, err); }
+    try { handle(msg); } catch (err) { console.error('stage message failed', msg.type, err); }
   };
-  ws.onclose = () => {
-    attempt += 1;
-    setTimeout(connect, Math.min(10000, 500 * 2 ** attempt));
-  };
+  ws.onclose = () => scheduleReconnect();
+  ws.onerror = () => { /* onclose follows */ };
 }
 
-const theme = new URLSearchParams(location.search).get('theme');
-if (theme === 'dark' || theme === 'light') document.documentElement.dataset.theme = theme;
+function scheduleReconnect() {
+  const delay = Math.min(10000, 500 * 2 ** attempt) * (0.75 + Math.random() * 0.5);
+  attempt += 1;
+  setTimeout(connect, delay);
+}
 
-refresh();
-connect();
+// ---------- boot ----------
+
+function init() {
+  const theme = new URLSearchParams(location.search).get('theme');
+  if (theme === 'dark' || theme === 'light') document.documentElement.dataset.theme = theme;
+  if (EMBEDDED) document.body.classList.add('embedded');
+
+  refs.shell = el('div', { class: 'app-shell with-wash' }, header());
+  document.getElementById('root').append(refs.shell);
+  renderPage();
+
+  window.addEventListener('hashchange', () => { closeFollowUp(); renderPage(); window.scrollTo(0, 0); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && state.modal) closeFollowUp(); });
+  setInterval(tick, 500);
+  refreshMemory();
+  connect();
+}
+
+init();

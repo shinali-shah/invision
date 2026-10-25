@@ -1275,11 +1275,15 @@ function renderConvoList(convos) {
     const sub = [el('span', { class: 'tag-pill', text: TAG_NAMES[c.tag] || c.tag })];
     if (c.seeded) sub.push(document.createTextNode(' Sample'));
     if (c.note && c.note.status === 'dropped') sub.push(document.createTextNode(' Counts only'));
+    const name = c.otherName || 'Someone';
+    // Up to two initials, like the avatars in the design.
+    const initials = name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0].toUpperCase()).join('');
     return el('li', {}, el('button', {
       type: 'button',
       onclick: () => openConversation(c),
     },
-    el('span', { class: 'convo-name', text: c.otherName || 'Someone' }),
+    el('span', { class: 'convo-avatar', 'aria-hidden': 'true', text: initials }),
+    el('span', { class: 'convo-name', text: name }),
     el('span', { class: 'convo-date', text: fmtDate(c.createdAt) }),
     el('span', { class: 'convo-sub' }, ...sub),
     ));

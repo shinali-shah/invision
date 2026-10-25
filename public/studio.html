@@ -14,65 +14,79 @@
        conversation. All three stay loaded once opened, so switching is instant and nothing loses its place. */
     *, *::before, *::after { box-sizing: border-box; }
     html, body { height: 100%; margin: 0; }
-    body { display: flex; flex-direction: column; background: var(--paper); color: var(--ink); font: 400 16px/1.4 var(--sans); }
+    body { display: flex; flex-direction: column; background: var(--paper); color: var(--ink); font: 400 16px/1.4 var(--sans); font-synthesis: none; }
     :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 
-    .sd-bar { display: flex; align-items: center; gap: 32px; min-height: 60px; padding: 0 32px; border-bottom: 1px solid var(--hairline); background: var(--surface); }
-    .sd-brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: var(--t-16); letter-spacing: -0.01em; }
-    .sd-mark { width: 22px; height: 16px; }
-    .sd-mark rect:first-child { fill: var(--you); }
-    .sd-mark rect:last-child { fill: var(--them); }
+    /* The Figma's .header, .brand, .status-pill and .avatar, copied from home.css so the shell
+       and the Home pane look like one page. Home hides its own header when it's in here. */
+    .header { height: 68px; padding: 0 4vw; border-bottom: 1px solid #dfdfda; background: rgba(247,247,245,.94); display: flex; align-items: center; justify-content: space-between; gap: 16px; position: sticky; top: 0; z-index: 10; backdrop-filter: blur(12px); }
+    .header.with-wash { background: rgba(219,231,223,.55); border-bottom-color: rgba(41,45,44,.08); }
+    .brand, .header-actions, .status-pill, .sd-tabs { display: flex; align-items: center; }
+    .brand { gap: 10px; font-family: var(--font-serif); font-size: 19px; font-weight: 600; letter-spacing: -.015em; }
+    .brand-mark { display: grid; place-items: center; }
+    .header-actions { gap: 12px; margin-left: auto; }
+    .status-pill { gap: 7px; padding: 7px 10px; font-size: 11px; font-weight: 600; color: var(--ink-2); background: #fff; border: 1px solid #deded9; border-radius: 99px; }
+    .status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--ink-3); }
+    .avatar { width: 34px; height: 34px; border: 0; border-radius: 50%; background: var(--tint); color: var(--ink-2); font-size: 11px; font-weight: 700; cursor: pointer; }
+    button { font: inherit; }
 
-    .sd-tabs { display: flex; gap: 4px; align-self: stretch; }
-    .sd-tab { position: relative; display: flex; align-items: center; min-height: 44px; border: 0; background: none; color: var(--fog);
-              font: inherit; font-weight: 500; font-size: var(--t-16); padding: 0 14px; cursor: pointer; }
+    .sd-tabs { gap: 6px; position: absolute; left: 50%; transform: translateX(-50%); }
+    @media (max-width: 1100px) { .sd-tabs { position: static; transform: none; } }
+    .sd-tab { cursor: pointer; }
     .sd-tab:hover { color: var(--ink); }
-    .sd-tab[aria-selected="true"] { color: var(--ink); font-weight: 600; }
-    .sd-tab[aria-selected="true"]::after { content: ""; position: absolute; left: 14px; right: 14px; bottom: -1px; height: 2px; background: var(--you); border-radius: 2px; }
-    .sd-tab:focus-visible { outline-offset: -4px; border-radius: var(--r-control); }
-    .sd-dot { width: 7px; height: 7px; margin-left: 6px; border-radius: 50%; background: var(--you); }
+    .sd-tab[aria-selected="true"] { color: #fff; background: var(--ink); border-color: var(--ink); }
+    .sd-tab:focus-visible { outline-offset: 2px; }
+    .sd-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--rec); }
     .sd-dot[hidden] { display: none; }
+    .sd-tab[aria-selected="true"] .sd-dot { background: #fff; }
 
-    .sd-right { display: flex; align-items: center; gap: 24px; margin-left: auto; font-size: var(--t-14); color: var(--fog); }
-    .sd-ready { display: flex; align-items: center; gap: 12px; color: var(--ink); }
+    .sd-ready { color: var(--ink); }
     .sd-ready[hidden] { display: none; }
-    .sd-ready button { min-height: 36px; border: 1px solid var(--you); background: var(--you); color: var(--surface); font: inherit; font-weight: 600;
-                       padding: 0 14px; border-radius: var(--r-control); cursor: pointer; }
-    .sd-follow { display: flex; align-items: center; gap: 8px; min-height: 44px; cursor: pointer; }
-    .sd-follow input { width: 16px; height: 16px; margin: 0; accent-color: var(--you); }
-    .sd-phone { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
-    .sd-phone::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--hairline); }
-    .sd-phone[data-state="connected"] { color: var(--ink); }
-    .sd-phone[data-state="connected"]::before { background: var(--you); }
-    .sd-phone[data-state="recording"] { color: var(--ink); }
-    .sd-phone[data-state="recording"]::before { background: var(--awkward); }
-    .sd-phone[data-state="offline"]::before { background: var(--missed); }
+    .sd-ready button { padding: 0; border: 0; background: none; color: var(--accent); font: inherit; font-weight: 700; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+    .sd-follow { cursor: pointer; }
+    .sd-follow input { width: 14px; height: 14px; margin: 0; accent-color: var(--accent); }
+    .sd-phone { white-space: nowrap; }
+    .sd-phone[data-state="connected"], .sd-phone[data-state="recording"] { color: var(--ink); }
+    .sd-phone[data-state="connected"] .status-dot { background: var(--accent); }
+    .sd-phone[data-state="recording"] .status-dot { background: var(--rec); box-shadow: 0 0 0 0 rgba(200,55,45,.4); animation: rec-pulse 2s ease-out infinite; }
+    .sd-phone[data-state="offline"] .status-dot { background: var(--status-amber); }
+    @keyframes rec-pulse { 0% { box-shadow: 0 0 0 0 rgba(200,55,45,.4); } 80%, 100% { box-shadow: 0 0 0 6px rgba(200,55,45,0); } }
+    @media (prefers-reduced-motion: reduce) { .sd-phone .status-dot { animation: none !important; } }
 
     .sd-panes { position: relative; flex: 1; min-height: 0; width: 100%; }
     .sd-pane { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: var(--paper); }
     .sd-pane[hidden] { display: none; }
     @media (max-width: 1100px) { .sd-follow { display: none; } }
-    @media (max-width: 760px) { .sd-bar { gap: 12px; padding: 0 12px; } .sd-ready-text { display: none; } .sd-tab { padding: 0 10px; } .sd-tab[aria-selected="true"]::after { left: 10px; right: 10px; } }
+    @media (max-width: 760px) { .header { padding: 0 20px; gap: 10px; } .sd-ready-text { display: none; } .avatar { display: none; } }
   </style>
 </head>
 <body>
-  <header class="sd-bar">
-    <span class="sd-brand">
-      <svg class="sd-mark" viewBox="0 0 22 16" aria-hidden="true"><rect x="0" y="2" width="13" height="5" rx="2"/><rect x="9" y="9" width="13" height="5" rx="2"/></svg>
-      Playback
-    </span>
+  <header class="header with-wash" id="shell-header">
+    <div class="brand">
+      <span class="brand-mark">
+        <svg width="38" height="23.56" viewBox="0 0 56 35" fill="none" aria-hidden="true">
+          <path d="M28 17.500C21 6 7 4 5 17.500c2 13.500 16 11.500 23 0Z" stroke="var(--accent)" stroke-width="5.500" stroke-linejoin="round" opacity=".55"/>
+          <path d="M28 17.500C35 6 49 4 51 17.500c-2 13.500-16 11.500-23 0Z" stroke="var(--accent)" stroke-width="5.500" stroke-linejoin="round"/>
+          <path d="M20.500 18.500 27 13h5.500l4.500 3.500-3 5-6.500 4-3-2.500-3.500 1Z" fill="var(--paper)"/>
+          <path d="M22 17.500 27.500 13H32l3.500 3.500" stroke="var(--accent)" stroke-width="2.200" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="m23 21.500 2.500 2.500M26 20l2.500 2.500M29 18.500l2.500 2.500" stroke="var(--accent)" stroke-width="1.800" stroke-linecap="round"/>
+        </svg>
+      </span>
+      <span>Playback</span>
+    </div>
     <nav class="sd-tabs" role="tablist" aria-label="Sections">
-      <button class="sd-tab" role="tab" id="tab-home" aria-controls="pane-home" aria-selected="true">Home</button>
-      <button class="sd-tab" role="tab" id="tab-live" aria-controls="pane-live" aria-selected="false" tabindex="-1">Live</button>
-      <button class="sd-tab" role="tab" id="tab-replay" aria-controls="pane-replay" aria-selected="false" tabindex="-1">Replay<span class="sd-dot" id="replay-dot" hidden></span></button>
+      <button class="status-pill sd-tab" role="tab" id="tab-home" aria-controls="pane-home" aria-selected="true">Home</button>
+      <button class="status-pill sd-tab" role="tab" id="tab-live" aria-controls="pane-live" aria-selected="false" tabindex="-1">Live</button>
+      <button class="status-pill sd-tab" role="tab" id="tab-replay" aria-controls="pane-replay" aria-selected="false" tabindex="-1">Replay<span class="sd-dot" id="replay-dot" hidden></span></button>
     </nav>
-    <div class="sd-right">
-      <span class="sd-ready" id="ready" hidden>
+    <div class="header-actions">
+      <span class="status-pill sd-ready" id="ready" hidden>
         <span class="sd-ready-text" id="ready-text"></span>
         <button type="button" id="ready-open">Open replay</button>
       </span>
-      <label class="sd-follow"><input type="checkbox" id="auto"> Open Replay when a video is ready</label>
-      <span class="sd-phone" id="phone" data-state="waiting" role="status">Waiting for your phone</span>
+      <label class="status-pill sd-follow"><input type="checkbox" id="auto"> Open Replay when a video is ready</label>
+      <span class="status-pill sd-phone" id="phone" data-state="waiting" role="status"><span class="status-dot"></span>Waiting for your phone</span>
+      <button class="avatar" aria-label="Open your profile">PS</button>
     </div>
   </header>
   <div class="sd-panes">
@@ -118,6 +132,8 @@
       }
       // Same reason as above: load Home and Live the first time they're actually on screen.
       if (pages[name] && !panes[name].src) panes[name].src = withTheme(pages[name]);
+      // Home's wash runs up behind the header; the other panes sit on plain paper.
+      $('shell-header').classList.toggle('with-wash', name === 'home');
       if (name === 'replay') { $('replay-dot').hidden = true; if (readyId === replayId) $('ready').hidden = true; }
       history.replaceState(null, '', `#${name}${name === 'replay' && replayId ? `=${replayId}` : ''}`);
     }
@@ -171,10 +187,11 @@
     function phone(stateName) {
       const el = $('phone');
       el.dataset.state = stateName;
-      el.textContent = stateName === 'recording' ? 'Recording on your phone'
+      const text = stateName === 'recording' ? 'Recording on your phone'
         : stateName === 'connected' ? 'Phone connected'
           : stateName === 'offline' ? 'Reconnecting to this Mac'
             : 'Waiting for your phone';
+      el.replaceChildren(Object.assign(document.createElement('span'), { className: 'status-dot' }), text);
     }
 
     function listen() {

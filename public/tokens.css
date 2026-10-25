@@ -1,43 +1,55 @@
-/* One set of colours and type for every Playback screen. See docs/design/playback-ui.md. */
-@import url('https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&display=swap');
+/* The team's Figma design system (Playback), used by every screen. Values are copied from the Figma Make export. */
+@import url("https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400..700&family=Inter:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=JetBrains+Mono:wght@400;500&display=swap");
 
 :root {
-  --paper: #F2F4F1;
-  --surface: #FFFFFF;
-  --ink: #1E2826;
-  --fog: #5C6965;
-  --hairline: #D9DFDB;
-  --you: #2F6F66;
-  --you-wash: #DCEAE6;
-  --them: #6B5B73;
-  --them-wash: #E7E1EA;
-  --awkward: #A6443A;
-  --awkward-wash: #F3DEDA;
-  --missed: #946510;
-  --missed-wash: #F2E6CC;
-  --focus: #1F5FBF;
+  /* Figma names */
+  --ink: #292d2c;
+  --paper: #f7f7f5;
+  --accent: #397d74;
+  --accent-deep: #2f6b63;
+  --rec: #c8372d;
+  --status-red: #a4504a;
+  --status-amber: #b5832a;
+  --sage: #8fae98;
+  --ink-2: rgba(41, 45, 44, .72);
+  --ink-3: rgba(41, 45, 44, .5);
+  --line: rgba(41, 45, 44, .12);
+  --tint: rgba(41, 45, 44, .06);
+  --card-border: #dedfda;
+  --rule: #e5e6e1;
+  --wash: linear-gradient(105deg, #dbe7df 0%, #e9ebe1 45%, #f6e5da 100%);
 
-  --sans: 'Schibsted Grotesk', system-ui, -apple-system, sans-serif;
-  --speech: 'Newsreader', Georgia, serif;
+  --font-display: "Fraunces", Georgia, serif;
+  --font-serif: "Newsreader", Georgia, serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  --font-sans: "Inter", system-ui, sans-serif;
 
-  --t-12: 12px; --t-14: 14px; --t-16: 16px; --t-20: 20px; --t-26: 26px; --t-34: 34px; --t-52: 52px;
+  /* Names the older screens use, mapped onto the Figma palette */
+  --surface: #ffffff;
+  --fog: #5f6664;
+  --hairline: #dedfda;
+  --you: var(--accent);
+  --you-wash: rgba(57, 125, 116, .12);
+  --them: #747a77;
+  --them-wash: var(--tint);
+  --awkward: var(--rec);
+  --awkward-wash: rgba(200, 55, 45, .1);
+  --missed: var(--status-amber);
+  --missed-wash: rgba(181, 131, 42, .14);
+  --focus: var(--accent);
+  --sans: var(--font-sans);
+  --speech: var(--font-serif);
   --r-control: 6px;
-  --r-panel: 12px;
-  --ease-out: cubic-bezier(.2, .8, .2, 1);
+  --r-panel: 10px;
+  --ease-out: cubic-bezier(.2, .7, .3, 1);
   color-scheme: light;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --paper: #121816; --surface: #1A2220; --ink: #E4EBE7; --fog: #9AA7A2; --hairline: #2C3633;
-    --you: #6FB5A9; --you-wash: #1F3532; --them: #B6A3BE; --them-wash: #2E2733;
-    --awkward: #E07A6C; --awkward-wash: #3A2421; --missed: #D9A441; --missed-wash: #3A2F18; --focus: #8AB4FF;
-    color-scheme: dark;
-  }
-}
+/* The Figma is light only. Dark is kept for projectors that wash out light pages (?theme=dark). */
 :root[data-theme="dark"] {
-  --paper: #121816; --surface: #1A2220; --ink: #E4EBE7; --fog: #9AA7A2; --hairline: #2C3633;
-  --you: #6FB5A9; --you-wash: #1F3532; --them: #B6A3BE; --them-wash: #2E2733;
-  --awkward: #E07A6C; --awkward-wash: #3A2421; --missed: #D9A441; --missed-wash: #3A2F18; --focus: #8AB4FF;
+  --ink: #e6e8e5; --paper: #161918; --surface: #1e2321; --card-border: #2c312f; --rule: #2c312f; --hairline: #2c312f;
+  --ink-2: rgba(230, 232, 229, .72); --ink-3: rgba(230, 232, 229, .5); --line: rgba(230, 232, 229, .14); --tint: rgba(230, 232, 229, .07);
+  --accent: #6fb5a9; --accent-deep: #5ea396; --rec: #ec6a60; --status-red: #e08078; --status-amber: #d9a441;
+  --fog: #a3aba7; --them: #a3aba7; --wash: linear-gradient(105deg, #1c2622 0%, #1f2420 45%, #2a2320 100%);
   color-scheme: dark;
 }

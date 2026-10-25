@@ -2,87 +2,16 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="color-scheme" content="light dark">
-  <title>Playback home</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Playback</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 56 35%22 fill=%22none%22%3E%3Cpath d=%22M28 17.5C21 6 7 4 5 17.5c2 13.5 16 11.5 23 0Z%22 stroke=%22%23397d74%22 stroke-width=%225.5%22 stroke-linejoin=%22round%22 opacity=%22.55%22/%3E%3Cpath d=%22M28 17.5C35 6 49 4 51 17.5c-2 13.5-16 11.5-23 0Z%22 stroke=%22%23397d74%22 stroke-width=%225.5%22 stroke-linejoin=%22round%22/%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="tokens.css">
   <link rel="stylesheet" href="home.css">
 </head>
 <body>
-  <main class="hm">
-    <section class="hm-hero" id="hero" aria-labelledby="hero-lead">
-      <p class="hm-hero-lead" id="hero-lead">Loading your conversations</p>
-    </section>
-
-    <aside class="hm-rail" aria-label="Planner">
-      <section class="hm-rail-sec hm-cal" aria-labelledby="cal-month">
-        <div class="hm-cal-head">
-          <h2 class="hm-cal-month" id="cal-month"></h2>
-          <div class="hm-cal-nav">
-            <button type="button" class="hm-icon-btn" id="cal-prev" aria-label="Previous month">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>
-            </button>
-            <button type="button" class="hm-icon-btn" id="cal-next" aria-label="Next month">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
-            </button>
-          </div>
-        </div>
-        <p class="hm-streak" id="streak"></p>
-        <div class="hm-cal-grid" id="cal-grid"></div>
-        <ul class="hm-cal-key">
-          <li><i class="hm-sw is-well" aria-hidden="true"></i>Went well</li>
-          <li><i class="hm-sw is-some" aria-hidden="true"></i>Some awkward moments</li>
-          <li><i class="hm-sw is-rough" aria-hidden="true"></i>Awkward</li>
-        </ul>
-      </section>
-
-      <section class="hm-rail-sec" aria-labelledby="goal-title">
-        <h2 class="hm-sec-title" id="goal-title">This week's goal</h2>
-        <div id="goal"></div>
-        <ul class="hm-checks" id="goal-checks"></ul>
-      </section>
-
-      <section class="hm-rail-sec" aria-labelledby="fu-title">
-        <h2 class="hm-sec-title" id="fu-title">Follow-ups to send</h2>
-        <ul class="hm-todo" id="followups"></ul>
-      </section>
-    </aside>
-
-    <section class="hm-rec" id="rec" aria-labelledby="rec-title" aria-live="polite">
-      <div class="hm-rec-head">
-        <h2 class="hm-rec-title" id="rec-title">Start a conversation on your phone</h2>
-        <span class="hm-rec-clock" id="rec-clock" hidden></span>
-      </div>
-      <p class="hm-rec-how" id="rec-how">Type their name, tell them you're recording, then tap Record. What you both say shows up here as you talk.</p>
-      <ol class="hm-lines" id="rec-lines" hidden></ol>
-    </section>
-
-    <section class="hm-convos" aria-labelledby="convos-title">
-      <h2 class="hm-sec-title" id="convos-title">Conversations</h2>
-      <div class="hm-convo-cols" aria-hidden="true">
-        <span></span><span></span><span>What happened</span><span>Next time</span><span></span>
-      </div>
-      <ul class="hm-convo-list" id="convos"></ul>
-    </section>
-  </main>
-
-  <dialog class="hm-modal" id="fu-modal" aria-labelledby="fu-modal-title">
-    <form method="dialog" class="hm-modal-body">
-      <h2 class="hm-modal-title" id="fu-modal-title"></h2>
-      <p class="hm-modal-note" id="fu-modal-note"></p>
-      <label class="hm-sr" for="fu-text">Message</label>
-      <textarea id="fu-text" rows="7" maxlength="1000"></textarea>
-      <p class="hm-modal-err" id="fu-err" role="alert" hidden></p>
-      <div class="hm-modal-actions">
-        <button type="button" class="hm-btn is-primary" id="fu-copy">Copy message</button>
-        <button type="button" class="hm-btn" id="fu-sent">Mark sent</button>
-        <button type="submit" class="hm-btn is-quiet" value="close">Close</button>
-      </div>
-    </form>
-  </dialog>
-
-  <script src="home.js" type="module"></script>
+  <!-- The Figma Make App.tsx, rendered by home.js. Same classes, same order. -->
+  <div id="root"></div>
+  <script src="home.js"></script>
 </body>
 </html>
