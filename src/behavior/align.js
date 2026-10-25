@@ -106,7 +106,8 @@ export function textTone(text) {
     if (POSITIVE.has(w)) pos++;
     if (NEGATIVE.has(w)) neg++;
   }
-  if (/!/.test(String(text ?? ''))) pos += 0.5;
+  // "!" makes a positive line more so, but "Hi! I'm Maya." isn't upbeat by itself.
+  if (pos && /!/.test(String(text ?? ''))) pos += 0.5;
   if (pos > neg) return 'positive';
   if (neg > pos) return 'negative';
   return 'neutral';

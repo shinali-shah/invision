@@ -1,3 +1,5 @@
+import { contentWords } from '../nlp/text.js';
+
 // Muse Spark reads the aligned cues next to the transcript and the note, and says which moments
 // mattered and whether the note's advice is backed by what happened on camera. It only gets
 // numbers we computed, and anything it claims has to point at a real turn.
@@ -33,8 +35,22 @@ const SCHEMA = {
         additionalProperties: false,
       },
     },
+    rewrites: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          turnId: { type: 'integer' },
+          title: { type: 'string' },
+          tryInstead: { type: 'string' },
+          because: { type: 'string' },
+        },
+        required: ['turnId', 'title', 'tryInstead', 'because'],
+        additionalProperties: false,
+      },
+    },
   },
-  required: ['moments', 'adviceCheck'],
+  required: ['moments', 'adviceCheck', 'rewrites'],
   additionalProperties: false,
 };
 
@@ -50,6 +66,12 @@ const SYSTEM = [
   '- adviceCheck: one row per piece of advice in the note (its suggestion, and any advice in its text). verdict is "backed" if the cues',
   '  support it (e.g. reactions after follow-ups were warmer than after other lines), "partly" if mixed, "not yet" if the video gives no support.',
   '  evidenceTurnIds are the turns that show it. reason is one sentence with the numbers.',
+  '- rewrites: for each turnId in `rewriteCandidates` worth fixing (most important first, at most 3), the line the user could have said',
+  '  instead. tryInstead is something a person would actually say out loud, under 20 words, usually a question, and it must pick up a',
+  '  specific word or detail from what the other person had just said (`theySaid`). title is 2-5 words naming the habit',
+  '  ("Stay with their story"). because is one sentence, second person, why this would have worked better.',
+  '',
+  'Face cues are null when there was no video; then talk only about the words.',
   '',
   'Rules:',
   '- Cues are observable behaviour only. Never say or imply what the other person felt, meant, or whether they were sincere, bored, fake or',
@@ -64,7 +86,7 @@ const FIELD_NAMES = /\b(smileDelta|facingPct|smilePeak|congruence|textTone)\b/;
 const BANNED = /\b(fake|faking|lying|lied|liar|genuine|genuinely|insincere|sincere|pretend\w*|bored|annoyed|uninterested|disinterested|didn['’]t care|lost interest|was happy|was sad|they felt|she felt|he felt)\b/i;
 
 const pct = v => (v == null ? '–' : `${Math.round(v * 100)}%`);
-const signed = v => (v == null ? '–' : `${v >= 0 ? '+' : ''}${Math.round(v * 100)}`);
+const signed = v => (v == null ? '–' : `${v >= 0 ? '+' : '−'}${Math.abs(Math.round(v * 100))}`);
 
 // No model: pick the moments the numbers point at, and check the advice against the follow-up stats.
 export function fallbackInsight({ note, behavior, hooks, turns }) {
@@ -112,10 +134,106 @@ export function fallbackInsight({ note, behavior, hooks, turns }) {
   return { moments: moments.slice(0, 4), adviceCheck, source: 'fallback' };
 }
 
+// Your lines that are worth rewriting: replies to a missed bid first, then lines they visibly cooled after.
+export function rewriteCandidates({ turns, userLabel, hooks, behavior }) {
+  const ts = turns ?? [];
+  const cues = new Map((behavior?.turns ?? []).map(r => [r.turnId, r]));
+  const out = [];
+  const add = (reply, reason) => {
+    if (!reply || reply.speaker !== userLabel || out.some(c => c.turnId === reply.turnId)) return;
+    const i = ts.indexOf(reply);
+    const before = ts.slice(0, i).reverse().find(t => t.speaker !== userLabel);
+    if (!before) return;
+    out.push({ turnId: reply.turnId, said: reply.text, theySaid: before.text, theirTurnId: before.turnId, reason });
+  };
+  for (const b of hooks?.missedBids ?? []) add(ts.find(t => t.turnId === b.replyTurnId), 'missed');
+  for (const t of ts) {
+    const r = cues.get(t.turnId)?.reaction;
+    if (r && (r.smileDelta <= -0.05 || (r.facingPct != null && r.facingPct < 0.6))) add(t, 'cooled');
+  }
+  return out;
+}
+
+const seconds = v => `${Math.round(v * 10) / 10} s`;
+
+// The numbers behind a takeaway, written by us rather than the model.
+function evidenceFor(turnId, behavior) {
+  const r = behavior?.turns?.find(x => x.turnId === turnId)?.reaction;
+  if (!r) return null;
+  const bits = [`Smile ${signed(r.smileDelta)}`];
+  if (r.facingPct != null && r.facingPct < 0.8) bits.push(`looked away ${seconds((1 - r.facingPct) * 2.5)}`);
+  if (r.nods) bits.push(`${r.nods} nod${r.nods === 1 ? '' : 's'}`);
+  return bits.join(' · ');
+}
+
+const quote = s => `“${String(s).trim().replace(/^[“"]|[”"]$/g, '')}”`;
+
+export function buildTakeaways({ rewrites, candidates, moments, hooks, signals, behavior, turns }) {
+  const text = new Map((turns ?? []).map(t => [t.turnId, t.text]));
+  const takeaways = [];
+
+  const r = rewrites[0];
+  if (r) {
+    const c = candidates.find(x => x.turnId === r.turnId);
+    takeaways.push({
+      kind: 'try', turnId: r.turnId, title: r.title, text: r.because,
+      said: c?.said ?? text.get(r.turnId) ?? null, theySaid: c?.theySaid ?? null, tryInstead: r.tryInstead,
+      evidence: evidenceFor(r.turnId, behavior) ?? (c?.reason === 'missed' ? 'They had just shared something personal' : null),
+    });
+  }
+
+  // What worked: the follow-up that got the warmest reaction, or any follow-up when there's no video.
+  const followUps = new Set((signals?.questions ?? []).filter(q => q.isFollowUp).map(q => q.turnId));
+  for (const d of hooks?.followUpDetector ?? []) if (d.isFollowUp && !(signals?.questions ?? []).length) followUps.add(d.turnId);
+  const warmth = id => behavior?.turns?.find(x => x.turnId === id)?.reaction?.smileDelta ?? null;
+  const keep = [...followUps].sort((a, b) => (warmth(b) ?? 0) - (warmth(a) ?? 0))[0];
+  if (keep != null && (warmth(keep) == null || warmth(keep) > 0)) {
+    const m = moments.find(x => x.turnId === keep);
+    const overlap = hooks?.followUpDetector?.find(d => d.turnId === keep)?.overlap ?? [];
+    takeaways.push({
+      kind: 'keep', turnId: keep, title: m?.title ?? 'Keep asking follow-ups',
+      text: m?.why ?? `${quote(text.get(keep) ?? '')} built on what they had just told you.`,
+      said: null, theySaid: null, tryInstead: null,
+      evidence: evidenceFor(keep, behavior) ?? (overlap.length ? `Built on: ${overlap.join(', ')}` : null),
+    });
+  }
+
+  // Next time: something coming up for them, or a promise you made.
+  const event = hooks?.events?.[0];
+  const promise = hooks?.commitments?.[0];
+  if (event) {
+    takeaways.push({ kind: 'next', turnId: event.turnId, title: 'Ask about it next time', text: `They mentioned ${quote(event.text)} Ask how it went.`, said: null, theySaid: null, tryInstead: null, evidence: null });
+  } else if (promise) {
+    takeaways.push({ kind: 'next', turnId: promise.turnId, title: 'Follow through', text: `You said ${quote(promise.text)} Do it before you talk again.`, said: null, theySaid: null, tryInstead: null, evidence: null });
+  }
+  return takeaways.slice(0, 3);
+}
+
+// A rewrite only counts if it picks up something they actually said.
+function validRewrite(r, candidates) {
+  const c = candidates.find(x => x.turnId === r.turnId);
+  if (!c) return false;
+  const tryWords = contentWords(r.tryInstead);
+  const grounded = [...contentWords(c.theySaid)].some(w => tryWords.has(w));
+  return grounded && r.tryInstead.length <= 160 && !BANNED.test(`${r.tryInstead} ${r.because}`);
+}
+
+function fallbackRewrites(candidates, hooks) {
+  return candidates.slice(0, 2).map(c => {
+    const cue = hooks?.missedBids?.find(b => b.turnId === c.theirTurnId)?.cue
+      || [...contentWords(c.theySaid)][0] || 'that';
+    return { turnId: c.turnId, title: 'Stay with their story', tryInstead: `Wait, tell me more about ${cue}?`, because: 'One question about what they just said keeps the thread going before you change topic.' };
+  });
+}
+
 export async function generateInsight({ llm, note, behavior, hooks, signals, turns, userLabel }) {
-  const fallback = () => fallbackInsight({ note, behavior, hooks, turns });
-  if (!behavior) return fallback();
-  const cues = new Map(behavior.turns.map(r => [r.turnId, r]));
+  const candidates = rewriteCandidates({ turns, userLabel, hooks, behavior });
+  const finish = (base, rewrites) => ({ ...base, rewrites, takeaways: buildTakeaways({ rewrites, candidates, moments: base.moments, hooks, signals, behavior, turns }) });
+  const fallback = () => {
+    const base = fallbackInsight({ note, behavior, hooks, turns });
+    return finish(base, fallbackRewrites(candidates, hooks));
+  };
+  const cues = new Map((behavior?.turns ?? []).map(r => [r.turnId, r]));
   let out;
   try {
     out = await llm.json({
@@ -126,9 +244,10 @@ export async function generateInsight({ llm, note, behavior, hooks, signals, tur
         note: note?.text ? { text: note.text, suggestion: note.suggestion } : null,
         hooks: { topics: hooks?.topics ?? [], missedBids: hooks?.missedBids ?? [], commitments: hooks?.commitments ?? [] },
         followUps: (signals?.questions ?? []).filter(q => q.isFollowUp).map(q => q.turnId),
-        baseline: behavior.baseline,
-        stats: behavior.stats,
-        faceSeenPct: behavior.faceSeenPct,
+        baseline: behavior?.baseline ?? null,
+        stats: behavior?.stats ?? null,
+        faceSeenPct: behavior?.faceSeenPct ?? null,
+        rewriteCandidates: candidates.map(c => ({ turnId: c.turnId, said: c.said, theySaid: c.theySaid, why: c.reason })),
         turns: (turns ?? []).map(t => {
           const c = cues.get(t.turnId) ?? {};
           return {
@@ -158,5 +277,11 @@ export async function generateInsight({ llm, note, behavior, hooks, signals, tur
 
   const said = [...moments.flatMap(m => [m.title, m.observation, m.why]), ...adviceCheck.map(a => a.reason)].join(' ');
   if (!moments.length || BANNED.test(said) || FIELD_NAMES.test(said)) return fallback();
-  return { moments, adviceCheck, source: 'muse-spark' };
+
+  const rewrites = (out?.rewrites ?? [])
+    .map(r => ({ turnId: r.turnId, title: clean(r.title), tryInstead: clean(r.tryInstead), because: clean(r.because) }))
+    .filter(r => r.tryInstead && r.title && validRewrite(r, candidates))
+    .slice(0, 3);
+  // Spark's rewrites that didn't pick up their words are swapped for plain ones, not dropped silently.
+  return finish({ moments, adviceCheck, source: 'muse-spark' }, rewrites.length || !candidates.length ? rewrites : fallbackRewrites(candidates, hooks));
 }

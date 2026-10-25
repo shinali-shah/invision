@@ -32,6 +32,10 @@ export async function processConversation({ store, llm, log, id, reflection }) {
     return convo;
   }
 
+  // The follow-up only needs the hooks, so it drafts while the slower classify → coach → review chain runs.
+  const keep = convo.followUp && (convo.followUp.status === 'sent' || convo.followUp.source === 'edited');
+  const drafting = keep ? Promise.resolve(convo.followUp) : writeFollowUp({ llm, log, convo: { ...convo, hooks, userLabel } });
+
   const signals = withDetector(
     await classifySignals({ llm, turns, userLabel, tag: convo.tag, ruleSignals }),
     hooks.followUpDetector,
@@ -39,15 +43,13 @@ export async function processConversation({ store, llm, log, id, reflection }) {
   );
 
   store.updateConversation(id, { signals });
+  // The trend only needs the counts, so it runs next to coaching rather than after it.
+  // Caught here: a rejection sitting unawaited during coaching would take the process down.
+  const remembering = refreshMemory({ store, llm, log }).catch(err => log('pattern', 'warn', `memory refresh failed: ${err.message}`));
   const note = await coachAndReview({ store, llm, log, convo: { ...convo, signals, userLabel, hooks } });
   convo = store.updateConversation(id, { note });
 
-  // A message they already sent or rewrote by hand is theirs; reprocessing doesn't touch it.
-  const keep = convo.followUp && (convo.followUp.status === 'sent' || convo.followUp.source === 'edited');
-  const [followUp] = await Promise.all([
-    keep ? convo.followUp : writeFollowUp({ llm, log, convo: { ...convo, hooks } }),
-    refreshMemory({ store, llm, log }),
-  ]);
+  const [followUp] = await Promise.all([drafting, remembering]);
   return store.updateConversation(id, { followUp });
 }
 

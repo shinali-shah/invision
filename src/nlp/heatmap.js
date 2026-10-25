@@ -4,6 +4,8 @@
 
 import { contentWords, stem } from './text.js';
 
+const MAX_PER_LINE = 3;
+
 const FILLERS = new Set(['um', 'uh', 'umm', 'uhh', 'erm', 'hmm', 'like', 'basically', 'literally', 'eh', 'este', 'osea', 'o sea']);
 
 export const LEGEND = [
@@ -82,16 +84,20 @@ export function buildHeatmap({ turns, userLabel, hooks, signals, behavior, frame
         // Rough word timing: spread the turn evenly over its words.
         const at = (t.startMs ?? 0) + (raw.length > 1 ? (span * i) / (raw.length - 1) : 0);
         const smile = frames.length ? smileAt(frames, at) : null;
-        if (smile != null && baseline != null && smile >= baseline + 0.2 && b.length >= 3) {
+        if (smile != null && baseline != null && smile >= baseline + 0.2 && contentWords(b).size) {
           return mark(0.6, 'smile', `Smiling here (${Math.round(smile * 100)}%)`);
         }
         if (topicStems.has(s)) return mark(0.5, 'topic', 'They kept coming back to this');
-        if (bid && b.length >= 4) return mark(-0.35, 'missed', 'Part of a moment your next line moved past');
         if (cue?.congruence === 'mixed' && cue.textTone === 'positive' && raw.length >= 6 && b.length >= 4 && contentWords(b).size) {
           return mark(-0.3, 'flat', 'Upbeat words, but the face cues stayed flat');
         }
         return mark(0, null, null);
       });
+
+      // A few strong colours per line read as advice; a wall of tints reads as noise.
+      const keep = new Set(words.map((w, i) => [Math.abs(w.score), i]).filter(([v]) => v > 0)
+        .sort((a, b) => b[0] - a[0]).slice(0, MAX_PER_LINE).map(([, i]) => i));
+      words.forEach((w, i) => { if (!keep.has(i)) Object.assign(w, { score: 0, kind: null, why: null }); });
 
       return {
         turnId: t.turnId,

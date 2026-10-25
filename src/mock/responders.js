@@ -171,7 +171,7 @@ function followUp({ otherName, hooks, tag } = {}) {
 }
 
 // Picks the warmest reaction and any missed bid, the way a careful reader of the numbers would.
-function insight({ note, stats, turns, hooks } = {}) {
+function insight({ note, stats, turns, hooks, rewriteCandidates } = {}) {
   const ts = Array.isArray(turns) ? turns : [];
   const warm = ts.filter(t => t.reaction).sort((a, b) => b.reaction.smileDelta - a.reaction.smileDelta)[0];
   const moments = [];
@@ -184,8 +184,13 @@ function insight({ note, stats, turns, hooks } = {}) {
   const fu = stats?.afterFollowUps;
   const other = stats?.afterOther;
   const backed = fu?.n && fu.smileDelta != null && (other?.smileDelta == null || fu.smileDelta > other.smileDelta);
+  const rewrites = (Array.isArray(rewriteCandidates) ? rewriteCandidates : []).slice(0, 2).map(c => {
+    const pick = [...contentWords(c.theySaid)].sort((a, b) => b.length - a.length)[0] ?? 'that';
+    return { turnId: c.turnId, title: 'Stay with their story', tryInstead: `Wait, tell me more about the ${pick} part?`, because: 'Asking about what they just said keeps them talking before you switch to yourself.' };
+  });
   return {
     moments,
+    rewrites,
     adviceCheck: note?.suggestion ? [{
       advice: note.suggestion,
       verdict: backed ? 'backed' : fu?.n ? 'partly' : 'not yet',

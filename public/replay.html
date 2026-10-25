@@ -43,7 +43,7 @@
 
     <!-- one conversation -->
     <div class="rp-convo" id="v-convo" hidden>
-      <div class="rp-top">
+      <div class="rp-hero" id="hero">
         <section class="rp-stage" aria-label="Video">
           <div class="rp-player" id="player">
             <video id="video" playsinline preload="metadata" controls></video>
@@ -86,26 +86,14 @@
           </div>
         </section>
 
-        <aside class="rp-side">
-          <section class="rp-proof" id="proof" aria-label="The numbers"></section>
-          <section class="rp-script" aria-labelledby="script-head">
-            <h2 class="rp-section-head" id="script-head">Transcript <span class="rp-head-note">click a line to jump there</span></h2>
-            <div class="rp-script-scroll" id="script-scroll">
-              <ol class="rp-lines" id="lines"></ol>
-            </div>
-          </section>
-        </aside>
+        <section class="rp-takeaways" id="takeaways" aria-label="Takeaways"></section>
       </div>
+
+      <section class="rp-scores" id="scores" hidden aria-label="The numbers"></section>
 
       <section class="rp-timeline" id="timeline" aria-label="Timeline">
         <div class="rp-lanes">
-          <div class="rp-lane-labels" aria-hidden="true">
-            <span style="--rows: 2">Who's talking</span>
-            <span>Smile</span>
-            <span>Facing</span>
-            <span>Nods</span>
-            <span>Moments</span>
-          </div>
+          <div class="rp-lane-labels" aria-hidden="true"></div>
           <div class="rp-track" id="track">
             <canvas id="lanes-canvas"></canvas>
             <div class="rp-markers" id="markers"></div>
@@ -120,43 +108,39 @@
           <li><span class="rp-sw sw-facing"></span>Facing the camera</li>
           <li><span class="rp-mk mk-follow">✓</span>Follow-up question</li>
           <li><span class="rp-mk mk-missed">⚠</span>Missed moment</li>
-          <li><span class="rp-mk mk-cited">★</span>Cited by the note</li>
-          <li><span class="rp-mk mk-insight">◆</span>Insight</li>
+          <li><span class="rp-mk mk-tk">1</span>Takeaway</li>
         </ul>
       </section>
 
-      <section class="rp-advice" id="advice" aria-labelledby="advice-head">
-        <h2 class="rp-advice-head" id="advice-head">Did the advice hold up?</h2>
-        <div class="rp-advice-grid">
-          <div class="rp-advice-col">
-            <article class="rp-note" id="note" hidden>
-              <p class="rp-kicker">The coaching note</p>
-              <p class="rp-note-text" id="note-text"></p>
-              <p class="rp-note-sugg" id="note-sugg"></p>
-            </article>
-            <p class="rp-dim" id="note-none" hidden></p>
-            <section class="rp-check" id="check" aria-label="Advice checked against the video"></section>
-          </div>
-          <div class="rp-advice-col">
-            <section class="rp-moments" id="moments" aria-label="Moments worth replaying"></section>
-            <section class="rp-hooks" id="hooks" hidden aria-label="What we picked up"></section>
-          </div>
+      <section class="rp-script" aria-labelledby="script-head">
+        <div class="rp-script-head">
+          <h2 class="rp-section-head" id="script-head">Transcript</h2>
+          <p class="rp-heat-legend" id="heat-legend"></p>
+        </div>
+        <p class="rp-heat-why" id="heat-why" aria-live="polite"></p>
+        <div class="rp-script-scroll" id="script-scroll">
+          <ol class="rp-lines" id="lines"></ol>
         </div>
       </section>
 
-      <section class="rp-heat" id="heat" hidden aria-labelledby="heat-head">
-        <h2 class="rp-advice-head" id="heat-head">Key moments, word by word</h2>
-        <ul class="rp-heat-legend" id="heat-legend" aria-label="What the colours mean"></ul>
-        <p class="rp-heat-why" id="heat-why" aria-live="polite">Hover or tap a coloured word to see why. Click a line to play it.</p>
-        <ol class="rp-heat-lines" id="heat-lines"></ol>
-      </section>
-
-      <footer class="rp-how" aria-label="How this works">
-        <p class="rp-kicker">How this works</p>
-        <p>Cues come from a pretrained face model (MediaPipe Face Landmarker) running in this browser. It measures smiling, facing and nodding, not feelings or sincerity.</p>
-        <p>Numbers are computed without AI; Muse Spark only writes the insight, and every claim points to a moment you can play.</p>
-        <p class="rp-how-small">The video stays on this Mac. Face analysis runs locally in Chrome at 5 frames per second of video; only the per-frame numbers are sent to the local server.</p>
-      </footer>
+      <div class="rp-more">
+        <details class="rp-fold" id="fold-check">
+          <summary>How the coaching note was checked</summary>
+          <div class="rp-fold-body" id="checked"></div>
+        </details>
+        <details class="rp-fold" id="fold-hooks">
+          <summary>What we picked up <span class="rp-fold-note">no AI</span></summary>
+          <div class="rp-fold-body rp-hooks" id="hooks"></div>
+        </details>
+        <details class="rp-fold">
+          <summary>How this works</summary>
+          <div class="rp-fold-body rp-how">
+            <p>Cues come from a pretrained face model (MediaPipe Face Landmarker) running in this browser. It measures smiling, facing and nodding, not feelings or sincerity.</p>
+            <p>Numbers are computed without AI; Muse Spark only writes the insight, and every claim points to a moment you can play.</p>
+            <p class="rp-how-small">The video stays on this Mac. Face analysis runs locally in Chrome at 5 frames per second of video; only the per-frame numbers are sent to the local server.</p>
+          </div>
+        </details>
+      </div>
     </div>
   </main>
 

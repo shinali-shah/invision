@@ -185,3 +185,66 @@ test('video upload, ranged playback, behavior, heatmap and delete', async () => 
   assert.equal((await fetch(url, { method: 'DELETE' })).status, 204);
   assert.equal((await fetch(`${url}/recording`)).status, 404);
 });
+
+// ---------- takeaways ----------
+
+const maya = [
+  { turnId: 1, speaker: 'B', text: "A glove that translates sign language. My little brother is deaf, so honestly it's personal for me.", startMs: 0, endMs: 6000 },
+  { turnId: 2, speaker: 'A', text: 'Cool. We are doing an AI coaching app with glasses.', startMs: 6400, endMs: 9000 },
+  { turnId: 3, speaker: 'B', text: 'Oh that sounds fun.', startMs: 9400, endMs: 10500 },
+  { turnId: 4, speaker: 'A', text: 'Wait, how does the glove read the signs?', startMs: 11000, endMs: 13000 },
+  { turnId: 5, speaker: 'B', text: "Flex sensors. I'm going to show my brother the demo next weekend.", startMs: 13400, endMs: 18000 },
+  { turnId: 6, speaker: 'A', text: "I'll send you our demo video. Good luck with your brother!", startMs: 18400, endMs: 21000 },
+];
+
+test('the missed moment becomes a grounded "try this" with numbers we computed', async () => {
+  const hooks = extractHooks(maya, 'A');
+  assert.deepEqual(hooks.missedBids.map(b => b.replyTurnId), [2]); // "Good luck with your brother!" is not a miss
+  const frames = Array.from({ length: 120 }, (_, i) => {
+    const t = i * 200;
+    const cold = t > 9000 && t < 11500;
+    return { t, face: true, smile: cold ? 0.1 : t > 13000 && t < 15500 ? 0.6 : 0.2, yaw: cold ? 35 : 0, pitch: 0, jawOpen: 0.1, browUp: 0.1 };
+  });
+  const signals = { questions: [{ turnId: 4, isFollowUp: true }] };
+  const behavior = alignBehavior({ model: 'x', fps: 5, frames, turns: maya, userLabel: 'A', signals, hooks });
+  const llm = stub({
+    moments: [{ turnId: 4, title: 'Glove question landed', observation: 'Their smile rose 40 points.', why: 'Go back to what they cared about.' }],
+    adviceCheck: [],
+    rewrites: [
+      { turnId: 2, title: 'Stay with their story', tryInstead: 'Is your brother the reason you started building the glove?', because: 'It shows you heard the personal part.' },
+      { turnId: 4, title: 'x', tryInstead: 'What about pizza?', because: 'y' }, // not a candidate
+    ],
+  });
+  const out = await generateInsight({ llm, note: null, behavior, hooks, signals, turns: maya, userLabel: 'A' });
+  assert.deepEqual(out.rewrites.map(r => r.turnId), [2]);
+  const [tryIt, keep, next] = out.takeaways;
+  assert.equal(tryIt.kind, 'try');
+  assert.match(tryIt.tryInstead, /brother/);
+  assert.match(tryIt.said, /^Cool\./);
+  assert.match(tryIt.theySaid, /deaf/);
+  assert.match(tryIt.evidence, /^Smile −?-?\d+ · looked away/);
+  assert.equal(keep.kind, 'keep');
+  assert.equal(keep.turnId, 4);
+  assert.equal(keep.title, 'Glove question landed');
+  assert.equal(next.kind, 'next');
+  assert.match(next.text, /next weekend/);
+});
+
+test('an ungrounded rewrite is replaced by a plain one that names their words', async () => {
+  const hooks = extractHooks(maya, 'A');
+  const llm = stub({
+    moments: [{ turnId: 4, title: 't', observation: 'o', why: 'w' }], adviceCheck: [],
+    rewrites: [{ turnId: 2, title: 'Be curious', tryInstead: 'Tell me more!', because: 'b' }],
+  });
+  const out = await generateInsight({ llm, note: null, behavior: null, hooks, signals: null, turns: maya, userLabel: 'A' });
+  assert.equal(out.rewrites.length, 1);
+  assert.notEqual(out.rewrites[0].tryInstead, 'Tell me more!');
+  assert.equal(out.takeaways[0].kind, 'try');
+  assert.equal(out.takeaways[0].evidence, 'They had just shared something personal');
+});
+
+test('heatmap keeps at most three coloured words per line', () => {
+  const hooks = extractHooks(maya, 'A');
+  const map = buildHeatmap({ turns: maya, userLabel: 'A', hooks, signals: null, behavior: null });
+  for (const t of map.turns) assert.ok(t.words.filter(w => w.kind).length <= 3, `turn ${t.turnId}`);
+});

@@ -279,6 +279,10 @@ const SELF_DISCLOSURE = [
 ];
 
 // "Oh cool. Um", "nice", "haha yeah": an answer with nothing in it.
+const STRONG_DISCLOSURE = SELF_DISCLOSURE.slice(0, 3);
+const ACKNOWLEDGES = word("good luck|congrats|congratulations|so sorry|i['’]m sorry|sorry to hear|that['’]s (?:so |really )?(?:amazing|awesome|incredible|hard|tough|rough|huge|exciting)|that sounds (?:hard|tough|amazing|exciting)|i love that|no way|felicidades|lo siento|qué bueno|que bueno|suerte");
+const ABOUT_THEM = word('you|your|tú|tu|usted');
+
 const isBareAcknowledgment = text => contentWords(text).size === 0 && wordCount(text) <= 6;
 
 // Same filtering as topics, so "honestly" or "dunno" never end up as the cue.
@@ -309,6 +313,10 @@ function missedBidsFrom(ts, userLabel, stats) {
     if (!opened) return;
     if (overlap(textOf(reply), text).length) return;
     if (isQuestion(textOf(reply)) && isBackReference(textOf(reply))) return;
+    // "Good luck with your brother!" or "I'm so sorry" answers the feeling even without their words.
+    if (ACKNOWLEDGES.test(textOf(reply))) return;
+    // Asking about them ("what are you building?") is engaging, unless they'd just said something heavy.
+    if (isQuestion(textOf(reply)) && ABOUT_THEM.test(textOf(reply)) && !STRONG_DISCLOSURE.some(re => re.test(text))) return;
     const cue = bidCue(text, stats);
     if (cue) out.push({ turnId: t.turnId, replyTurnId: reply.turnId, cue });
   });

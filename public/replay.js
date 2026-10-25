@@ -20,9 +20,12 @@ const VERDICTS = { backed: 'Backed', partly: 'Partly', 'not yet': 'Not yet' };
 const MARKS = {
   follow: { sym: '✓', label: 'Follow-up question' },
   missed: { sym: '⚠', label: 'Missed moment' },
-  cited: { sym: '★', label: 'Cited by the coaching note' },
-  insight: { sym: '◆', label: 'Insight' },
+  tk1: { sym: '1', label: 'Takeaway 1' },
+  tk2: { sym: '2', label: 'Takeaway 2' },
+  tk3: { sym: '3', label: 'Takeaway 3' },
 };
+const MARK_ORDER = ['tk1', 'tk2', 'tk3', 'follow', 'missed'];
+const markClass = (k) => (k.startsWith('tk') ? 'mk-tk' : `mk-${k}`);
 const LANES = [
   { key: 'talk', label: "Who's talking", h: 30 },
   { key: 'smile', label: 'Smile', h: 56 },
@@ -46,6 +49,9 @@ const state = {
   framesAsked: null,    // which analysis we last asked the server for frames for
   recKey: null,         // which upload of the video the frames belong to
   heat: { key: null, data: null },
+  insightAsked: null,   // conversation id we already asked POST /insight for
+  insightBusy: false,
+  insightError: null,
   nods: [],             // transcript ms of each nod found in frames
   analysing: false,
   autoStarted: false,
@@ -191,9 +197,7 @@ function markersByTurn(c) {
     for (const q of c.hooks.followUpDetector) if (q.isFollowUp) add(q.turnId, 'follow');
   }
   for (const b of (c.hooks && c.hooks.missedBids) || []) add(b.turnId, 'missed');
-  const note = c.note;
-  if (note && note.text && note.status !== 'dropped') for (const id of note.citedTurnIds || []) add(id, 'cited');
-  for (const m of (c.insight && c.insight.moments) || []) add(m.turnId, 'insight');
+  takeaways().forEach((t, i) => add(t.turnId, `tk${i + 1}`));
   return out;
 }
 
@@ -203,14 +207,15 @@ function missedCue(turnId) {
 }
 
 function markerTitle(turnId, kinds) {
-  return [...kinds].map((k) => {
+  const tks = takeaways();
+  return MARK_ORDER.filter((k) => kinds.has(k)).map((k) => {
     if (k === 'missed') {
       const cue = missedCue(turnId);
       return cue ? `Missed moment: they mentioned “${cue}” and the next line moved on` : MARKS.missed.label;
     }
-    if (k === 'insight') {
-      const m = state.convo.insight.moments.find((x) => x.turnId === turnId);
-      return m && m.title ? `Insight: ${m.title}` : MARKS.insight.label;
+    if (k.startsWith('tk')) {
+      const t = tks[Number(k.slice(2)) - 1];
+      return t && t.title ? `Takeaway ${k.slice(2)}: ${t.title}` : MARKS[k].label;
     }
     return MARKS[k].label;
   }).join('\n');
@@ -645,6 +650,7 @@ async function upload(frames, recAt) {
   state.uploading = true;
   showAnalysisMsg('');
   renderAnalysisBar();
+  renderTakeaways();
   $('word-status').textContent = 'Lining the cues up with the transcript…';
   try {
     const body = { model: MODEL, fps: FPS, frames, recordingUploadedAt: recAt };
@@ -1054,21 +1060,34 @@ function renderMarkers(top, h, D) {
   const box = $('markers');
   box.style.top = `${top}px`;
   box.style.height = `${h}px`;
+  const W = $('track').clientWidth;
   const marks = markersByTurn(state.convo);
   const turns = new Map(turnsOf(state.convo).map((t) => [t.turnId, t]));
-  const order = ['follow', 'missed', 'cited', 'insight'];
-  put(box, ...[...marks.entries()].filter(([id]) => turns.has(id)).map(([id, kinds]) => {
-    const t = turns.get(id);
-    const sorted = order.filter((k) => kinds.has(k));
-    const title = `${fmtClock(t.startMs)} · ${markerTitle(id, kinds)}`;
+  const items = [...marks.entries()].filter(([id]) => turns.has(id)).map(([id, kinds]) => {
+    const sorted = MARK_ORDER.filter((k) => kinds.has(k));
+    return { id, t: turns.get(id), sorted, w: sorted.length * 23, x: (toVideoMs(turns.get(id).startMs) / D) * W };
+  }).sort((a, b) => a.x - b.x);
+  // Push neighbours apart so close markers don't sit on top of each other.
+  for (let i = 0; i < items.length; i++) {
+    const it = items[i];
+    it.x = Math.max(it.x, it.w / 2);
+    if (i) it.x = Math.max(it.x, items[i - 1].x + (items[i - 1].w + it.w) / 2 + 3);
+  }
+  for (let i = items.length - 1; i >= 0; i--) {
+    const it = items[i];
+    const limit = i === items.length - 1 ? W - it.w / 2 : items[i + 1].x - (items[i + 1].w + it.w) / 2 - 3;
+    it.x = Math.min(it.x, limit);
+  }
+  put(box, ...items.map(({ id, t, sorted, x }) => {
+    const title = `${fmtClock(t.startMs)} · ${markerTitle(id, new Set(sorted))}`;
     return el('button', {
-      class: `rp-marker ${sorted.map((k) => `mk-${k}`).join(' ')}`,
+      class: 'rp-marker',
       type: 'button',
-      style: `left:clamp(12px, ${(toVideoMs(t.startMs) / D) * 100}%, calc(100% - 12px))`,
+      style: `left:${Math.round(x)}px`,
       title,
       'aria-label': title,
       on: { click: (e) => { e.stopPropagation(); seekToTurn(id); } },
-    }, ...sorted.map((k) => el('span', { class: `rp-mk mk-${k}`, text: MARKS[k].sym })));
+    }, ...sorted.map((k) => el('span', { class: `rp-mk ${markClass(k)}`, text: MARKS[k].sym })));
   }));
 }
 
@@ -1141,47 +1160,107 @@ function setActive(turnId, { scroll = false } = {}) {
   if (scroll || !visible) box.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
 }
 
-function cueChips(turn, side, bt, b) {
-  if (!b || !bt) return null;
-  const chips = [];
-  if (side === 'them') {
-    if (bt.smile == null) {
-      chips.push(el('span', { class: 'rp-chip dim', text: 'face not in view' }));
-    } else {
-      chips.push(el('span', { class: 'rp-chip', title: `Mean smile over this line (peak ${pct(bt.smilePeak) ?? '—'}%). Their usual: ${pct(b.baseline && b.baseline.smile) ?? '—'}%.`, text: `smile ${pct(bt.smile)}%` }));
-      if (isNum(bt.facingPct)) chips.push(el('span', { class: 'rp-chip', title: 'Share of frames where their head pointed at the camera', text: `facing ${pct(bt.facingPct)}%` }));
-      if (isNum(bt.nods)) chips.push(el('span', { class: 'rp-chip', text: plural(bt.nods, 'nod') }));
-    }
-    if (bt.congruence === 'match' || bt.congruence === 'mixed') {
-      const base = b.baseline || {};
-      const tip = `Compared the tone of the words (${bt.textTone || 'neutral'}, from a word list) with their face on this line: `
-        + `smile ${pct(bt.smile) ?? '—'}% vs their usual ${pct(base.smile) ?? '—'}%, `
-        + `animation ${isNum(bt.animation) ? bt.animation.toFixed(2) : '—'} vs usual ${isNum(base.animation) ? base.animation.toFixed(2) : '—'}. `
-        + (bt.congruence === 'match' ? 'They point the same way.' : "They don't point the same way.")
-        + ' Observable cues only, not feelings or sincerity.';
-      chips.push(el('span', { class: `rp-chip cong ${bt.congruence}`, title: tip, tabindex: '0', text: bt.congruence }));
-    }
-  } else if (side === 'you') {
-    const r = bt.reaction;
-    if (r && isNum(r.smileDelta)) {
-      const bits = [`they smiled ${signed(r.smileDelta)} after this`];
-      if (isNum(r.nods) && r.nods > 0) bits.push(plural(r.nods, 'nod'));
-      chips.push(el('span', {
-        class: `rp-chip react ${r.smileDelta > 0.02 ? 'up' : r.smileDelta < -0.02 ? 'down' : ''}`.trim(),
-        title: 'Change in their smile over the 2.5 s after you stopped talking, against the moment you stopped',
-        text: bits.join(' · '),
-      }));
-    } else if (r === null) {
-      chips.push(el('span', { class: 'rp-chip dim', text: 'no face in view after this' }));
-    }
-  }
-  return chips.length ? el('span', { class: 'rp-chips' }, ...chips) : null;
+// smile delta 0..1 as signed points, e.g. +21 / −8
+function pts(v) {
+  if (!isNum(v)) return '—';
+  const n = Math.round(v * 100);
+  return n > 0 ? `+${n}` : n < 0 ? `−${-n}` : '±0';
 }
 
+// Their cues on one of their lines; shown on hover so the transcript stays readable.
+function themCues(bt, b) {
+  if (!b || !bt) return null;
+  const chips = [];
+  if (bt.smile == null) {
+    chips.push(el('span', { class: 'rp-chip dim', text: 'face not in view' }));
+  } else {
+    chips.push(el('span', { class: 'rp-chip', title: `Mean smile over this line (peak ${pct(bt.smilePeak) ?? '—'}%). Their usual: ${pct(b.baseline && b.baseline.smile) ?? '—'}%.`, text: `smile ${pct(bt.smile)}%` }));
+    if (isNum(bt.facingPct)) chips.push(el('span', { class: 'rp-chip', title: 'Share of frames where their head pointed at the camera', text: `facing ${pct(bt.facingPct)}%` }));
+    if (isNum(bt.nods)) chips.push(el('span', { class: 'rp-chip', text: plural(bt.nods, 'nod') }));
+  }
+  if (bt.congruence === 'match' || bt.congruence === 'mixed') {
+    const base = b.baseline || {};
+    const tip = `Compared the tone of the words (${bt.textTone || 'neutral'}, from a word list) with their face on this line: `
+      + `smile ${pct(bt.smile) ?? '—'}% vs their usual ${pct(base.smile) ?? '—'}%, `
+      + `animation ${isNum(bt.animation) ? bt.animation.toFixed(2) : '—'} vs usual ${isNum(base.animation) ? base.animation.toFixed(2) : '—'}. `
+      + (bt.congruence === 'match' ? 'They point the same way.' : "They don't point the same way.")
+      + ' Observable cues only, not feelings or sincerity.';
+    chips.push(el('span', { class: `rp-chip cong ${bt.congruence}`, title: tip, text: bt.congruence }));
+  }
+  return el('span', { class: 'rp-chips rp-cues' }, ...chips);
+}
+
+// Only reactions big enough to matter get a chip: "smiled +39", "smile −10 · looked away".
+function reactionChip(bt, heatReaction) {
+  const r = bt && bt.reaction;
+  const d = r && isNum(r.smileDelta) ? r.smileDelta : heatReaction;
+  if (!isNum(d) || Math.abs(d) < 0.1) return null;
+  const bits = [d > 0 ? `smiled ${pts(d)}` : `smile ${pts(d)}`];
+  if (r && isNum(r.nods) && r.nods > 0) bits.push(plural(r.nods, 'nod'));
+  if (r && isNum(r.facingPct) && r.facingPct < 0.5) bits.push('looked away');
+  return el('span', {
+    class: `rp-chip react ${d > 0 ? 'up' : 'down'}`,
+    title: 'Their smile over the 2.5 s after you stopped talking, against the moment you stopped (points out of 100)',
+    text: bits.join(' · '),
+  });
+}
+
+// Short names for the one-line legend.
+const LEGEND_SHORT = {
+  'picked-up': 'picked up', 'follow-up': 'follow-up', topic: 'their topic', promise: 'promise', smile: 'smiling',
+  missed: 'missed', filler: 'filler', flat: 'mixed signal',
+};
+
+function showWhy(text) {
+  $('heat-why').textContent = text || 'Hover a coloured word to see why. Click a line to play it.';
+}
+
+function heatWords(words, legend) {
+  const good = new Map(legend.map((l) => [l.kind, !!l.good]));
+  const kids = [];
+  words.forEach((w, i) => {
+    if (i) kids.push(' ');
+    const text = String(w.w ?? '');
+    // only words the server tagged get colour; a bare score is too noisy to show
+    if (!w.kind) { kids.push(text); return; }
+    const isGood = good.has(w.kind) ? good.get(w.kind) : w.score > 0;
+    const label = (legend.find((l) => l.kind === w.kind) || {}).label || w.kind;
+    const why = `“${text}”: ${w.why || label}`;
+    kids.push(el('span', {
+      class: `rp-heat-w ${isGood ? 'good' : 'bad'}`,
+      title: w.why || label,
+      tabindex: '0',
+      on: {
+        mouseenter: () => showWhy(why),
+        focus: () => showWhy(why),
+        click: (e) => { e.stopPropagation(); showWhy(why); },
+      },
+      text,
+    }));
+  });
+  return kids;
+}
+
+function renderLegend() {
+  const d = state.heat.data;
+  const legend = d && Array.isArray(d.legend) ? d.legend : [];
+  const box = $('heat-legend');
+  if (!legend.length) { box.replaceChildren(); return; }
+  const names = (good) => legend.filter((l) => !!l.good === good).map((l) => LEGEND_SHORT[l.kind] || l.label).join(', ');
+  put(box,
+    el('span', { class: 'rp-heat-key good' }, el('span', { class: 'rp-heat-sw', 'aria-hidden': 'true' }), names(true)),
+    el('span', { class: 'rp-heat-key bad' }, el('span', { class: 'rp-heat-sw', 'aria-hidden': 'true' }), names(false)),
+    !hasVideo() ? el('span', { class: 'rp-heat-key dim', text: 'no video, so no face cues' }) : null,
+  );
+}
+
+// One transcript: synced to the video, words tinted from the heatmap when it's in.
 function renderTranscript() {
   const c = state.convo;
   const turns = turnsOf(c);
   const list = $('lines');
+  renderLegend();
+  showWhy('');
   if (!turns.length) {
     list.replaceChildren(el('li', { class: 'rp-empty', text: 'No transcript for this one.' }));
     return;
@@ -1190,94 +1269,192 @@ function renderTranscript() {
   const bts = behaviorTurns();
   const marks = markersByTurn(c);
   const b = c.behavior;
+  const d = state.heat.data;
+  const heat = new Map((d && Array.isArray(d.turns) ? d.turns : []).map((t) => [t.turnId, t]));
+  const legend = d && Array.isArray(d.legend) ? d.legend : [];
+  const tries = new Map(takeaways().filter((t) => t.kind === 'try' && t.tryInstead && Number.isInteger(t.turnId)).map((t) => [t.turnId, t]));
   list.replaceChildren(...turns.map((t) => {
     const bt = bts.get(t.turnId);
     const side = sideOf(t, bt);
+    const ht = heat.get(t.turnId);
     const kinds = marks.get(t.turnId);
+    const tryT = tries.get(t.turnId);
     const sideCls = side ? `is-${side}` : `spk-${Math.max(0, labels.indexOf(t.speaker))}`;
+    const words = ht && Array.isArray(ht.words) && ht.words.length ? heatWords(ht.words, legend) : [t.text || ''];
     return el('li', { class: `rp-line ${sideCls}${t.turnId === state.activeTurn ? ' active' : ''}`, 'data-turn': t.turnId },
-      el('button', { class: 'rp-line-btn', type: 'button', on: { click: () => seekToTurn(t.turnId) } },
-        el('span', { class: 'rp-who' },
-          el('span', { text: speakerName(t, side, labels) }),
-          el('span', { class: 'rp-time', text: fmtClock(t.startMs) }),
-        ),
-        el('span', { class: 'rp-said' },
+      el('button', { class: 'rp-who', type: 'button', title: 'Play this line', on: { click: () => seekToTurn(t.turnId) } },
+        el('span', { text: speakerName(t, side, labels) }),
+        el('span', { class: 'rp-time' }, el('span', { class: 'rp-play', 'aria-hidden': 'true', text: '▶ ' }), fmtClock(t.startMs)),
+      ),
+      el('div', { class: 'rp-said', on: { click: () => seekToTurn(t.turnId) } },
+        el('p', { class: 'rp-said-text' },
           kinds ? el('span', { class: 'rp-line-marks', title: markerTitle(t.turnId, kinds) },
-            ...['follow', 'missed', 'cited', 'insight'].filter((k) => kinds.has(k)).map((k) => el('span', { class: `rp-mk mk-${k}`, text: MARKS[k].sym }))) : null,
-          el('span', { class: 'rp-said-text', text: t.text || '' }),
-          cueChips(t, side, bt, b),
+            ...MARK_ORDER.filter((k) => kinds.has(k)).map((k) => el('span', { class: `rp-mk ${markClass(k)}`, text: MARKS[k].sym }))) : null,
+          ...words,
+          side === 'you' ? reactionChip(bt, ht && ht.reaction) : null,
         ),
+        side === 'them' ? themCues(bt, b) : null,
+        tryT ? el('p', { class: 'rp-tryline' }, el('span', { class: 'rp-tryline-label', text: 'Try instead' }), `“${tryT.tryInstead}”`) : null,
       ),
     );
   }));
+  if (state.activeTurn != null) setActive(state.activeTurn);
 }
 
-// ---------- the proof + advice ----------
+// ---------- takeaways ----------
 
-function renderProof() {
-  const box = $('proof');
-  const c = state.convo;
-  const b = c.behavior;
-  const head = el('p', { class: 'rp-kicker', text: 'Did the advice hold up? The numbers' });
-  if (!hasVideo()) {
-    put(box, head, el('p', { class: 'rp-proof-empty', text: 'No video for this conversation, so there are no on-camera reactions to compare.' }));
-    return;
+const TK_KICKER = { try: 'Try this next time', keep: 'Keep doing this', next: 'Next time' };
+const TK_ICON = { keep: '✓', next: '→', try: '↺' };
+const TK_ORDER = { try: 0, keep: 1, next: 2 };
+
+// What the server sent; until it sends takeaways, a stand-in made from the moments.
+function takeaways() {
+  const ins = state.convo && state.convo.insight;
+  if (!ins) return [];
+  const kindOf = (k) => (k in TK_KICKER ? k : 'next');
+  if (Array.isArray(ins.takeaways) && ins.takeaways.length) {
+    return ins.takeaways.slice(0, 3).map((t) => ({ ...t, kind: kindOf(t.kind) }));
   }
-  if (!b || !b.stats) {
-    put(box, head, el('p', { class: 'rp-proof-empty', text: state.analysing
-      ? 'Measuring their reactions…'
-      : 'Analyse the video to see how they reacted after your follow-up questions compared with your other lines.' }));
-    return;
-  }
-  const s = b.stats;
-  const af = s.afterFollowUps || {};
-  const ao = s.afterOther || {};
-  const name = otherName();
-  const nameCap = name.charAt(0).toUpperCase() + name.slice(1);
-  let line;
-  if (af.n > 0 && isNum(af.smileDelta)) {
-    line = el('p', { class: 'rp-proof-line' },
-      `After your follow-up questions ${name} smiled `,
-      el('strong', { class: af.smileDelta > 0 ? 'up' : 'flat', text: signed(af.smileDelta) }),
-      ` on average (n=${af.n})`,
-      isNum(ao.smileDelta) && ao.n > 0 ? ` vs ${signed(ao.smileDelta)} after your other lines (n=${ao.n}).` : '.',
-    );
-  } else if (af.n > 0) {
-    line = el('p', { class: 'rp-proof-line', text: `${nameCap}'s face wasn't in view after your follow-up questions, so there's nothing to compare yet.` });
-  } else {
-    line = el('p', { class: 'rp-proof-line', text: isNum(ao.smileDelta) && ao.n > 0
-      ? `No follow-up questions this time. After your lines ${name} smiled ${signed(ao.smileDelta)} on average (n=${ao.n}).`
-      : 'No follow-up questions this time, so there is nothing to compare yet.' });
-  }
+  const bts = behaviorTurns();
+  return (Array.isArray(ins.moments) ? ins.moments : []).slice(0, 3).map((m) => {
+    const r = bts.get(m.turnId) && bts.get(m.turnId).reaction;
+    return {
+      kind: r && isNum(r.smileDelta) && r.smileDelta < 0 ? 'try' : 'keep',
+      turnId: Number.isInteger(m.turnId) ? m.turnId : null,
+      title: m.title || '',
+      text: m.why || '',
+      evidence: m.observation || null,
+    };
+  }).sort((a, b) => TK_ORDER[a.kind] - TK_ORDER[b.kind]);
+}
 
-  const bars = (af.n > 0 && isNum(af.smileDelta)) || (ao.n > 0 && isNum(ao.smileDelta))
-    ? deltaBars([
-      { label: 'After follow-ups', v: af.n > 0 ? af.smileDelta : null, n: af.n, nods: af.nods, cls: 'follow' },
-      { label: 'After other lines', v: ao.n > 0 ? ao.smileDelta : null, n: ao.n, nods: ao.nods, cls: 'other' },
-    ])
-    : null;
+function seekChip(turnId) {
+  const t = turnsOf(state.convo).find((x) => x.turnId === turnId);
+  if (!t) return null;
+  return el('button', { class: 'rp-seek', type: 'button', title: 'Play this moment', on: { click: () => seekToTurn(turnId) } },
+    el('span', { class: 'rp-play', 'aria-hidden': 'true', text: '▶' }), fmtClock(t.startMs));
+}
 
-  const nodBits = [];
-  if (af.n > 0 && isNum(af.nods)) nodBits.push(`${fmtAvg(af.nods)} nods after follow-ups`);
-  if (ao.n > 0 && isNum(ao.nods)) nodBits.push(`${fmtAvg(ao.nods)} after other lines`);
-  const missed = Array.isArray(s.missedBidReactions) ? s.missedBidReactions.filter((m) => isNum(m.smileDelta)) : [];
-  const missedAvg = missed.length ? missed.reduce((a, m) => a + m.smileDelta, 0) / missed.length : null;
-  const small = (af.n || 0) < 3 || (ao.n || 0) < 3;
+function themName() {
+  const n = state.convo.otherName;
+  return n && n !== 'them' ? n : 'They said';
+}
 
-  put(box, 
-    head,
-    line,
-    bars,
-    nodBits.length ? el('p', { class: 'rp-proof-sub', text: `Nods: ${nodBits.join(' vs ')}, on average.` }) : null,
-    missedAvg !== null ? el('p', { class: 'rp-proof-sub', text: `After your replies to missed moments: ${signed(missedAvg)} (n=${missed.length}).` }) : null,
-    el('p', { class: 'rp-proof-foot', text: [
-      'Smile change in the 2.5 s after you stopped talking.',
-      small ? 'Small sample, so read it as a hint, not proof.' : null,
-    ].filter(Boolean).join(' ') }),
+function heroCard(t) {
+  const quote = t.kind === 'try' && (t.said || t.tryInstead);
+  return el('article', { class: `rp-tk-hero kind-${t.kind}` },
+    el('p', { class: 'rp-tk-kicker' },
+      el('span', { class: 'rp-tk-num', text: '1' }),
+      el('span', { text: TK_KICKER[t.kind] }),
+      Number.isInteger(t.turnId) ? seekChip(t.turnId) : null),
+    quote ? el('div', { class: 'rp-tk-quote' },
+      t.theySaid ? el('p', { class: 'rp-tk-they' }, el('span', { class: 'rp-tk-who', text: themName() }), `“${t.theySaid}”`) : null,
+      t.said ? el('p', { class: 'rp-tk-said' }, el('span', { class: 'rp-tk-who', text: 'You said' }), el('s', { text: `“${t.said}”` })) : null,
+      t.tryInstead ? el('p', { class: 'rp-tk-try' }, el('span', { class: 'rp-tk-who', text: 'Try' }), `“${t.tryInstead}”`) : null,
+    ) : el('p', { class: 'rp-tk-title', text: t.title || '' }),
+    t.evidence ? el('p', { class: 'rp-tk-evidence', text: t.evidence }) : null,
+    t.text ? el('p', { class: 'rp-tk-why', text: t.text }) : null,
   );
 }
 
-const fmtAvg = (v) => (Number.isInteger(v) ? String(v) : v.toFixed(1));
+function smallCard(t, i) {
+  return el('li', { class: `rp-tk-card kind-${t.kind}` },
+    el('span', { class: 'rp-tk-icon', 'aria-hidden': 'true', text: TK_ICON[t.kind] }),
+    el('div', { class: 'rp-tk-body' },
+      el('p', { class: 'rp-tk-card-title' },
+        el('span', { class: 'rp-tk-num', text: String(i + 2) }),
+        el('span', { text: t.title || TK_KICKER[t.kind] }),
+        Number.isInteger(t.turnId) ? seekChip(t.turnId) : null),
+      t.text ? el('p', { class: 'rp-tk-text', text: t.text }) : null,
+      t.evidence ? el('p', { class: 'rp-tk-evidence', text: t.evidence }) : null,
+    ),
+  );
+}
+
+function renderTakeaways() {
+  const box = $('takeaways');
+  const c = state.convo;
+  const list = takeaways();
+  const head = el('h2', { class: 'rp-tk-head', text: list.length ? `${list.length === 1 ? 'One takeaway' : `${list.length} takeaways`}` : 'Takeaways' });
+  if (list.length) {
+    const [first, ...rest] = list;
+    put(box, head, heroCard(first), rest.length ? el('ol', { class: 'rp-tk-rest' }, ...rest.map(smallCard)) : null);
+    return;
+  }
+  let msg;
+  let action = null;
+  if (state.uploading || state.insightBusy) msg = 'Writing takeaways…';
+  else if (state.analysing || (hasVideo() && !c.behavior)) msg = 'Takeaways show up once the video is analysed.';
+  else if (state.insightError) {
+    msg = `Couldn't write takeaways: ${state.insightError}`;
+    action = el('button', { class: 'rp-btn rp-btn-quiet', type: 'button', text: 'Try again', on: { click: () => { state.insightAsked = null; state.insightError = null; ensureInsight(); } } });
+  } else if (!turnsOf(c).length) msg = 'Nothing to learn from yet: this conversation has no transcript.';
+  else msg = 'No takeaways this time.';
+  put(box, head, el('p', { class: `rp-tk-empty${msg.endsWith('…') ? ' busy' : ''}`, text: msg }), action);
+}
+
+// No insight yet (no video, or an older conversation): ask for one, once per page view.
+function ensureInsight() {
+  const c = state.convo;
+  if (!c || c.insight || state.insightAsked === c.id) return;
+  if (state.analysing || state.uploading || (hasVideo() && !c.behavior) || !turnsOf(c).length) return;
+  const id = c.id;
+  state.insightAsked = id;
+  state.insightBusy = true;
+  state.insightError = null;
+  renderTakeaways();
+  postJson(`/api/conversations/${enc(id)}/insight`, {})
+    .then((ins) => { if (state.convo && state.convo.id === id && ins && !state.convo.insight) state.convo.insight = ins; })
+    .catch((err) => { state.insightError = err.message; })
+    .finally(() => {
+      state.insightBusy = false;
+      if (state.convo && state.convo.id === id) renderAll();
+    });
+}
+
+// ---------- score strip ----------
+
+function renderScores() {
+  const box = $('scores');
+  const c = state.convo;
+  const items = [];
+  const qs = c.signals && Array.isArray(c.signals.questions) ? c.signals.questions : [];
+  if (qs.length) {
+    const fu = [...markersByTurn(c).values()].filter((k) => k.has('follow')).length;
+    items.push(el('div', { class: 'rp-score' },
+      el('span', { class: 'rp-score-num', text: `${fu} of ${qs.length}` }),
+      el('span', { class: 'rp-score-label', text: 'questions were follow-ups' })));
+  }
+  const missed = c.hooks && Array.isArray(c.hooks.missedBids) ? c.hooks.missedBids.length : null;
+  if (missed !== null) {
+    items.push(el('div', { class: `rp-score${missed ? ' warn' : ''}` },
+      el('span', { class: 'rp-score-num', text: String(missed) }),
+      el('span', { class: 'rp-score-label', text: missed === 1 ? 'missed moment' : 'missed moments' })));
+  }
+  const s = c.behavior && c.behavior.stats;
+  const af = (s && s.afterFollowUps) || {};
+  const ao = (s && s.afterOther) || {};
+  if (af.n > 0 && isNum(af.smileDelta)) {
+    const other = ao.n > 0 && isNum(ao.smileDelta);
+    items.push(el('div', { class: 'rp-score wide', title: `After ${plural(af.n, 'follow-up')}${other ? ` vs ${plural(ao.n, 'other line')}` : ''}. Smile change in the 2.5 s after you stopped, out of 100.${af.n < 3 || ao.n < 3 ? ' Small sample: a hint, not proof.' : ''}` },
+      el('span', { class: 'rp-score-num' },
+        el('span', { class: af.smileDelta > 0 ? 'up' : '', text: pts(af.smileDelta) }),
+        other ? el('span', { class: 'rp-score-vs', text: ` vs ${pts(ao.smileDelta)}` }) : null),
+      el('span', { class: 'rp-score-label', text: other ? 'smile after your follow-ups vs your other lines' : 'smile after your follow-ups' }),
+      other ? deltaBars([
+        { label: 'follow-ups', v: af.smileDelta, cls: 'follow' },
+        { label: 'other lines', v: ao.smileDelta, cls: 'other' },
+      ]) : null));
+  }
+  const seen = c.behavior && isNum(c.behavior.faceSeenPct) ? pct(c.behavior.faceSeenPct > 1 ? c.behavior.faceSeenPct / 100 : c.behavior.faceSeenPct) : null;
+  if (seen !== null) {
+    items.push(el('div', { class: 'rp-score' },
+      el('span', { class: 'rp-score-num', text: `${seen}%` }),
+      el('span', { class: 'rp-score-label', text: 'of the video had their face in view' })));
+  }
+  box.hidden = !items.length;
+  put(box, ...items);
+}
 
 function deltaBars(rows) {
   const max = Math.max(0.1, ...rows.map((r) => Math.abs(r.v || 0)));
@@ -1289,10 +1466,11 @@ function deltaBars(rows) {
       el('span', { class: 'rp-dbar-track' },
         el('span', { class: 'rp-dbar-zero' }),
         el('span', { class: `rp-dbar-fill${isNum(r.v) && r.v < 0 ? ' neg' : ''}`, style })),
-      el('span', { class: 'rp-dbar-val', text: isNum(r.v) ? signed(r.v) : '—' }),
     );
   }));
 }
+
+// ---------- folded details ----------
 
 function turnChip(turnId) {
   const t = turnsOf(state.convo).find((x) => x.turnId === turnId);
@@ -1306,88 +1484,40 @@ function turnChip(turnId) {
   }, el('span', { class: 'rp-play', 'aria-hidden': 'true', text: '▶' }), `${fmtClock(t.startMs)} · ${who}`);
 }
 
-function renderAdvice() {
+function renderChecked() {
   const c = state.convo;
   const note = c.note;
   const shown = note && note.text && note.status !== 'dropped';
-  $('note').hidden = !shown;
-  if (shown) {
-    $('note-text').textContent = note.text;
-    $('note-sugg').textContent = note.suggestion || '';
-  }
-  const none = $('note-none');
-  none.hidden = !!shown;
-  none.textContent = !note
-    ? 'No coaching note yet. It appears once the phone finishes coaching.'
-    : note.reason === 'too_short' ? 'Too short to coach.' : 'No advice this time, just the counts.';
-
   const ins = c.insight;
-  const check = $('check');
-  const source = ins ? el('span', { class: `rp-source ${ins.source === 'muse-spark' ? 'ai' : ''}`, text: ins.source === 'muse-spark' ? 'Written by Muse Spark from the measured cues' : 'Written by rules, no AI' }) : null;
   const rows = ins && Array.isArray(ins.adviceCheck) ? ins.adviceCheck : [];
-  if (!ins) {
-    const waiting = c.behavior && state.uploading ? 'Muse Spark is checking the advice against the cues…'
-      : c.behavior ? 'No check yet.'
-        : hasVideo() ? 'The check shows up after the video is analysed.' : 'Needs a video to check against.';
-    put(check, 
-      el('p', { class: 'rp-kicker', text: 'Checked against the video' }),
-      el('p', { class: 'rp-dim', text: waiting }),
-    );
-  } else {
-    put(check, 
-      el('p', { class: 'rp-kicker' }, 'Checked against the video ', source),
-      rows.length ? el('ol', { class: 'rp-checks' }, ...rows.map((r) => {
-        const v = VERDICTS[r.verdict] ? r.verdict : 'not yet';
-        return el('li', { class: 'rp-check-row' },
-          el('span', { class: `rp-verdict v-${v.replace(' ', '-')}`, text: VERDICTS[v] }),
-          el('div', { class: 'rp-check-body' },
-            el('p', { class: 'rp-check-advice', text: r.advice || '' }),
-            r.reason ? el('p', { class: 'rp-check-reason', text: r.reason }) : null,
-            Array.isArray(r.evidenceTurnIds) && r.evidenceTurnIds.length
-              ? el('div', { class: 'rp-seeks' }, ...r.evidenceTurnIds.map(turnChip)) : null,
-          ),
-        );
-      })) : el('p', { class: 'rp-dim', text: 'No advice to check this time.' }),
-    );
-  }
-
-  renderHooks();
-
-  const moments = ins && Array.isArray(ins.moments) ? ins.moments : [];
-  const mbox = $('moments');
-  if (!moments.length) {
-    put(mbox, 
-      el('p', { class: 'rp-kicker', text: 'Moments worth replaying' }),
-      el('p', { class: 'rp-dim', text: ins ? 'Nothing stood out this time.' : 'These show up after the video is analysed.' }),
-    );
-    return;
-  }
-  put(mbox, 
-    el('p', { class: 'rp-kicker', text: 'Moments worth replaying' }),
-    el('ol', { class: 'rp-moment-list' }, ...moments.map((m) => {
-      const t = turnsOf(c).find((x) => x.turnId === m.turnId);
-      return el('li', {},
-        el('button', { class: 'rp-moment', type: 'button', on: { click: () => seekToTurn(m.turnId) } },
-          el('span', { class: 'rp-moment-head' },
-            el('span', { class: 'rp-mk mk-insight', 'aria-hidden': 'true', text: '◆' }),
-            el('span', { class: 'rp-moment-title', text: m.title || 'Moment' }),
-            t ? el('span', { class: 'rp-moment-time' }, el('span', { class: 'rp-play', 'aria-hidden': 'true', text: '▶' }), fmtClock(t.startMs)) : null,
-          ),
-          m.observation ? el('span', { class: 'rp-moment-obs', text: m.observation }) : null,
-          m.why ? el('span', { class: 'rp-moment-why', text: m.why }) : null,
+  put($('checked'),
+    shown ? el('blockquote', { class: 'rp-note' },
+      el('p', { class: 'rp-note-text', text: note.text }),
+      note.suggestion ? el('p', { class: 'rp-note-sugg', text: note.suggestion }) : null)
+      : el('p', { class: 'rp-dim', text: !note ? 'No coaching note yet.' : note.reason === 'too_short' ? 'Too short to coach.' : 'No advice this time, just the counts.' }),
+    ins ? el('p', { class: 'rp-kicker' }, 'Checked against the video ',
+      el('span', { class: `rp-source ${ins.source === 'muse-spark' ? 'ai' : ''}`, text: ins.source === 'muse-spark' ? 'written by Muse Spark from the measured cues' : 'written by rules, no AI' })) : null,
+    rows.length ? el('ol', { class: 'rp-checks' }, ...rows.map((r) => {
+      const v = VERDICTS[r.verdict] ? r.verdict : 'not yet';
+      return el('li', { class: 'rp-check-row' },
+        el('span', { class: `rp-verdict v-${v.replace(' ', '-')}`, text: VERDICTS[v] }),
+        el('div', { class: 'rp-check-body' },
+          el('p', { class: 'rp-check-advice', text: r.advice || '' }),
+          r.reason ? el('p', { class: 'rp-check-reason', text: r.reason }) : null,
+          Array.isArray(r.evidenceTurnIds) && r.evidenceTurnIds.length
+            ? el('div', { class: 'rp-seeks' }, ...r.evidenceTurnIds.map(turnChip)) : null,
         ),
       );
-    })),
+    })) : el('p', { class: 'rp-dim', text: ins ? 'No advice to check this time.' : 'The check shows up with the takeaways.' }),
   );
 }
 
-// What the transcript layer found (no AI). Mostly for conversations without video,
-// but it's the same data the markers come from, so it stays on for all of them.
+// What the transcript layer found (no AI).
 function renderHooks() {
   const box = $('hooks');
   const h = state.convo.hooks;
-  if (!h) { box.hidden = true; box.replaceChildren(); return; }
-  const list = (k) => (Array.isArray(h[k]) ? h[k] : []);
+  const fold = $('fold-hooks');
+  const list = (k) => (h && Array.isArray(h[k]) ? h[k] : []);
   const chip = (text, turnId, cls = '') => (Number.isInteger(turnId)
     ? el('button', { class: `rp-hook-chip ${cls}`.trim(), type: 'button', title: 'Play this moment', on: { click: () => seekToTurn(turnId) } }, text)
     : el('span', { class: `rp-hook-chip ${cls}`.trim(), text }));
@@ -1398,9 +1528,8 @@ function renderHooks() {
     ['Missed moments', list('missedBids').map((b) => chip(b.cue, b.turnId, 'missed'))],
   ].filter(([, items]) => items.length);
   const qs = list('followUpDetector');
-  if (!groups.length && !qs.length) { box.hidden = true; box.replaceChildren(); return; }
+  fold.hidden = !groups.length && !qs.length;
   put(box,
-    el('p', { class: 'rp-kicker' }, 'What we picked up ', el('span', { class: 'rp-source', text: 'from the transcript, no AI' })),
     ...groups.map(([label, items]) => el('div', { class: 'rp-hook-group' },
       el('span', { class: 'rp-hook-label', text: label }),
       el('span', { class: 'rp-hook-chips' }, ...items))),
@@ -1408,10 +1537,9 @@ function renderHooks() {
       el('span', { class: 'rp-hook-label', text: 'Follow-up detector' }),
       el('span', { text: `${qs.filter((q) => q.isFollowUp).length} of ${qs.length} questions built on what they said` })) : null,
   );
-  box.hidden = false;
 }
 
-// ---------- word heatmap ----------
+// ---------- word heatmap data ----------
 
 // Refetch only when something the scores depend on changed.
 function heatKey(c) {
@@ -1429,74 +1557,9 @@ function ensureHeatmap() {
     .then((d) => {
       if (state.heat.key !== key) return;
       state.heat.data = d;
-      renderHeatmap();
+      renderTranscript();
     })
-    .catch(() => {
-      if (state.heat.key !== key) return;
-      state.heat.data = null;
-      renderHeatmap();
-    });
-}
-
-// score -1..1 -> a background tint; strong scores get more colour
-function tint(score, good) {
-  const a = Math.round(Math.min(1, Math.abs(score)) * 42 + 10);
-  return `background:color-mix(in srgb, var(${good ? '--good' : '--bad'}) ${a}%, transparent)`;
-}
-
-function showWhy(text) {
-  $('heat-why').textContent = text || 'Hover or tap a coloured word to see why. Click a line to play it.';
-}
-
-function renderHeatmap() {
-  const box = $('heat');
-  const d = state.heat.data;
-  const turns = d && Array.isArray(d.turns) ? d.turns : [];
-  if (!turns.length) { box.hidden = true; return; }
-  box.hidden = false;
-  const legend = Array.isArray(d.legend) ? d.legend : [];
-  const good = new Map(legend.map((l) => [l.kind, !!l.good]));
-  put($('heat-legend'),
-    ...legend.map((l) => el('li', { class: `rp-heat-key ${l.good ? 'good' : 'bad'}` },
-      el('span', { class: 'rp-heat-sw', 'aria-hidden': 'true' }), l.label || l.kind)),
-    !hasVideo() ? el('li', { class: 'rp-heat-key dim', text: 'No video, so no face cues in these scores' }) : null,
-  );
-  const name = (sp) => (sp === 'you' ? 'You' : state.convo.otherName && state.convo.otherName !== 'them' ? state.convo.otherName : 'Them');
-  put($('heat-lines'), ...turns.map((t) => {
-    const words = Array.isArray(t.words) ? t.words : [];
-    const r = isNum(t.reaction) ? t.reaction : null;
-    const border = r === null ? '' : `border-left-color:color-mix(in srgb, var(${r >= 0 ? '--good' : '--bad'}) ${Math.round(Math.min(1, Math.abs(r) / 0.3) * 80 + 20)}%, var(--line))`;
-    const kids = [];
-    words.forEach((w, i) => {
-      if (i) kids.push(' ');
-      const scored = isNum(w.score) && w.score !== 0;
-      if (!scored && !w.why) { kids.push(String(w.w ?? '')); return; }
-      const isGood = w.kind && good.has(w.kind) ? good.get(w.kind) : w.score > 0;
-      const why = w.why || (w.kind ? (legend.find((l) => l.kind === w.kind) || {}).label : '') || '';
-      kids.push(el('span', {
-        class: `rp-heat-w ${isGood ? 'good' : 'bad'}`,
-        style: scored ? tint(w.score, isGood) : null,
-        title: why || null,
-        tabindex: why ? '0' : null,
-        on: {
-          mouseenter: () => showWhy(why ? `“${w.w}”: ${why}` : ''),
-          focus: () => showWhy(why ? `“${w.w}”: ${why}` : ''),
-          click: (e) => { e.stopPropagation(); showWhy(why ? `“${w.w}”: ${why}` : ''); },
-        },
-        text: String(w.w ?? ''),
-      }));
-    });
-    return el('li', { class: `rp-heat-line is-${t.speaker === 'you' ? 'you' : 'them'}`, style: border || null },
-      el('button', {
-        class: 'rp-heat-who', type: 'button', title: 'Play this line',
-        on: { click: () => seekToTurn(t.turnId) },
-      },
-      el('span', { text: name(t.speaker) }),
-      el('span', { class: 'rp-time' }, el('span', { class: 'rp-play', 'aria-hidden': 'true', text: '▶ ' }), fmtClock(t.startMs || 0))),
-      el('p', { class: 'rp-heat-text', on: { click: () => seekToTurn(t.turnId) } }, ...kids,
-        r !== null ? el('span', { class: `rp-chip react ${r > 0.02 ? 'up' : r < -0.02 ? 'down' : ''}`.trim(), text: `they smiled ${signed(r)} after this` }) : null),
-    );
-  }));
+    .catch(() => { /* plain transcript is fine */ });
 }
 
 // ---------- page ----------
@@ -1522,10 +1585,13 @@ function renderAll() {
   $('player').classList.toggle('empty', !video);
   $('live-toggle-wrap').hidden = !video;
   if (video) loadMainVideo();
+  $('hero').classList.toggle('no-video', !video);
   renderAnalysisBar();
+  renderTakeaways();
+  renderScores();
   renderTranscript();
-  renderProof();
-  renderAdvice();
+  renderChecked();
+  renderHooks();
   ensureHeatmap();
   drawLanes();
   updatePlayhead();
@@ -1536,6 +1602,7 @@ function renderAll() {
     state.autoStarted = true;
     analyse();
   }
+  ensureInsight();
 }
 
 // Per animation frame while playing: playhead, active line, meters, live overlay.
