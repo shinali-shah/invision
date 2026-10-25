@@ -506,3 +506,5 @@ svg { display: block; vertical-align: middle; }
 
 /* The brief moves under the live lines once the phone has heard who it is. */
 .recording-card.is-recording .brief { margin:4px 0 14px; border-bottom:0; }
+
+.who-auto { margin:0; color:var(--bone-2); font-size:14px; line-height:1.5; max-width:52ch; }

@@ -489,8 +489,6 @@ function renderRecording() {
   const name = recName();
   refs.recording.className = `card recording-card ${r.active ? 'is-recording' : 'is-idle'}`;
   refs.time = el('time', { text: fmtClock(r.active && r.startedAt ? Date.now() - r.startedAt : r.lastElapsed, { padMinutes: true }) });
-  const whoInput = el('input', { value: state.who, placeholder: 'First name', 'aria-label': 'Who are you about to talk to', oninput: (e) => { state.who = e.target.value; renderBrief(); } });
-  whoInput.value = state.who;
   refs.brief = el('div', { class: 'brief' });
   fill(refs.recording,
     el('div', { class: 'recording-top' },
@@ -506,14 +504,18 @@ function renderRecording() {
         ? el('button', { class: 'button stop-button', disabled: true }, icon('stop', 16), ' Recording on your phone')
         : el('button', { class: 'button', disabled: true }, 'Start on your phone ', icon('arrow', 16)),
     ),
+    // Nobody types a name before a conversation: the transcript names it, and the brief follows.
     !r.active && el('div', { class: 'before' },
       el('div', { class: 'before-row' },
-        el('label', { class: 'who-field' }, el('span', { class: 'label', text: 'Before: who are you about to talk to?' }), whoInput),
+        el('div', { class: 'who-field' },
+          el('span', { class: 'label', text: 'Who you’re with' }),
+          el('p', { class: 'who-auto', text: 'Picked up from the conversation. When a name is heard, what you owe them and what’s coming up for them appears here.' }),
+        ),
       ),
       refs.brief,
     ),
     !r.active && el('div', { class: 'consent-step static' },
-      el('span', {}, el('strong', { text: 'Start on your phone.' }), ' Tell them you’re recording before you tap Record.')),
+      el('span', {}, el('strong', { text: 'Start on your phone.' }), ' Tell them you’re recording, then just talk.')),
     refs.live,
     r.active && refs.brief,
     el('div', { class: 'recording-meta' },
