@@ -2,12 +2,12 @@ import { WebSocketServer } from 'ws';
 import { createTurnAssembler } from './assemble.js';
 
 // Browser <-> Muse bridge. Audio only passes through memory here and is never written anywhere.
-export function attachTranscribeSocket({ server, store, log, config, openStream }) {
+export function attachTranscribeSocket({ server, store, log, config, openStream, stage = { publish() {} } }) {
   const wss = new WebSocketServer({ noServer: true });
 
   server.on('upgrade', (req, socket, head) => {
     const url = new URL(req.url, 'http://localhost');
-    if (url.pathname !== '/ws/transcribe') return socket.destroy();
+    if (url.pathname !== '/ws/transcribe') return; // server.js owns unknown paths
     wss.handleUpgrade(req, socket, head, ws => handle(ws, url.searchParams.get('conversationId')));
   });
 
@@ -30,13 +30,20 @@ export function attachTranscribeSocket({ server, store, log, config, openStream 
       store.updateConversation(conversationId, { turns });
       log('transcribe', 'info', `${turns.length} turns, speakers ${[...new Set(turns.map(t => t.speaker))].join('/') || 'none'}; audio discarded`);
       send({ type: 'done', turns });
+      stage.publish({ type: 'done', conversationId, turns });
       ws.close(1000);
     };
 
     const onEvent = event => {
       const out = assembler.push(event);
-      if (out?.kind === 'partial') send({ type: 'partial', turnId: out.turnId, text: out.text, speaker: out.speaker });
-      else if (out?.kind === 'turn') send({ type: 'turn', turn: out.turn });
+      if (out?.kind === 'partial') {
+        const msg = { type: 'partial', turnId: out.turnId, text: out.text, speaker: out.speaker };
+        send(msg);
+        stage.publish({ ...msg, conversationId });
+      } else if (out?.kind === 'turn') {
+        send({ type: 'turn', turn: out.turn });
+        stage.publish({ type: 'turn', conversationId, turn: out.turn });
+      }
     };
 
     // a socket close from Muse before we asked to end still keeps whatever turns came through

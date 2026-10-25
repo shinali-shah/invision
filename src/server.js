@@ -10,6 +10,9 @@ import { seedDemo } from './seed.js';
 import { attachTranscribeSocket } from './transcribe/wsRoute.js';
 import { openMuseStream } from './transcribe/realtime.js';
 import { openMockStream } from './transcribe/mockStream.js';
+import { createStageHub, attachStageSocket } from './stage.js';
+
+const SOCKET_PATHS = new Set(['/ws/transcribe', '/ws/stage']);
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -19,15 +22,21 @@ export function createServer({ config: cfg = config, quiet = false, mockSpeed = 
   const llm = createLlm({ apiKey: cfg.apiKey, mock: cfg.mock, model: cfg.sparkModel });
   seedDemo(store);
 
-  const app = createApp({ store, llm, log, config: cfg, publicDir: join(root, 'public') });
+  const stage = createStageHub({ mock: cfg.mock });
+  const app = createApp({ store, llm, log, config: cfg, publicDir: join(root, 'public'), stage });
   const server = http.createServer(app);
+  server.on('upgrade', (req, socket) => {
+    if (!SOCKET_PATHS.has(new URL(req.url, 'http://localhost').pathname)) socket.destroy();
+  });
+  attachStageSocket({ server, hub: stage });
   const openStream = cfg.mock ? opts => openMockStream({ ...opts, speed: mockSpeed }) : openMuseStream;
-  const wss = attachTranscribeSocket({ server, store, log, config: cfg, openStream });
+  const wss = attachTranscribeSocket({ server, store, log, config: cfg, openStream, stage });
 
   return {
     app, server, store,
     close() {
       for (const client of wss.clients) client.terminate();
+      stage.close();
       server.close();
       store.close();
     },

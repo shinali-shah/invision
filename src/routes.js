@@ -1,10 +1,13 @@
 import express from 'express';
 import { TAGS } from './agents/context.js';
 import { processConversation, recoach, refreshMemory } from './pipeline.js';
+import { STAGE_VIEWS } from './stage.js';
 
 const STEP_ACTIONS = { accept: 'accepted', change: 'changed', dismiss: 'dismissed' };
 
-export function createApp({ store, llm, log, config, publicDir = 'public' }) {
+const noStage = { publish() {}, focus() {} };
+
+export function createApp({ store, llm, log, config, publicDir = 'public', stage = noStage }) {
   const app = express();
   app.use(express.json({ limit: '1mb' }));
 
@@ -24,7 +27,9 @@ export function createApp({ store, llm, log, config, publicDir = 'public' }) {
     if (consentConfirmed !== true) return fail(res, 400, 'Confirm you told them you are recording first');
     if (!TAGS.includes(tag)) return fail(res, 400, `tag must be one of ${TAGS.join(', ')}`);
     const name = typeof otherName === 'string' ? otherName.trim().slice(0, 80) : '';
-    res.status(201).json(store.createConversation({ tag, otherName: name || 'them' }));
+    const convo = store.createConversation({ tag, otherName: name || 'them' });
+    stage.publish({ type: 'conversation', conversation: convo });
+    res.status(201).json(convo);
   });
 
   app.get('/api/conversations', (req, res) => res.json(store.listConversations()));
@@ -40,7 +45,9 @@ export function createApp({ store, llm, log, config, publicDir = 'public' }) {
     const label = req.body?.label;
     const speakers = new Set((convo.turns ?? []).map(t => t.speaker));
     if (!speakers.has(label)) return fail(res, 400, 'That label is not in this transcript');
-    res.json(store.updateConversation(convo.id, { userLabel: label }));
+    const updated = store.updateConversation(convo.id, { userLabel: label });
+    stage.publish({ type: 'conversation', conversation: updated });
+    res.json(updated);
   });
 
   app.post('/api/conversations/:id/process', async (req, res, next) => {
@@ -49,7 +56,11 @@ export function createApp({ store, llm, log, config, publicDir = 'public' }) {
       if (!convo) return;
       if ((convo.turns ?? []).length >= 2 && !convo.userLabel) return fail(res, 400, 'Tap one of your own lines first');
       const reflection = typeof req.body?.reflection === 'string' ? req.body.reflection.slice(0, 2000) : '';
-      res.json(await processConversation({ store, llm, log, id: convo.id, reflection }));
+      stage.publish({ type: 'processing', conversationId: convo.id });
+      const done = await processConversation({ store, llm, log, id: convo.id, reflection });
+      stage.publish({ type: 'conversation', conversation: done });
+      stage.publish({ type: 'memory' });
+      res.json(done);
     } catch (err) { next(err); }
   });
 
@@ -59,7 +70,11 @@ export function createApp({ store, llm, log, config, publicDir = 'public' }) {
       if (!convo) return;
       const { tag } = req.body ?? {};
       if (!TAGS.includes(tag)) return fail(res, 400, `tag must be one of ${TAGS.join(', ')}`);
-      res.json(await recoach({ store, llm, log, id: convo.id, tag }));
+      stage.publish({ type: 'processing', conversationId: convo.id });
+      const done = await recoach({ store, llm, log, id: convo.id, tag });
+      stage.publish({ type: 'conversation', conversation: done });
+      stage.publish({ type: 'memory' });
+      res.json(done);
     } catch (err) { next(err); }
   });
 
@@ -68,6 +83,8 @@ export function createApp({ store, llm, log, config, publicDir = 'public' }) {
       if (!store.deleteConversation(req.params.id)) return fail(res, 404, 'Conversation not found');
       log('privacy', 'info', `deleted conversation ${req.params.id.slice(0, 8)} with its signals and note`);
       await refreshMemory({ store, llm, log });
+      stage.publish({ type: 'deleted', conversationId: req.params.id });
+      stage.publish({ type: 'memory' });
       res.status(204).end();
     } catch (err) { next(err); }
   });
@@ -95,7 +112,15 @@ export function createApp({ store, llm, log, config, publicDir = 'public' }) {
     const step = store.updateNextStep(Number(req.params.id), { status, text });
     if (!step) return fail(res, 404, 'Next step not found');
     log('nextStep', 'info', `${status}: ${step.text}`);
+    stage.publish({ type: 'memory' });
     res.json(step);
+  });
+
+  app.post('/api/stage/focus', (req, res) => {
+    const { view, conversationId } = req.body ?? {};
+    if (!STAGE_VIEWS.includes(view)) return fail(res, 400, `view must be one of ${STAGE_VIEWS.join(', ')}`);
+    stage.focus({ view, conversationId: typeof conversationId === 'string' ? conversationId : null });
+    res.status(204).end();
   });
 
   app.get('/api/logs', (req, res) => res.json(store.listLogs(100)));
