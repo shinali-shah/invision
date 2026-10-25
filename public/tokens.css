@@ -1,0 +1,43 @@
+/* One set of colours and type for every Playback screen. See docs/design/playback-ui.md. */
+@import url('https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&display=swap');
+
+:root {
+  --paper: #F2F4F1;
+  --surface: #FFFFFF;
+  --ink: #1E2826;
+  --fog: #5C6965;
+  --hairline: #D9DFDB;
+  --you: #2F6F66;
+  --you-wash: #DCEAE6;
+  --them: #6B5B73;
+  --them-wash: #E7E1EA;
+  --awkward: #A6443A;
+  --awkward-wash: #F3DEDA;
+  --missed: #946510;
+  --missed-wash: #F2E6CC;
+  --focus: #1F5FBF;
+
+  --sans: 'Schibsted Grotesk', system-ui, -apple-system, sans-serif;
+  --speech: 'Newsreader', Georgia, serif;
+
+  --t-12: 12px; --t-14: 14px; --t-16: 16px; --t-20: 20px; --t-26: 26px; --t-34: 34px; --t-52: 52px;
+  --r-control: 6px;
+  --r-panel: 12px;
+  --ease-out: cubic-bezier(.2, .8, .2, 1);
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #121816; --surface: #1A2220; --ink: #E4EBE7; --fog: #9AA7A2; --hairline: #2C3633;
+    --you: #6FB5A9; --you-wash: #1F3532; --them: #B6A3BE; --them-wash: #2E2733;
+    --awkward: #E07A6C; --awkward-wash: #3A2421; --missed: #D9A441; --missed-wash: #3A2F18; --focus: #8AB4FF;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #121816; --surface: #1A2220; --ink: #E4EBE7; --fog: #9AA7A2; --hairline: #2C3633;
+  --you: #6FB5A9; --you-wash: #1F3532; --them: #B6A3BE; --them-wash: #2E2733;
+  --awkward: #E07A6C; --awkward-wash: #3A2421; --missed: #D9A441; --missed-wash: #3A2F18; --focus: #8AB4FF;
+  color-scheme: dark;
+}

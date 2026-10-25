@@ -14,7 +14,7 @@ const BRIEF_KINDS = {
   commitment: ['↩', 'Follow through'],
   event: ['◷', 'Ask how it went'],
   topic: ['#', 'Bring up'],
-  suggestion: ['→', 'Try'],
+  suggestion: ['◦', 'Try'],
 };
 const BRIEF_DEBOUNCE_MS = 400;
 
@@ -146,6 +146,13 @@ function renderTranscript(listId, turns, convo, { pickable = false, cited = [], 
   }
 }
 
+// The note quotes the transcript back at you. Those bits were actually said, so
+// they get the speech face; the rest is the coach talking.
+function withSpeech(text) {
+  return String(text || '').split(/(“[^”]*”|"[^"]*")/).filter(Boolean)
+    .map((part) => (/^[“"]/.test(part) ? el('span', { class: 'q', text: part }) : document.createTextNode(part)));
+}
+
 // ---------- start view ----------
 
 function updateFocus() {
@@ -222,7 +229,7 @@ function renderBrief(brief) {
   const meta = [
     brief.lastMetAt ? `Last talked ${fmtDate(brief.lastMetAt)}` : null,
     brief.conversations ? `${brief.conversations} conversation${brief.conversations === 1 ? '' : 's'}` : null,
-  ].filter(Boolean).join(' · ');
+  ].filter(Boolean).join(', ');
   card.replaceChildren(
     el('h2', { class: 'subtitle', id: 'brief-title', text: `Before you talk to ${brief.otherName || 'them'}` }),
     meta ? el('p', { class: 'card-meta', text: meta }) : null,
@@ -401,7 +408,8 @@ function beginCapture(convo, ctx, stream, videoNote = null) {
   $('stop-btn').querySelector('.disc-label').textContent = 'Stop';
   rec.timer = setInterval(() => {
     const s = Math.floor((Date.now() - rec.startedAt) / 1000);
-    $('rec-timer').textContent = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+    // Colon in its own span so it can skip tabular width; the digits keep it and don't jitter.
+    $('rec-timer').replaceChildren(String(Math.floor(s / 60)), el('span', { class: 'colon', text: ':' }), String(s % 60).padStart(2, '0'));
   }, 500);
   showView('recording');
 }
@@ -785,10 +793,10 @@ function showCoaching(convo) {
   $('note-dropped').hidden = !dropped;
   if (dropped) {
     $('note-dropped').textContent = note && note.reason === 'too_short'
-      ? 'Too short to coach — try a longer conversation.'
-      : 'No advice this time — here are your counts.';
+      ? 'Too short to coach. Try a longer conversation.'
+      : 'No advice this time. Here are your counts.';
   } else {
-    $('note-text').textContent = note.text;
+    $('note-text').replaceChildren(...withSpeech(note.text));
     $('note-suggestion').textContent = note.suggestion || '';
   }
 
@@ -928,8 +936,8 @@ function renderHooks(convo) {
   // Awkward first: a cut-in or a rumour matters more than any topic list.
   const awkward = (h.awkward && Array.isArray(h.awkward.flags) ? h.awkward.flags : []).filter((f) => f.who === 'you');
   group('Awkward moments', awkward, (f) => {
-    const chip = el('button', { type: 'button', class: 'hook-chip missed', title: f.evidence, onclick: () => pointAtTurn(f.turnId) }, f.label);
-    return turnText(convo, f.turnId) != null ? chip : el('span', { class: 'hook-chip missed', title: f.evidence, text: f.label });
+    const chip = el('button', { type: 'button', class: 'hook-chip awkward', title: f.evidence, onclick: () => pointAtTurn(f.turnId) }, f.label);
+    return turnText(convo, f.turnId) != null ? chip : el('span', { class: 'hook-chip awkward', title: f.evidence, text: f.label });
   });
   group('Topics', list('topics'), (t) => plain(t.term));
   group('Coming up', list('events'), (e) => plain(e.when && !String(e.text).includes(e.when) ? `${e.text} (${e.when})` : e.text));
@@ -1012,7 +1020,7 @@ function renderFollowUp(convo) {
   const ta = el('textarea', { class: 'follow-text', rows: 5, maxlength: 1000, 'aria-label': 'Follow-up message' });
   ta.value = fu.text;
   const used = Array.isArray(fu.hooksUsed) && fu.hooksUsed.length
-    ? el('p', { class: 'follow-used', text: `uses: ${fu.hooksUsed.join(' · ')}` }) : null;
+    ? el('p', { class: 'follow-used', text: `Uses ${fu.hooksUsed.join(', ')}` }) : null;
   const status = el('p', { class: 'follow-status', text: sent ? `Sent ✓${fu.sentAt ? ` ${fmtDate(fu.sentAt)}` : ''}` : '' });
   const send = el('button', { type: 'button', class: 'accept', text: sent ? 'Send again' : 'Send' });
   const rewrite = el('button', { type: 'button', text: 'Rewrite' });

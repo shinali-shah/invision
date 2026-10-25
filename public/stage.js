@@ -207,7 +207,9 @@ function updateTimer() {
     return;
   }
   timer.hidden = false;
-  timer.textContent = fmtClock((rec.stoppedAt || Date.now()) - rec.startedAt);
+  // Colon in its own span so it can skip tabular width; the digits keep it and don't jitter.
+  const [mm, ss] = fmtClock((rec.stoppedAt || Date.now()) - rec.startedAt).split(':');
+  timer.replaceChildren(mm, el('span', { class: 'colon', text: ':' }), ss);
 }
 
 function startTimer(id) {
@@ -357,10 +359,10 @@ function renderCompare(convo, cmp) {
     return false;
   }
   const same = cmp.samePerson ?? cmp.sameperson;
-  const head = ['Compared with last time',
+  const sub = [
     cmp.previousAt ? `vs. ${fmtDate(cmp.previousAt)}` : null,
     same && convo.otherName ? `with ${convo.otherName}` : null,
-  ].filter(Boolean).join(' · ');
+  ].filter(Boolean).join(' ');
 
   let hero = metrics.filter((m) => HERO_METRICS.includes(m.key));
   if (!hero.length) hero = metrics.slice(0, 2);
@@ -368,7 +370,9 @@ function renderCompare(convo, cmp) {
 
   const s = cmp.suggestion;
   box.replaceChildren(
-    el('p', { class: 'st-cmp-head', text: head }),
+    el('p', { class: 'st-cmp-head' },
+      el('span', { text: 'Compared with last time' }),
+      sub ? el('span', { class: 'st-cmp-sub', text: sub }) : null),
     hero.length ? el('div', { class: 'st-cmp-hero' }, ...hero.map((m) => el('div', { class: `st-cmp-big ${betterCls(m.better)}` },
       el('span', { class: 'st-cmp-label', text: m.label || m.key }),
       el('span', { class: 'st-cmp-nums' },
@@ -404,7 +408,7 @@ function renderFollow(convo) {
   const statusKey = `${convo.id}:${fu.status}`;
   const justSent = sent && box.dataset.status && box.dataset.status !== statusKey;
   box.dataset.status = statusKey;
-  const used = Array.isArray(fu.hooksUsed) && fu.hooksUsed.length ? `uses: ${fu.hooksUsed.join(' · ')}` : '';
+  const used = Array.isArray(fu.hooksUsed) && fu.hooksUsed.length ? `Uses ${fu.hooksUsed.join(', ')}` : '';
   box.replaceChildren(
     el('p', { class: 'st-follow-head' },
       el('span', { text: 'Follow-up message' }),
@@ -438,7 +442,7 @@ function renderHooks(convo) {
   box.replaceChildren(
     el('p', { class: 'st-hooks-head' },
       el('span', { text: 'What we picked up' }),
-      el('span', { class: 'st-hooks-note', text: 'measured from the transcript, no AI' }),
+      el('span', { class: 'st-hooks-note', text: 'Measured from the transcript, no AI' }),
     ),
     ...groups.map(([label, items, cls]) => el('div', { class: 'st-hook-group' },
       el('span', { class: 'st-hook-label', text: label }),
@@ -481,7 +485,7 @@ function renderBrief() {
   const meta = [
     b.lastMetAt ? `Last talked ${fmtDate(b.lastMetAt)}` : null,
     b.conversations ? `${b.conversations} conversation${b.conversations === 1 ? '' : 's'} so far` : null,
-  ].filter(Boolean).join(' · ');
+  ].filter(Boolean).join(', ');
   box.replaceChildren(
     el('h1', { class: 'st-brief-title', text: `Before you talk to ${b.otherName || state.brief.name}` }),
     meta ? el('p', { class: 'st-brief-meta', text: meta }) : null,
@@ -501,7 +505,9 @@ function renderBrief() {
 }
 
 function fillNote(card, note) {
-  $('note-text').textContent = note.text;
+  // Quoted bits were actually said, so they get the speech face.
+  $('note-text').replaceChildren(...String(note.text || '').split(/(“[^”]*”|"[^"]*")/).filter(Boolean)
+    .map((part) => (/^[“"]/.test(part) ? el('span', { class: 'q', text: part }) : document.createTextNode(part))));
   $('note-sugg').textContent = note.suggestion || '';
   const len = (note.text || '').length + (note.suggestion || '').length;
   card.classList.toggle('long', len > 260);

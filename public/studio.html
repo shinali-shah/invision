@@ -5,75 +5,79 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light dark">
   <title>Playback</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E%3Ccircle cx=%2211%22 cy=%2216%22 r=%227%22 fill=%22none%22 stroke=%22%23417460%22 stroke-width=%223%22/%3E%3Ccircle cx=%2221%22 cy=%2216%22 r=%227%22 fill=%22none%22 stroke=%22%23bb7a16%22 stroke-width=%223%22/%3E%3C/svg%3E">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E%3Crect x=%224%22 y=%229%22 width=%2214%22 height=%225%22 rx=%222%22 fill=%22%232F6F66%22/%3E%3Crect x=%2214%22 y=%2218%22 width=%2214%22 height=%225%22 rx=%222%22 fill=%22%236B5B73%22/%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&display=swap">
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="tokens.css">
   <style>
-    /* The Mac side in one place: Live follows the phone, Replay digs into a finished conversation.
-       Both sections stay loaded, so switching is instant and nothing loses its place. */
-    /* ?theme=dark|light, same overrides as the stage */
-    :root[data-theme="light"] {
-      --bg: #e8ede6; --surface: #f6f8f3; --surface-2: #dfe6dc; --ink: #1f2b25;
-      --muted: #56645c; --line: #c6d1c8; --you: #b97a14; --them: #3f6f5d; --rec: #c2413a; --focus: #2f6fd0;
-      color-scheme: light;
-    }
-    :root[data-theme="dark"] {
-      --bg: #141c18; --surface: #1d2722; --surface-2: #26322c; --ink: #e6ece5;
-      --muted: #9eaca4; --line: #34433b; --you: #ebb04f; --them: #86bba6; --rec: #ec6a60; --focus: #8ab4ff;
-      color-scheme: dark;
-    }
+    /* The Mac side in one place: Home plans, Live follows the phone, Replay digs into a finished
+       conversation. All three stay loaded once opened, so switching is instant and nothing loses its place. */
+    *, *::before, *::after { box-sizing: border-box; }
     html, body { height: 100%; margin: 0; }
-    /* styles.css is here for its colour tokens; its phone-sized body and main rules are not wanted */
-    body { display: flex; flex-direction: column; max-width: none; width: 100%; padding: 0; background: var(--bg); color: var(--ink); font-family: 'Hanken Grotesk', system-ui, sans-serif; }
+    body { display: flex; flex-direction: column; background: var(--paper); color: var(--ink); font: 400 16px/1.4 var(--sans); }
+    :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 
-    .sd-bar { display: flex; align-items: center; gap: 20px; padding: 10px 20px; border-bottom: 1px solid var(--line); background: var(--surface); }
-    .sd-brand { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 17px; }
-    .sd-mark { width: 22px; height: 22px; }
-    .sd-mark circle { fill: none; stroke-width: 3; }
-    .sd-mark circle:first-child { stroke: var(--them); }
-    .sd-mark circle:last-child { stroke: var(--you); }
+    .sd-bar { display: flex; align-items: center; gap: 32px; min-height: 60px; padding: 0 32px; border-bottom: 1px solid var(--hairline); background: var(--surface); }
+    .sd-brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: var(--t-16); letter-spacing: -0.01em; }
+    .sd-mark { width: 22px; height: 16px; }
+    .sd-mark rect:first-child { fill: var(--you); }
+    .sd-mark rect:last-child { fill: var(--them); }
 
-    .sd-tabs { display: flex; gap: 4px; padding: 3px; border-radius: 999px; background: var(--surface-2); }
-    .sd-tab { position: relative; border: 0; background: none; color: var(--muted); font: inherit; font-weight: 600; font-size: 15px;
-              padding: 7px 18px; border-radius: 999px; cursor: pointer; }
-    .sd-tab[aria-selected="true"] { background: var(--bg); color: var(--ink); box-shadow: 0 1px 3px rgb(0 0 0 / .12); }
-    .sd-tab:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
-    .sd-dot { position: absolute; top: 5px; right: 7px; width: 8px; height: 8px; border-radius: 50%; background: var(--rec); }
+    .sd-tabs { display: flex; gap: 4px; align-self: stretch; }
+    .sd-tab { position: relative; display: flex; align-items: center; min-height: 44px; border: 0; background: none; color: var(--fog);
+              font: inherit; font-weight: 500; font-size: var(--t-16); padding: 0 14px; cursor: pointer; }
+    .sd-tab:hover { color: var(--ink); }
+    .sd-tab[aria-selected="true"] { color: var(--ink); font-weight: 600; }
+    .sd-tab[aria-selected="true"]::after { content: ""; position: absolute; left: 14px; right: 14px; bottom: -1px; height: 2px; background: var(--you); border-radius: 2px; }
+    .sd-tab:focus-visible { outline-offset: -4px; border-radius: var(--r-control); }
+    .sd-dot { width: 7px; height: 7px; margin-left: 6px; border-radius: 50%; background: var(--you); }
     .sd-dot[hidden] { display: none; }
 
-    .sd-ready { display: flex; align-items: center; gap: 10px; margin-left: auto; font-size: 14px; color: var(--muted); }
+    .sd-right { display: flex; align-items: center; gap: 24px; margin-left: auto; font-size: var(--t-14); color: var(--fog); }
+    .sd-ready { display: flex; align-items: center; gap: 12px; color: var(--ink); }
     .sd-ready[hidden] { display: none; }
-    .sd-ready button { border: 1px solid var(--line); background: var(--bg); color: var(--ink); font: inherit; font-weight: 600;
-                       padding: 6px 12px; border-radius: 8px; cursor: pointer; }
-    .sd-follow { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); margin-left: auto; }
-    .sd-ready:not([hidden]) + .sd-follow { margin-left: 0; }
+    .sd-ready button { min-height: 36px; border: 1px solid var(--you); background: var(--you); color: var(--surface); font: inherit; font-weight: 600;
+                       padding: 0 14px; border-radius: var(--r-control); cursor: pointer; }
+    .sd-follow { display: flex; align-items: center; gap: 8px; min-height: 44px; cursor: pointer; }
+    .sd-follow input { width: 16px; height: 16px; margin: 0; accent-color: var(--you); }
+    .sd-phone { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+    .sd-phone::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--hairline); }
+    .sd-phone[data-state="connected"] { color: var(--ink); }
+    .sd-phone[data-state="connected"]::before { background: var(--you); }
+    .sd-phone[data-state="recording"] { color: var(--ink); }
+    .sd-phone[data-state="recording"]::before { background: var(--awkward); }
+    .sd-phone[data-state="offline"]::before { background: var(--missed); }
 
     .sd-panes { position: relative; flex: 1; min-height: 0; width: 100%; }
-    .sd-pane { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: var(--bg); }
+    .sd-pane { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: var(--paper); }
     .sd-pane[hidden] { display: none; }
-    @media (max-width: 700px) { .sd-follow { display: none; } .sd-bar { gap: 10px; padding: 8px 12px; } }
+    @media (max-width: 1100px) { .sd-follow { display: none; } }
+    @media (max-width: 760px) { .sd-bar { gap: 12px; padding: 0 12px; } .sd-ready-text { display: none; } .sd-tab { padding: 0 10px; } .sd-tab[aria-selected="true"]::after { left: 10px; right: 10px; } }
   </style>
 </head>
 <body>
   <header class="sd-bar">
     <span class="sd-brand">
-      <svg class="sd-mark" viewBox="0 0 32 32" aria-hidden="true"><circle cx="11" cy="16" r="7"/><circle cx="21" cy="16" r="7"/></svg>
+      <svg class="sd-mark" viewBox="0 0 22 16" aria-hidden="true"><rect x="0" y="2" width="13" height="5" rx="2"/><rect x="9" y="9" width="13" height="5" rx="2"/></svg>
       Playback
     </span>
     <nav class="sd-tabs" role="tablist" aria-label="Sections">
-      <button class="sd-tab" role="tab" id="tab-live" aria-controls="pane-live" aria-selected="true">Live</button>
-      <button class="sd-tab" role="tab" id="tab-replay" aria-controls="pane-replay" aria-selected="false">Replay<span class="sd-dot" id="replay-dot" hidden></span></button>
+      <button class="sd-tab" role="tab" id="tab-home" aria-controls="pane-home" aria-selected="true">Home</button>
+      <button class="sd-tab" role="tab" id="tab-live" aria-controls="pane-live" aria-selected="false" tabindex="-1">Live</button>
+      <button class="sd-tab" role="tab" id="tab-replay" aria-controls="pane-replay" aria-selected="false" tabindex="-1">Replay<span class="sd-dot" id="replay-dot" hidden></span></button>
     </nav>
-    <span class="sd-ready" id="ready" hidden>
-      <span id="ready-text"></span>
-      <button type="button" id="ready-open">Open replay</button>
-    </span>
-    <label class="sd-follow"><input type="checkbox" id="auto"> Jump to Replay when a video is ready</label>
+    <div class="sd-right">
+      <span class="sd-ready" id="ready" hidden>
+        <span class="sd-ready-text" id="ready-text"></span>
+        <button type="button" id="ready-open">Open replay</button>
+      </span>
+      <label class="sd-follow"><input type="checkbox" id="auto"> Open Replay when a video is ready</label>
+      <span class="sd-phone" id="phone" data-state="waiting" role="status">Waiting for your phone</span>
+    </div>
   </header>
   <div class="sd-panes">
-    <iframe class="sd-pane" id="pane-live" role="tabpanel" aria-labelledby="tab-live" title="Live"></iframe>
+    <iframe class="sd-pane" id="pane-home" role="tabpanel" aria-labelledby="tab-home" title="Home"></iframe>
+    <iframe class="sd-pane" id="pane-live" role="tabpanel" aria-labelledby="tab-live" title="Live" hidden></iframe>
     <iframe class="sd-pane" id="pane-replay" role="tabpanel" aria-labelledby="tab-replay" title="Replay" hidden></iframe>
   </div>
 
@@ -89,8 +93,10 @@
       return s ? `${path}?${s}` : path;
     };
 
-    const panes = { live: $('pane-live'), replay: $('pane-replay') };
-    let current = 'live';
+    const ORDER = ['home', 'live', 'replay'];
+    const panes = { home: $('pane-home'), live: $('pane-live'), replay: $('pane-replay') };
+    const pages = { home: 'home.html', live: 'stage.html' };
+    let current = 'home';
     let replayId = null; // what the Replay pane was last pointed at
     let readyId = null;
 
@@ -106,19 +112,39 @@
       current = name;
       for (const [key, pane] of Object.entries(panes)) {
         pane.hidden = key !== name;
-        $(`tab-${key}`).setAttribute('aria-selected', String(key === name));
+        const tab = $(`tab-${key}`);
+        tab.setAttribute('aria-selected', String(key === name));
+        tab.tabIndex = key === name ? 0 : -1;
       }
+      // Same reason as above: load Home and Live the first time they're actually on screen.
+      if (pages[name] && !panes[name].src) panes[name].src = withTheme(pages[name]);
       if (name === 'replay') { $('replay-dot').hidden = true; if (readyId === replayId) $('ready').hidden = true; }
       history.replaceState(null, '', `#${name}${name === 'replay' && replayId ? `=${replayId}` : ''}`);
     }
 
+    const go = name => (name === 'replay' ? openReplay(replayId ?? readyId) : show(name));
+    $('tab-home').addEventListener('click', () => show('home'));
     $('tab-live').addEventListener('click', () => show('live'));
     $('tab-replay').addEventListener('click', () => openReplay(readyId && !panes.replay.src ? readyId : replayId));
     $('ready-open').addEventListener('click', () => { if (readyId) openReplay(readyId); });
+
+    // Arrow keys move along the tabs, as a tablist should.
+    $('tab-home').parentElement.addEventListener('keydown', e => {
+      if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+      const next = ORDER[(ORDER.indexOf(current) + (e.key === 'ArrowRight' ? 1 : ORDER.length - 1)) % ORDER.length];
+      go(next);
+      $(`tab-${next}`).focus();
+    });
     document.addEventListener('keydown', e => {
       if (e.target.closest('input, textarea') || e.metaKey || e.ctrlKey || e.altKey) return;
-      if (e.key === '1') show('live');
-      if (e.key === '2') openReplay(replayId ?? readyId);
+      const i = ['1', '2', '3'].indexOf(e.key);
+      if (i >= 0) go(ORDER[i]);
+    });
+
+    // Home asks for a replay by id; the panes are same-origin but this keeps them from reaching into the shell.
+    window.addEventListener('message', e => {
+      if (e.origin !== location.origin || !e.data || e.data.type !== 'playback:open-replay') return;
+      if (typeof e.data.id === 'string') openReplay(e.data.id);
     });
 
     // On unless they turned it off on this Mac.
@@ -132,10 +158,23 @@
       if (!c || !c.id || !c.recording || !c.note || announced.has(c.id)) return;
       announced.add(c.id);
       readyId = c.id;
-      $('ready-text').textContent = `Video ready: ${c.otherName && c.otherName !== 'them' ? c.otherName : 'your conversation'}`;
+      const name = c.otherName && c.otherName !== 'them' ? c.otherName.charAt(0).toUpperCase() + c.otherName.slice(1) : null;
+      $('ready-text').textContent = name ? `Video with ${name} is ready` : 'Your video is ready';
       $('ready').hidden = false;
       if (current !== 'replay') $('replay-dot').hidden = false;
       if ($('auto').checked) openReplay(c.id);
+    }
+
+    // The server only hears from the phone when it does something, so "connected" means
+    // it has told us what it's showing at least once since this page opened.
+    let phoneSeen = false;
+    function phone(stateName) {
+      const el = $('phone');
+      el.dataset.state = stateName;
+      el.textContent = stateName === 'recording' ? 'Recording on your phone'
+        : stateName === 'connected' ? 'Phone connected'
+          : stateName === 'offline' ? 'Reconnecting to this Mac'
+            : 'Waiting for your phone';
     }
 
     function listen() {
@@ -144,8 +183,13 @@
         let msg;
         try { msg = JSON.parse(ev.data); } catch { return; }
         if (msg.type === 'conversation') maybeReady(msg.conversation);
+        const focus = msg.type === 'focus' ? msg : msg.type === 'hello' ? msg.focus : null;
+        if (focus) { phoneSeen = true; phone(focus.view === 'recording' ? 'recording' : 'connected'); }
+        else if (msg.type === 'partial' || msg.type === 'turn') { phoneSeen = true; phone('recording'); }
+        else if (msg.type === 'done') phone('connected');
+        else if (msg.type === 'hello') phone(phoneSeen ? 'connected' : 'waiting');
       });
-      ws.addEventListener('close', () => setTimeout(listen, 1500));
+      ws.addEventListener('close', () => { phone('offline'); setTimeout(listen, 1500); });
     }
 
     // Conversations that already have a video shouldn't pop the banner on load.
@@ -153,9 +197,9 @@
       for (const c of list) if (c.recording && c.note) announced.add(c.id);
     }).catch(() => {}).finally(listen);
 
-    panes.live.src = withTheme('stage.html');
     const [name, id] = location.hash.slice(1).split('=');
     if (name === 'replay') openReplay(id || null);
+    else show(ORDER.includes(name) ? name : 'home');
   </script>
 </body>
 </html>

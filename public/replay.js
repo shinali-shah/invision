@@ -630,7 +630,7 @@ async function analyse() {
       const secs = (performance.now() - started) / 1000;
       const speed = secs > 0 ? (videoMs / 1000) / secs : 0;
       $('word-status').textContent = 'Analyzing video…';
-      $('analysis-meta').textContent = `frame ${i + 1} of ${total} · ${speed >= 0.1 ? `${speed.toFixed(1)}× real time` : '…'}${delegate ? ` · ${delegate}` : ''}`;
+      $('analysis-meta').textContent = `Frame ${i + 1} of ${total}, ${speed >= 0.1 ? `${speed.toFixed(1)}× real time` : '…'}${delegate ? `, ${delegate}` : ''}`;
       if (i % 8 === 0 || i === total - 1) {
         state.nods = findNods(frames);
         drawLanes();
@@ -641,7 +641,7 @@ async function analyse() {
 
     const seen = frames.filter((f) => f.face).length;
     const secs = (performance.now() - started) / 1000;
-    $('analysis-meta').textContent = `${frames.length} frames in ${secs.toFixed(1)} s · face in view ${Math.round((seen / frames.length) * 100)}%${delegate ? ` · ${delegate}` : ''}`;
+    $('analysis-meta').textContent = `${frames.length} frames in ${secs.toFixed(1)} s, face in view ${Math.round((seen / frames.length) * 100)}%${delegate ? `, ${delegate}` : ''}`;
     saveFramesLocally(frames, recAt);
     state.analysing = false;
     clearOverlay();
@@ -735,7 +735,7 @@ function renderAnalysisBar() {
         isNum(b.frameCount) ? `${b.frameCount} frames` : null,
         seen !== null ? `face in view ${seen}%` : null,
         b.model ? String(b.model).replace('mediapipe-face-landmarker@', 'Face Landmarker ') : null,
-      ].filter(Boolean).join(' · ');
+      ].filter(Boolean).join(', ');
     }
     if (seen === 0) showAnalysisMsg("No face found in this video. The camera needs to see the other person's face to measure smiling, facing or nodding.");
   } else if (state.pendingUpload && needsVoice()) {
@@ -932,8 +932,8 @@ function drawLanes() {
   const D = domainMs();
   const x = (videoMs) => (videoMs / D) * W;
   const col = {
-    you: cssVar('--you'), them: cssVar('--them'), line: cssVar('--line'), muted: cssVar('--muted'),
-    lane: cssVar('--surface'), ink: cssVar('--ink'), smile: cssVar('--smile') || cssVar('--you'),
+    you: cssVar('--you'), them: cssVar('--them'), line: cssVar('--hairline'), muted: cssVar('--fog'),
+    lane: cssVar('--surface'), ink: cssVar('--ink'), smile: cssVar('--smile') || cssVar('--them'),
   };
 
   for (const l of LANES) {
@@ -998,7 +998,7 @@ function drawLanes() {
     const fh = LANES[2].h;
     for (const f of fs) {
       if (!f.face) continue;
-      ctx.fillStyle = facing(f) ? col.them : withAlpha(col.muted, 0.35);
+      ctx.fillStyle = facing(f) ? withAlpha(col.ink, 0.55) : withAlpha(col.muted, 0.25);
       ctx.fillRect(x(toVideoMs(f.t)), fy + 2, Math.max(1, x(STEP_MS) + 0.5), fh - 4);
     }
 
@@ -1021,7 +1021,7 @@ function drawLanes() {
       const w = Math.max(2, x(toVideoMs(t.endMs)) - x0);
       ctx.fillStyle = withAlpha(col.smile, 0.3);
       ctx.fillRect(x0, sy(bt.smile), w, smileTop + smileH - 3 - sy(bt.smile));
-      ctx.fillStyle = withAlpha(col.them, Math.max(0.12, bt.facingPct || 0));
+      ctx.fillStyle = withAlpha(col.ink, Math.max(0.12, (bt.facingPct || 0) * 0.55));
       ctx.fillRect(x0, tops.facing + 2, w, LANES[2].h - 4);
       ctx.strokeStyle = col.ink;
       ctx.lineWidth = 2;
@@ -1035,7 +1035,7 @@ function drawLanes() {
     }
   } else {
     ctx.fillStyle = col.muted;
-    ctx.font = `italic 13px ${cssVar('--serif') || 'Georgia, serif'}`;
+    ctx.font = `400 13px ${cssVar('--sans') || 'system-ui'}`;
     ctx.textBaseline = 'middle';
     const msg = hasVideo() ? 'Face cues show up here once the video is analysed.' : 'No video, so no face cues.';
     ctx.fillText(msg, 10, smileTop + smileH / 2);
@@ -1119,7 +1119,7 @@ function renderMarkers(top, h, D) {
     it.x = Math.min(it.x, limit);
   }
   put(box, ...items.map(({ id, t, sorted, x }) => {
-    const title = `${fmtClock(t.startMs)} · ${markerTitle(id, new Set(sorted))}`;
+    const title = `${markerTitle(id, new Set(sorted))} at ${fmtClock(t.startMs)}`;
     return el('button', {
       class: 'rp-marker',
       type: 'button',
@@ -1170,7 +1170,7 @@ function onTrackHover(e) {
   hover.style.left = `${e.clientX - r.left}px`;
   const f = frameAt(videoMs - state.offsetMs);
   hover.textContent = f && f.face
-    ? `${fmtClock(videoMs - state.offsetMs)} · smile ${pct(f.smile)}% · ${facing(f) ? 'facing' : 'turned away'}`
+    ? `${fmtClock(videoMs - state.offsetMs)}, smile ${pct(f.smile)}%, ${facing(f) ? 'facing' : 'turned away'}`
     : fmtClock(videoMs - state.offsetMs);
 }
 
@@ -1230,7 +1230,7 @@ function themCues(bt, b) {
   return el('span', { class: 'rp-chips rp-cues' }, ...chips);
 }
 
-// Only reactions big enough to matter get a chip: "smiled +39", "smile −10 · looked away".
+// Only reactions big enough to matter get a chip: "smiled +39", "smile −10, looked away".
 function reactionChip(bt, heatReaction) {
   const r = bt && bt.reaction;
   const d = r && isNum(r.smileDelta) ? r.smileDelta : heatReaction;
@@ -1241,7 +1241,7 @@ function reactionChip(bt, heatReaction) {
   return el('span', {
     class: `rp-chip react ${d > 0 ? 'up' : 'down'}`,
     title: 'Their smile over the 2.5 s after you stopped talking, against the moment you stopped (points out of 100)',
-    text: bits.join(' · '),
+    text: bits.join(', '),
   });
 }
 
@@ -1405,6 +1405,9 @@ function themName() {
   return n && n !== 'them' ? n : 'They said';
 }
 
+// The server joins evidence bits with middle dots; on screen they read better as a list.
+const evidenceText = (s) => String(s).replace(/\s+·\s+/g, ', ');
+
 function heroCard(t) {
   const quote = t.kind === 'try' && (t.said || t.tryInstead);
   return el('article', { class: `rp-tk-hero kind-${t.kind}` },
@@ -1417,7 +1420,7 @@ function heroCard(t) {
       t.said ? el('p', { class: 'rp-tk-said' }, el('span', { class: 'rp-tk-who', text: 'You said' }), el('s', { text: `“${t.said}”` })) : null,
       t.tryInstead ? el('p', { class: 'rp-tk-try' }, el('span', { class: 'rp-tk-who', text: 'Try' }), `“${t.tryInstead}”`) : null,
     ) : el('p', { class: 'rp-tk-title', text: t.title || '' }),
-    t.evidence ? el('p', { class: 'rp-tk-evidence', text: t.evidence }) : null,
+    t.evidence ? el('p', { class: 'rp-tk-evidence', text: evidenceText(t.evidence) }) : null,
     t.text ? el('p', { class: 'rp-tk-why', text: t.text }) : null,
   );
 }
@@ -1431,7 +1434,7 @@ function smallCard(t, i) {
         el('span', { text: t.title || TK_KICKER[t.kind] }),
         Number.isInteger(t.turnId) ? seekChip(t.turnId) : null),
       t.text ? el('p', { class: 'rp-tk-text', text: t.text }) : null,
-      t.evidence ? el('p', { class: 'rp-tk-evidence', text: t.evidence }) : null,
+      t.evidence ? el('p', { class: 'rp-tk-evidence', text: evidenceText(t.evidence) }) : null,
     ),
   );
 }
@@ -1557,7 +1560,9 @@ function turnChip(turnId) {
     class: 'rp-seek', type: 'button',
     title: t.text ? `“${t.text.slice(0, 140)}${t.text.length > 140 ? '…' : ''}”` : null,
     on: { click: () => seekToTurn(turnId) },
-  }, el('span', { class: 'rp-play', 'aria-hidden': 'true', text: '▶' }), `${fmtClock(t.startMs)} · ${who}`);
+  }, el('span', { class: 'rp-play', 'aria-hidden': 'true', text: '▶' }),
+  el('span', { class: 'rp-seek-time', text: fmtClock(t.startMs) }),
+  el('span', { class: 'rp-seek-who', text: who }));
 }
 
 function renderChecked() {
@@ -1647,8 +1652,11 @@ function ensureHeatmap() {
 
 function renderHeader() {
   const c = state.convo;
-  $('title').textContent = c ? `With ${c.otherName && c.otherName !== 'them' ? c.otherName : 'them'}${c.createdAt ? ` · ${fmtDate(c.createdAt)}` : ''}` : '';
-  document.title = c ? `Replay · ${c.otherName || 'conversation'}` : 'Playback Replay';
+  $('title').replaceChildren(...(c ? [
+    `With ${c.otherName && c.otherName !== 'them' ? c.otherName : 'them'}`,
+    c.createdAt ? el('span', { class: 'rp-title-date', text: fmtDate(c.createdAt) }) : '',
+  ] : []));
+  document.title = c ? `Replay of ${c.otherName || 'a conversation'}` : 'Playback Replay';
   const tag = $('tag');
   tag.hidden = !(c && c.tag);
   tag.textContent = c && c.tag ? TAG_NAMES[c.tag] || c.tag : '';
@@ -1841,7 +1849,7 @@ async function loadList() {
     return el('li', {},
       el('a', { class: 'rp-convo-link', href: convoHref(c.id) },
         el('span', { class: 'rp-convo-name', text: c.otherName && c.otherName !== 'them' ? c.otherName : 'Someone' }),
-        el('span', { class: 'rp-convo-meta', text: [fmtDate(c.createdAt), TAG_NAMES[c.tag] || c.tag, dur, c.seeded ? 'sample' : null].filter(Boolean).join(' · ') }),
+        el('span', { class: 'rp-convo-meta', text: [fmtDate(c.createdAt), TAG_NAMES[c.tag] || c.tag, dur, c.seeded ? 'sample' : null].filter(Boolean).join(', ') }),
         el('span', { class: `rp-convo-status${c.behavior ? ' done' : ''}`, text: status }),
       ),
     );
