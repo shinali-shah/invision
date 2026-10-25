@@ -32,8 +32,9 @@ const MARKS = {
   ask: { cls: 'q', sym: '', label: 'You asked' },
   said: { cls: 'sd', sym: '', label: 'They brought up' },
   promise: { cls: 'pr', sym: '', label: 'You promised' },
+  moment: { cls: 'mo', sym: '', label: 'On camera' },
 };
-const MARK_ORDER = ['tk1', 'tk2', 'tk3', 'awk', 'follow', 'missed', 'ask', 'said', 'promise'];
+const MARK_ORDER = ['tk1', 'tk2', 'tk3', 'moment', 'awk', 'follow', 'missed', 'ask', 'said', 'promise'];
 // The Figma's .tl-track (who's talking, with the moment dots above it) is DOM; the face cues
 // underneath it are still a canvas.
 const TRACK_TOP = 0;    // the dots overhang the tl-head margin, like the Figma
@@ -233,6 +234,7 @@ function markersByTurn(c) {
   for (const t of h.topics || []) for (const id of t.turnIds || []) mentioned.add(id);
   for (const id of mentioned) if (!out.has(id) || !out.get(id).has('missed')) add(id, 'said');
   for (const p of h.commitments || []) add(p.turnId, 'promise');
+  for (const m of cameraMoments()) add(m.turnId, 'moment');
   // numbered like the cards: 1 try, 2 keep, 3 ask
   const { tryT, keep, ask } = threeTakeaways();
   [tryT, keep, ask].forEach((t, i) => { if (t) add(t.turnId, `tk${i + 1}`); });
@@ -283,6 +285,10 @@ function markerTitle(turnId, kinds) {
     if (k === 'promise') {
       const p = ((state.convo.hooks && state.convo.hooks.commitments) || []).find((x) => x.turnId === turnId);
       return p && p.text ? `You promised: “${p.text}”` : MARKS.promise.label;
+    }
+    if (k === 'moment') {
+      const m = cameraMoments().find((x) => x.turnId === turnId);
+      return m ? `${m.title}: ${m.observation}` : MARKS.moment.label;
     }
     return MARKS[k].label;
   }).join('\n');
@@ -718,6 +724,7 @@ async function analyse() {
       // waiting for cues that aren't coming. Say so, and write the takeaways from the words alone.
       renderScores();
       renderTakeaways();
+      renderMoments();
       ensureInsight();
     }
   }
@@ -732,6 +739,7 @@ async function upload(frames, recAt) {
   showAnalysisMsg('');
   renderAnalysisBar();
   renderTakeaways();
+  renderMoments();
   $('word-status').textContent = 'Lining the cues up with the transcript…';
   try {
     const body = { model: MODEL, fps: FPS, frames, recordingUploadedAt: recAt };
@@ -765,7 +773,7 @@ async function upload(frames, recAt) {
     renderAnalysisBar();
     // Both the stage echo and the response above rendered while uploading was still true, which
     // left the takeaways box saying "Writing…" for good.
-    if (sameVideo(recAt)) renderTakeaways();
+    if (sameVideo(recAt)) { renderTakeaways(); renderMoments(); }
   }
 }
 
@@ -1379,6 +1387,7 @@ function renderTranscript() {
         kinds.has('follow') ? el('em', { class: 'tag fu', text: 'Follow-up' }) : null,
         kinds.has('missed') ? el('em', { class: 'tag ms', title: markerTitle(t.turnId, new Set(['missed'])), text: 'Missed moment' }) : null,
         ...tks.map((k) => el('em', { class: 'tag tk', title: markerTitle(t.turnId, new Set([k])), text: `Takeaway ${k.slice(2)}` })),
+        kinds.has('moment') ? el('em', { class: 'tag mo', title: markerTitle(t.turnId, new Set(['moment'])), text: 'On camera' }) : null,
         ...awkMain.map(awkChip),
         side === 'you' ? reactionChip(bt, ht && ht.reaction) : null,
       ),
@@ -1431,6 +1440,41 @@ function takeaways() {
 }
 
 const turnById = (id) => turnsOf(state.convo).find((t) => t.turnId === id) || null;
+
+// The turns the insight said were worth replaying, with what the camera saw on them.
+// Nothing until we know whose lines are whose: an observation about the wrong person is worse than none.
+function cameraMoments() {
+  const ins = state.convo && state.convo.insight;
+  if (!ins || needsVoice() || !Array.isArray(ins.moments)) return [];
+  return ins.moments
+    .filter((m) => m && Number.isInteger(m.turnId) && turnById(m.turnId) && (m.title || m.observation))
+    .map((m) => ({ turnId: m.turnId, title: m.title || 'Worth a look', observation: m.observation || '', why: m.why || '' }))
+    .sort((a, b) => a.turnId - b.turnId);
+}
+
+function renderMoments() {
+  const box = $('moments');
+  const list = cameraMoments();
+  box.hidden = !list.length;
+  if (!list.length) { put(box); return; }
+  const first = firstName();
+  put(box,
+    el('div', { class: 'mo-head' },
+      el('span', { class: 'label', text: 'On camera · moments worth replaying' }),
+      el('small', { text: `What was said and what ${first === 'them' ? 'their' : `${first}’s`} face did, with the numbers. Each one plays the recording from there.` })),
+    el('div', { class: 'mo-list' }, ...list.map((m) => {
+      const turn = turnById(m.turnId);
+      const side = turn ? sideOf(turn, behaviorTurns().get(turn.turnId)) : null;
+      const who = side === 'you' ? 'You' : theirLabel(turn);
+      return el('article', { class: 'moment', 'data-turn': m.turnId },
+        el('div', { class: 'mo-when' }, el('i', { 'aria-hidden': 'true' }), turn ? fmtClock(turn.startMs) : ''),
+        el('h4', { text: m.title }),
+        turn && turn.text ? el('p', { class: 'mo-line' }, el('b', { text: who }), `“${turn.text}”`) : null,
+        m.observation ? el('p', { class: 'mo-obs', text: m.observation }) : null,
+        m.why ? el('p', { class: 'mo-why', text: m.why }) : null,
+        playButton(m.turnId));
+    })));
+}
 const firstOf = (arr) => (Array.isArray(arr) && arr.length ? arr[0] : null);
 
 // Who said one of their quoted lines on a card: the name, else the voice's letter, else just "Them".
@@ -1568,6 +1612,7 @@ function ensureInsight() {
   state.insightBusy = true;
   state.insightError = null;
   renderTakeaways();
+  renderMoments();
   postJson(`/api/conversations/${enc(id)}/insight`, {})
     .then((ins) => { if (state.convo && state.convo.id === id && ins && !state.convo.insight) state.convo.insight = ins; })
     .catch((err) => {
@@ -1817,6 +1862,7 @@ function renderHeader() {
     el('i', { class: 'q' }), 'Asked',
     el('i', { class: 'sd' }), 'They brought up',
     el('i', { class: 'pr' }), 'Promised',
+    el('i', { class: 'mo' }), 'On camera',
     el('i', { class: 'tk' }), 'Takeaway');
 }
 
@@ -1927,6 +1973,7 @@ function renderAll() {
   renderVoicePicker();
   renderAnalysisBar();
   renderTakeaways();
+  renderMoments();
   renderScores();
   renderTranscript();
   renderNote();

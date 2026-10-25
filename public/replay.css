@@ -267,6 +267,7 @@ button.line-time::after { inset: -12px -4px; }
 .tl-key .q { background: var(--white); border-radius: 50%; box-shadow: inset 0 0 0 2px var(--ink); }
 .tl-key .sd { background: var(--white); border-radius: 50%; box-shadow: inset 0 0 0 2px var(--marigold); }
 .tl-key .pr { background: var(--you); border-radius: 50%; }
+.tl-key .mo { background: var(--marigold); border-radius: 50%; box-shadow: inset 0 0 0 2px var(--ink); }
 .tl-key .tk { background: var(--ink); border-radius: 50%; box-shadow: inset 0 0 0 2px var(--white), inset 0 0 0 3px var(--ink); }
 .tl-body { display: grid; grid-template-columns: 64px minmax(0, 1fr); column-gap: 12px; }
 .tl-labels { display: flex; flex-direction: column; }
@@ -293,6 +294,7 @@ button.line-time::after { inset: -12px -4px; }
 .tl-track .mark.q { background: var(--white); border: 2px solid var(--ink); }
 .tl-track .mark.sd { background: var(--white); border: 2px solid var(--marigold); }
 .tl-track .mark.pr { background: var(--you); border: 2px solid var(--white); }
+.tl-track .mark.mo { background: var(--marigold); border: 2px solid var(--ink); }
 .tl-track .mark.tk { background: var(--ink); border: 2px solid var(--white); }
 .rp-track canvas { display: block; width: 100%; margin-top: 8px; }
 .rp-track canvas[hidden] { display: none; }
@@ -364,6 +366,7 @@ button.line-time:hover { color: var(--you); }
 .tag.fu { background: var(--ink); color: var(--white); }
 .tag.ms { background: var(--marigold); color: var(--ink); }
 .tag.awk { border: 1.5px solid var(--red-ink); color: var(--red-ink); cursor: help; }
+.tag.mo { background: var(--marigold); color: var(--ink); cursor: help; }
 .tag.awk.theirs { border-color: var(--line); color: var(--ink-3); }
 .tag.crowd { border: 1.5px solid var(--line); color: var(--ink-3); cursor: help; }
 /* Crowd lines from the lip lock: in the transcript, out of the analysis. */
@@ -477,3 +480,20 @@ button.rp-hook-chip:hover { border-color: var(--ink); }
   .conversation:hover { transform: none; }
   .rp-tk-empty.busy::after, .rp-voice-busy::after, .rp-pill::before, .rp-voice { animation: none; }
 }
+
+/* The moments the camera singled out: what was said, what their face did, with the numbers.
+   Each one seeks the video; this is the part of the page that proves the coaching. */
+.moments { display: grid; gap: 14px; padding: 22px 24px 24px; border: 1.5px solid var(--ink); border-radius: 22px; background: var(--white); }
+.moments .mo-head { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.moments .mo-head .label { font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--marigold-ink, #8a5a00); }
+.moments .mo-head small { color: var(--ink-2); font-size: 13px; }
+.mo-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+.moment { display: flex; flex-direction: column; gap: 8px; padding: 16px 18px; border: 1.5px solid var(--ink); border-radius: 16px; background: var(--paper, #f3f3f0); }
+.moment .mo-when { display: flex; align-items: center; gap: 10px; font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-2); }
+.moment .mo-when i { width: 10px; height: 10px; border-radius: 50%; background: var(--marigold); box-shadow: inset 0 0 0 2px var(--ink); }
+.moment h4 { margin: 0; font-family: var(--font-display); font-weight: 800; font-size: 24px; line-height: 1; text-transform: uppercase; }
+.moment .mo-line { margin: 0; font-size: 14px; color: var(--ink-2); }
+.moment .mo-line b { font-weight: 700; color: var(--ink); margin-right: 6px; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; }
+.moment .mo-obs { margin: 0; font-size: 14.5px; line-height: 1.5; }
+.moment .mo-why { margin: 0; font-size: 13px; color: var(--ink-2); line-height: 1.45; }
+.moment .play { align-self: flex-start; margin-top: 4px; }
