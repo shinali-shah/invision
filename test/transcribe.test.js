@@ -476,3 +476,106 @@ test("the user's own introduction picks their voice when nothing else has", asyn
   assert.equal(kept.saved.userLabel, 'B');
   assert.equal(kept.done.userLabel, 'B');
 });
+
+// ---- Muse hanging up mid-recording: reconnect where the audio left off ----
+
+// Each call hands back a scripted Muse session; `sessions[i]` is what the i-th one does.
+function sessionsStream(scripts, calls) {
+  return opts => {
+    const i = calls.length;
+    calls.push(opts);
+    const script = scripts[i];
+    if (!script) return Promise.reject(new Error('no muse today'));
+    return Promise.resolve({
+      sent: 0,
+      sendAudio(buf) { this.sent += buf.length; script.onAudio?.(this, opts); },
+      async end() { script.onEnd?.(this, opts); },
+    });
+  };
+}
+
+async function bridge({ openStream, store, published = [] }) {
+  const http = await import('node:http');
+  const { WebSocket } = await import('ws');
+  const { attachTranscribeSocket } = await import('../src/transcribe/wsRoute.js');
+  const server = http.createServer();
+  attachTranscribeSocket({ server, store, log: () => {}, config: { mock: false }, openStream, stage: { publish: m => published.push(m) } });
+  await new Promise(r => server.listen(0, r));
+  const ws = new WebSocket(`ws://localhost:${server.address().port}/ws/transcribe?conversationId=c1`);
+  const got = [];
+  ws.on('message', raw => got.push(JSON.parse(raw.toString())));
+  await new Promise((resolve, reject) => { ws.on('open', resolve); ws.on('error', reject); });
+  return { ws, got, server, until: type => new Promise(res => { const tick = () => got.some(m => m.type === type) ? res(got.find(m => m.type === type)) : setTimeout(tick, 5); tick(); }) };
+}
+
+test('a 1008 mid-recording opens a new Muse session and the turns keep one timeline', async () => {
+  const saved = {};
+  const store = { getConversation: () => ({ id: 'c1', ...saved }), updateConversation: (id, patch) => { Object.assign(saved, patch); return { id, ...saved }; } };
+  const calls = [];
+  const openStream = sessionsStream([
+    { // first session: one turn, then Muse falls behind and hangs up after 4 frames of audio
+      onAudio(s, { onEvent, onClose }) {
+        if (s.sent !== 4 * 3840) return;
+        onEvent({ type: 'speechStart', turnId: 1, audioProcessedMs: 0 });
+        onEvent({ type: 'speaker', label: 'A', audioProcessedMs: 50 });
+        onEvent({ type: 'speechComplete', turnId: 1, transcript: 'hi grandma', audioProcessedMs: 300 });
+        onClose(1008, 'Audio processing backlog too large');
+      },
+    },
+    { // second session: its clock and turn ids start over
+      onEnd(s, { onEvent, onClose }) {
+        onEvent({ type: 'speechStart', turnId: 1, audioProcessedMs: 0 });
+        onEvent({ type: 'speaker', label: 'B', audioProcessedMs: 50 });
+        onEvent({ type: 'speechComplete', turnId: 1, transcript: 'how is the garden', audioProcessedMs: 500 });
+        onClose(1000);
+      },
+    },
+  ], calls);
+  const { ws, got, server, until } = await bridge({ openStream, store });
+  await until('ready');
+  for (let i = 0; i < 4; i++) ws.send(Buffer.alloc(3840)); // 4 x 80 ms
+  await until('turn');
+  // give the reconnect a moment, then keep talking into the new session
+  await new Promise(r => setTimeout(r, 20));
+  assert.equal(calls.length, 2, 'a second Muse session was opened');
+  for (let i = 0; i < 2; i++) ws.send(Buffer.alloc(3840));
+  ws.send(JSON.stringify({ type: 'end' }));
+  const done = await until('done');
+  server.close();
+
+  assert.equal(got.filter(m => m.type === 'error').length, 0, 'the phone never saw an error');
+  assert.deepEqual(done.turns.map(t => t.turnId), [1, 2]);
+  assert.deepEqual(done.turns.map(t => t.speaker), ['A', 'B']); // no camera: the new session's letters are taken as they came
+  assert.equal(done.turns[1].startMs, 320); // 4 frames x 80 ms went to the first session before it died
+  assert.equal(done.turns[1].endMs, 820);
+  assert.equal(saved.turns.length, 2);
+});
+
+test('when Muse cannot be reopened the phone is told once and keeps what was heard', async () => {
+  const saved = {};
+  const store = { getConversation: () => ({ id: 'c1', ...saved }), updateConversation: (id, patch) => { Object.assign(saved, patch); return { id, ...saved }; } };
+  const calls = [];
+  const openStream = sessionsStream([
+    {
+      onAudio(s, { onEvent, onClose }) {
+        if (s.sent !== 3840) return;
+        onEvent({ type: 'speechStart', turnId: 1, audioProcessedMs: 0 });
+        onEvent({ type: 'speechComplete', turnId: 1, transcript: 'hi grandma', audioProcessedMs: 300 });
+        onClose(1011);
+      },
+    },
+    // no second script: the reopen is refused
+  ], calls);
+  const { ws, got, server, until } = await bridge({ openStream, store });
+  await until('ready');
+  ws.send(Buffer.alloc(3840));
+  const done = await until('done');
+  server.close();
+
+  assert.equal(calls.length, 2);
+  const errors = got.filter(m => m.type === 'error');
+  assert.equal(errors.length, 1);
+  assert.match(errors[0].message, /could not get it back/);
+  assert.equal(done.turns.length, 1);
+  assert.equal(done.turns[0].text, 'hi grandma');
+});

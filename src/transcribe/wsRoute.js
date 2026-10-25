@@ -2,14 +2,17 @@ import { WebSocketServer } from 'ws';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { createTurnAssembler } from './assemble.js';
-import { labelTurns, inferLabels } from './crowd.js';
+import { labelTurns, inferLabels, mergeSessions } from './crowd.js';
+import { createPacer } from './pace.js';
 import { detectPeople } from '../nlp/person.js';
 
 const MAX_CUES = 120000; // ~4 h at 8 fps; past that the phone has been left running
 const MIN_NAME_CONF = 0.7; // a lone vocative is enough; a vocative with a rival name is not
+const MAX_SESSIONS = 4; // Muse hangs up (1008) when it falls behind; this many fresh sessions per recording before we give up
+const END_DRAIN_MS = 5000; // how long "end" waits for throttled audio to reach Muse
 
 const unnamed = convo => !convo.otherName || convo.otherName === 'them';
-const realLabel = s => s && s !== 'unknown';
+const realLabel = s => s && s !== 'unknown' && !/#\d+$/.test(s); // a reopened session's letters are settled at finish
 
 // Lip-lock cue samples ride the same socket as the audio, as small JSON frames.
 // Keep only well-formed samples; a flaky phone must never take the stream down.
@@ -42,7 +45,13 @@ export function attachTranscribeSocket({ server, store, log, config, openStream,
     const cues = [];
     let finished = false;
     let browserGone = false; // the phone dropped the socket without sending "end"
-    let stream;
+    let ending = false; // the phone said "end"; a Muse close from here on is the normal one
+    let connecting = null; // promise of the Muse session being opened right now
+    let session = 0; // Muse sessions opened for this recording; past 1 we reconnected mid-stream
+    let maxTurnId = 0;
+    const pacer = createPacer({
+      onDrop: ms => log('transcribe', 'warn', `${(ms / 1000).toFixed(1)}s of audio dropped: the transcriber is too far behind`),
+    });
 
     // Names heard so far: who they are (while the conversation still says 'them') and, from the
     // user's own "I'm Parth", which voice is theirs. A typed or already-picked name is left alone.
@@ -73,7 +82,7 @@ export function attachTranscribeSocket({ server, store, log, config, openStream,
     const finish = () => {
       if (finished) return;
       finished = true;
-      const turns = labelTurns(assembler.flush(), cues);
+      const turns = mergeSessions(labelTurns(assembler.flush(), cues));
       // The phone deletes the conversation when the user walks out of a recording;
       // what Muse heard after that isn't ours to keep or show on the stage.
       const convo = store.getConversation(conversationId);
@@ -106,6 +115,7 @@ export function attachTranscribeSocket({ server, store, log, config, openStream,
     };
 
     const onEvent = event => {
+      if (Number.isFinite(event?.turnId)) maxTurnId = Math.max(maxTurnId, event.turnId);
       const out = assembler.push(event);
       if (browserGone) return; // nobody is on this conversation any more; just finish assembling
       if (out?.kind === 'partial') {
@@ -119,34 +129,60 @@ export function attachTranscribeSocket({ server, store, log, config, openStream,
       }
     };
 
-    // a socket close from Muse before we asked to end still keeps whatever turns came through
-    const onClose = code => {
-      if (code !== 1000 && !finished) {
-        log('transcribe', 'warn', `Muse stream closed with ${code}`);
-        send({ type: 'error', message: `Transcription stopped early (code ${code}). Keeping what we heard.` });
-      }
-      finish();
+    // Every Muse session starts its clock and its turn numbers from zero and hands out its own
+    // speaker letters. Shift them onto the recording's timeline; letters from a reopened
+    // session stay marked (A#2) until finish() works out who they were.
+    const shifted = (n, msOffset, turnOffset) => event => {
+      const e = { ...event };
+      if (Number.isFinite(e.audioProcessedMs)) e.audioProcessedMs += msOffset;
+      if (Number.isFinite(e.turnId)) e.turnId += turnOffset;
+      if (n > 1 && typeof e.label === 'string' && e.label) e.label = `${e.label}#${n}`;
+      onEvent(e);
     };
 
-    // Frames that arrive while the Muse handshake is still in flight wait here.
+    // Muse hanging up early used to end the recording. Now, while the phone is still talking
+    // to us, we open a fresh session where the audio left off and keep going.
+    const onClose = async (code, n) => {
+      if (n !== session || finished) return; // an old session closing late
+      if (code === 1000 || ending || browserGone) return finish();
+      pacer.setSink(null);
+      if (session >= MAX_SESSIONS) {
+        log('transcribe', 'warn', `Muse stream closed with ${code} again; giving up after ${session} sessions`);
+        send({ type: 'error', message: `Transcription stopped early (code ${code}). Keeping what we heard.` });
+        return finish();
+      }
+      log('transcribe', 'warn', `Muse stream closed with ${code}; reconnecting at ${(pacer.positionMs() / 1000).toFixed(1)}s with ${Math.round(pacer.queuedMs())}ms waiting`);
+      try {
+        await connect();
+        if (!finished) log('transcribe', 'info', `transcriber back (session ${session})`);
+      } catch (err) {
+        log('transcribe', 'error', `could not reopen Muse stream: ${err.message}`);
+        send({ type: 'error', message: 'Lost the transcriber and could not get it back. Keeping what we heard.' });
+        finish();
+      }
+    };
+
+    // Audio that arrives before a session is ready waits in the pacer and goes out when it is.
     // An early "end" waits for the handshake too, otherwise those frames would be lost
     // and the Muse session would be opened after we'd already given up on it.
-    const pending = [];
-    const opening = openStream({
-      apiKey: config.apiKey,
-      model: config.asrModel,
-      languages: config.languages,
-      onEvent,
-      onError: err => {
-        log('transcribe', 'error', err.message);
-        send({ type: 'error', message: 'The transcriber hit a problem. Keeping what we heard.' });
-      },
-      onClose,
-    }).then(s => {
-      stream = s;
-      for (const chunk of pending.splice(0)) s.sendAudio(chunk);
-      return s;
-    }, err => {
+    const connect = () => {
+      const n = ++session;
+      connecting = openStream({
+        apiKey: config.apiKey,
+        model: config.asrModel,
+        languages: config.languages,
+        onEvent: shifted(n, pacer.positionMs(), maxTurnId),
+        onError: err => log('transcribe', 'error', err.message), // Muse follows a fatal one with a close; that is where we act
+        onClose: code => onClose(code, n),
+      }).then(s => {
+        if (finished || browserGone) { s.end().catch(() => {}); return s; }
+        pacer.setSink(chunk => s.sendAudio(chunk));
+        return s;
+      });
+      return connecting;
+    };
+
+    const opening = connect().catch(err => {
       log('transcribe', 'error', `could not open Muse stream: ${err.message}`);
       send({ type: 'error', message: 'Could not reach the transcription service' });
       ws.close(1011);
@@ -155,8 +191,7 @@ export function attachTranscribeSocket({ server, store, log, config, openStream,
 
     ws.on('message', async (data, isBinary) => {
       if (isBinary) {
-        if (stream) stream.sendAudio(data);
-        else pending.push(data);
+        pacer.push(data);
         return;
       }
       let msg;
@@ -164,17 +199,19 @@ export function attachTranscribeSocket({ server, store, log, config, openStream,
       if (msg.type === 'cues') {
         if (cues.length < MAX_CUES) cues.push(...cleanCues(msg.samples));
       } else if (msg.type === 'end') {
-        const s = await opening;
+        ending = true;
+        const s = await connecting.catch(() => null);
+        if (s) await pacer.idle(END_DRAIN_MS); // let throttled audio reach Muse before we ask it to wrap up
         try { await s?.end(); } catch (err) { log('transcribe', 'warn', `end failed: ${err.message}`); }
         finish();
       }
     });
 
     ws.on('close', () => {
-      pending.length = 0;
+      pacer.clear();
       if (!finished) browserGone = true;
-      // still end the Muse side if the browser vanished mid-handshake
-      opening.then(s => { if (s && !finished) s.end().catch(() => {}); });
+      // still end the Muse side if the browser vanished mid-handshake or mid-reconnect
+      connecting.then(s => { if (s && !finished) s.end().catch(() => {}); }, () => {});
     });
 
     const s = await opening;

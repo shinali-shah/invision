@@ -119,3 +119,26 @@ test('speechTurns drops crowd lines and nothing else', () => {
   assert.deepEqual(speechTurns(turns).map(t => t.turnId), [1, 3, 4]);
   assert.deepEqual(speechTurns(null), []);
 });
+
+// ---- a reopened Muse session: its letters are suffixed until the camera says who they are ----
+
+test('mergeSessions maps a reopened session\'s letters onto the first session\'s by camera lean', async () => {
+  const { mergeSessions } = await import('../src/transcribe/crowd.js');
+  const turns = [
+    { turnId: 1, speaker: 'A', source: 'you' }, { turnId: 2, speaker: 'B', source: 'them' }, { turnId: 3, speaker: 'A', source: 'you' },
+    // after the reconnect the diarizer handed out letters the other way round
+    { turnId: 4, speaker: 'A#2', source: 'them' }, { turnId: 5, speaker: 'B#2', source: 'you' }, { turnId: 6, speaker: 'A#2', source: 'them' },
+  ];
+  assert.deepEqual(mergeSessions(turns).map(t => t.speaker), ['A', 'B', 'A', 'B', 'A', 'B']);
+});
+
+test('mergeSessions drops the suffix when nobody can say which side a letter is', async () => {
+  const { mergeSessions } = await import('../src/transcribe/crowd.js');
+  const turns = [
+    { turnId: 1, speaker: 'A', source: 'unknown' }, { turnId: 2, speaker: 'B', source: 'unknown' },
+    { turnId: 3, speaker: 'A#2', source: 'unknown' }, { turnId: 4, speaker: 'unknown', source: 'unknown' },
+  ];
+  assert.deepEqual(mergeSessions(turns).map(t => t.speaker), ['A', 'B', 'A', 'unknown']);
+  const plain = [{ turnId: 1, speaker: 'A', source: 'you' }];
+  assert.equal(mergeSessions(plain), plain); // nothing to merge: same array back
+});
