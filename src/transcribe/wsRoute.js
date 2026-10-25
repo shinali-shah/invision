@@ -1,5 +1,5 @@
 import { WebSocketServer } from 'ws';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { createTurnAssembler } from './assemble.js';
 import { labelTurns, inferLabels, mergeSessions } from './crowd.js';
@@ -10,7 +10,10 @@ const MAX_CUES = 120000; // ~4 h at 8 fps; past that the phone has been left run
 const MIN_NAME_CONF = 0.7; // a lone vocative is enough; a vocative with a rival name is not
 const MAX_SESSIONS = 4; // Muse hangs up (1008) when it falls behind; this many fresh sessions per recording before we give up
 const RECONNECT_BACKOFF_MS = 300; // wait this much longer before each reopen, so a bad minute at Muse isn't met with four opens in a row
-const END_DRAIN_MS = 5000; // how long "end" waits for throttled audio to reach Muse
+// "end" waits for throttled audio to reach Muse: as long as the queue needs at the catch-up rate,
+// plus this margin, but never longer than the cap. A fixed 5 s used to cut a 30 s burst short.
+const END_DRAIN_MARGIN_MS = 5000;
+const END_DRAIN_MAX_MS = 60000;
 
 const unnamed = convo => !convo.otherName || convo.otherName === 'them';
 const realLabel = s => s && s !== 'unknown' && !/#\d+$/.test(s); // a reopened session's letters are settled at finish
@@ -29,6 +32,9 @@ export function attachTranscribeSocket({
   server, store, log, config, openStream, stage = { publish() {} }, recordingsDir = null, pace = {}, reconnectBackoffMs = RECONNECT_BACKOFF_MS,
 }) {
   const wss = new WebSocketServer({ noServer: true });
+  // The stream recording each conversation right now, by id, so a second phone on the same
+  // conversation can take over from the first instead of racing it for the record.
+  const recording = new Map(); // conversationId -> handOver(): finish that stream so another can continue it
 
   server.on('upgrade', (req, socket, head) => {
     const url = new URL(req.url, 'http://localhost');
@@ -44,6 +50,18 @@ export function attachTranscribeSocket({
       return ws.close(4404, 'not found');
     }
 
+    // A reload, or a tunnel that dropped without a close frame, can leave a stream for this
+    // conversation still open here. Two streams writing the same record would end with whichever
+    // finished last (and with real Muse that is a coin toss), so the earlier one is finished now
+    // with what it had and this one carries on from there: ids, clock and letters continue.
+    const takenOver = recording.get(conversationId);
+    takenOver?.();
+    const before = takenOver ? store.getConversation(conversationId)?.turns ?? [] : [];
+    const clockMs = before.at(-1)?.endMs ?? 0; // this recording's zero on the conversation's timeline
+    // letters from a continued recording are a later Muse session's (A#2) until finish() settles them
+    const sessionBase = takenOver ? 1 : 0;
+    if (takenOver) log('transcribe', 'info', `conversation ${conversationId.slice(0, 8)} was still recording; continuing after ${before.length} turns`);
+
     const assembler = createTurnAssembler();
     const cues = [];
     let finished = false;
@@ -51,8 +69,9 @@ export function attachTranscribeSocket({
     let ending = false; // the phone said "end"; a Muse close from here on is the normal one
     let connecting = null; // promise of the Muse session being opened right now
     let session = 0; // Muse sessions opened for this recording; past 1 we reconnected mid-stream
-    let maxTurnId = 0; // highest turn id on the recording's timeline, Muse's or one the assembler made up
+    let maxTurnId = before.reduce((m, t) => Math.max(m, t.turnId), 0); // highest turn id on the recording's timeline, Muse's or one the assembler made up
     let labelSource = null; // how this recording learnt which voice is the user's: 'camera', 'name', or not at all
+    let continued = false; // another stream took this conversation over; our `done` is not the end of the recording
     const pacer = createPacer({
       ...pace,
       onDrop: ms => log('transcribe', 'warn', `${(ms / 1000).toFixed(1)}s of audio dropped: the transcriber is too far behind`),
@@ -76,7 +95,7 @@ export function attachTranscribeSocket({
 
     const noteNames = () => {
       const convo = store.getConversation(conversationId);
-      if (!convo) return;
+      if (!convo) return deleted();
       const { patch, person } = peoplePatch(assembler.turns(), convo);
       if (!Object.keys(patch).length) return;
       if (patch.userLabel) labelSource = 'name';
@@ -88,12 +107,16 @@ export function attachTranscribeSocket({
     const finish = () => {
       if (finished) return;
       finished = true;
-      const turns = mergeSessions(labelTurns(assembler.flush(), cues));
+      if (recording.get(conversationId) === handOver) recording.delete(conversationId);
+      const turns = mergeSessions([...before, ...labelTurns(assembler.flush(), cues)]);
       // The phone deletes the conversation when the user walks out of a recording;
       // what Muse heard after that isn't ours to keep or show on the stage.
       const convo = store.getConversation(conversationId);
       if (!convo) {
         log('transcribe', 'info', `conversation ${conversationId.slice(0, 8)} was deleted mid-stream; ${turns.length} turns dropped`);
+        // Lines that reached the stage between the delete and here rebuilt its live entry;
+        // saying "deleted" again clears it, or a late joiner would replay a recording nobody has.
+        stage.publish({ type: 'deleted', conversationId });
         return ws.close(1000);
       }
       const crowdTurns = turns.filter(t => t.source === 'crowd').length;
@@ -109,7 +132,11 @@ export function attachTranscribeSocket({
       if (cues.length && recordingsDir) {
         try {
           mkdirSync(recordingsDir, { recursive: true });
-          writeFileSync(join(recordingsDir, `${conversationId}.cues.json`), JSON.stringify(cues));
+          const file = join(recordingsDir, `${conversationId}.cues.json`);
+          // a continued recording adds its cues to the ones the stream it took over had saved
+          let earlier = [];
+          if (before.length) try { earlier = JSON.parse(readFileSync(file, 'utf8')); } catch {}
+          writeFileSync(file, JSON.stringify([...earlier, ...cues]));
         } catch (err) { log('transcribe', 'warn', `could not save lip-lock cues: ${err.message}`); }
       }
       log('transcribe', 'info', `${turns.length} turns, speakers ${[...new Set(turns.map(t => t.speaker))].join('/') || 'none'}; audio discarded`);
@@ -121,8 +148,30 @@ export function attachTranscribeSocket({
       // conversation (typed earlier) or there isn't one, so the phone should still ask.
       const done = { type: 'done', turns, userLabel, labelSource, crowdTurns, otherName: patch.otherName ?? convo.otherName ?? null };
       send(done);
-      stage.publish({ ...done, conversationId });
+      // `continued` tells the stage the phone is still recording this one (on a new stream), so
+      // the room keeps watching rather than dropping to the label screen.
+      stage.publish({ ...done, conversationId, ...(continued ? { continued: true } : {}) });
       ws.close(1000);
+    };
+
+    // Stop now, on our own initiative: ask Muse to hang up and write what we have. Any later
+    // close from Muse finds `finished` set and does nothing.
+    const wrapUp = () => {
+      if (finished) return;
+      ending = true;
+      connecting?.then(s => s?.end().catch(() => {}), () => {});
+      finish();
+    };
+    const handOver = () => { continued = true; wrapUp(); };
+    recording.set(conversationId, handOver);
+
+    // Deleted from another screen while the phone was still talking (the phone's own delete
+    // closes this socket first, so it never lands here). Nothing Muse says from now on has a
+    // record to land on, so wrap up: finish() drops the turns and clears the stage.
+    const deleted = () => {
+      if (finished) return;
+      send({ type: 'error', message: 'This conversation was deleted.' });
+      wrapUp();
     };
 
     const onEvent = event => {
@@ -136,6 +185,9 @@ export function attachTranscribeSocket({
       const id = out?.turnId ?? out?.turn?.turnId;
       if (Number.isFinite(id)) maxTurnId = Math.max(maxTurnId, id);
       if (browserGone) return; // nobody is on this conversation any more; just finish assembling
+      // One primary-key read per line: a partial for a conversation deleted a second ago would
+      // otherwise put it back on the stage, and the hub would remember it for every late joiner.
+      if (out && !store.getConversation(conversationId)) return deleted();
       if (out?.kind === 'partial') {
         const msg = { type: 'partial', turnId: out.turnId, text: out.text, speaker: out.speaker };
         send(msg);
@@ -156,7 +208,7 @@ export function attachTranscribeSocket({
       const e = { ...event };
       if (Number.isFinite(e.audioProcessedMs)) e.audioProcessedMs += at();
       if (Number.isFinite(e.turnId)) e.turnId += turnOffset;
-      if (n > 1 && typeof e.label === 'string' && e.label) e.label = `${e.label}#${n}`;
+      if (n + sessionBase > 1 && typeof e.label === 'string' && e.label) e.label = `${e.label}#${n + sessionBase}`;
       onEvent(e);
     };
 
@@ -201,7 +253,7 @@ export function attachTranscribeSocket({
         apiKey: config.apiKey,
         model: config.asrModel,
         languages: config.languages,
-        onEvent: shifted(n, () => startMs ?? pacer.positionMs(), maxTurnId),
+        onEvent: shifted(n, () => clockMs + (startMs ?? pacer.positionMs()), maxTurnId),
         onError: err => log('transcribe', 'error', err.message), // Muse follows a fatal one with a close; that is where we act
         onClose: code => onClose(code, n),
       });
@@ -233,11 +285,17 @@ export function attachTranscribeSocket({
       let msg;
       try { msg = JSON.parse(data.toString()); } catch { return; }
       if (msg.type === 'cues') {
-        if (cues.length < MAX_CUES) cues.push(...cleanCues(msg.samples));
+        if (cues.length < MAX_CUES) cues.push(...cleanCues(msg.samples).map(c => (clockMs ? { ...c, t: c.t + clockMs } : c)));
       } else if (msg.type === 'end') {
         ending = true;
         const s = await connecting.catch(() => null);
-        if (s) await pacer.idle(END_DRAIN_MS); // let throttled audio reach Muse before we ask it to wrap up
+        if (s) {
+          // A tunnel that stalled and let go can leave half the recording still queued here;
+          // asking Muse to wrap up before it has heard it would lose those lines for good.
+          const queued = pacer.queuedMs();
+          if (queued > 1000) log('transcribe', 'info', `end: ${(queued / 1000).toFixed(1)}s of audio still queued, draining before Muse wraps up`);
+          await pacer.idle(Math.min(END_DRAIN_MAX_MS, pacer.drainMs() + END_DRAIN_MARGIN_MS));
+        }
         try { await s?.end(); } catch (err) { log('transcribe', 'warn', `end failed: ${err.message}`); }
         finish();
       }

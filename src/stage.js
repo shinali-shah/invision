@@ -3,11 +3,16 @@ import { WebSocketServer } from 'ws';
 export const STAGE_VIEWS = ['start', 'recording', 'label', 'coaching', 'memory'];
 
 // A client that stops reading (a TV that lost wifi) would otherwise buffer every partial forever.
-const MAX_BUFFERED = 1 << 20;
+// The kernel already holds several hundred KB for us before this counter moves, so 256 KB here
+// is a projector that is many seconds behind, not one that blinked.
+const MAX_BUFFERED = 256 << 10;
+// And one that fell off the network without a FIN never buffers anything on a quiet stage, so
+// ping it; a missed pong means the socket is dead.
+const KEEPALIVE_MS = 30000;
 
 // Fan-out for the projector page. The phone does the work; the stage just listens.
-export function createStageHub({ mock }) {
-  const clients = new Set();
+export function createStageHub({ mock, keepaliveMs = KEEPALIVE_MS }) {
+  const clients = new Map(); // ws -> answered the last ping
   let lastFocus = null;
   // Lines of recordings still going, so a page that opens mid-conversation isn't blank until the
   // next turn. The store only gets the turns at the end, so nobody else can answer this.
@@ -34,10 +39,21 @@ export function createStageHub({ mock }) {
       const entry = liveFor(id);
       entry.turns.set(msg.turn.turnId, msg);
       if (entry.open?.turnId === msg.turn.turnId) entry.open = null;
-    } else if (msg.type === 'done' || msg.type === 'deleted') {
+    } else if (msg.type === 'deleted' || (msg.type === 'done' && !msg.continued)) {
+      // a `done` marked continued is a stream handing over to another on the same conversation;
+      // its lines stay live for late joiners, the new stream's follow on from them
       live.delete(id);
     }
   };
+
+  const keepalive = setInterval(() => {
+    for (const [ws, alive] of clients) {
+      if (!alive) { ws.terminate(); clients.delete(ws); continue; }
+      clients.set(ws, false);
+      ws.ping?.();
+    }
+  }, keepaliveMs);
+  keepalive.unref?.();
 
   const replay = ws => {
     for (const entry of live.values()) {
@@ -48,8 +64,9 @@ export function createStageHub({ mock }) {
 
   return {
     subscribe(ws) {
-      clients.add(ws);
+      clients.set(ws, true);
       ws.on('close', () => clients.delete(ws));
+      ws.on('pong', () => clients.set(ws, true));
       ws.on('error', () => {}); // a bad frame from a client must not take the server down
       sendTo(ws, { type: 'hello', mock, focus: lastFocus });
       replay(ws);
@@ -57,7 +74,7 @@ export function createStageHub({ mock }) {
     publish(msg) {
       // A finished stream means the phone isn't recording any more, whatever the last focus said;
       // otherwise a Mac that connects hours later would start a recording card for a phone that's gone.
-      if (msg.type === 'done' && lastFocus?.view === 'recording' && lastFocus.conversationId === msg.conversationId) {
+      if (msg.type === 'done' && !msg.continued && lastFocus?.view === 'recording' && lastFocus.conversationId === msg.conversationId) {
         lastFocus = { ...lastFocus, view: 'label', at: Date.now() };
       }
       // Likewise a deleted conversation can't stay the one on screen, or a late joiner would try to show it.
@@ -67,7 +84,7 @@ export function createStageHub({ mock }) {
           : { view: 'start', conversationId: null, otherName: null, at: Date.now() };
       }
       remember(msg);
-      for (const ws of clients) sendTo(ws, msg);
+      for (const ws of clients.keys()) sendTo(ws, msg);
     },
     focus({ view, conversationId = null, otherName = null }) {
       // `at` lets clients ignore a remembered focus that is older than they care about.
@@ -75,7 +92,8 @@ export function createStageHub({ mock }) {
       this.publish({ type: 'focus', ...lastFocus });
     },
     close() {
-      for (const ws of clients) ws.terminate();
+      clearInterval(keepalive);
+      for (const ws of clients.keys()) ws.terminate();
       clients.clear();
       live.clear();
     },

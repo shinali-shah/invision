@@ -541,6 +541,8 @@ function renderRecording() {
       el('span', { class: 'elapsed' }, refs.time, ' ', el('small', { text: 'elapsed' })),
       r.active && name && el('span', { class: 'consent-ok' }, icon('check', 13), ` ${name} knows you’re recording`),
       el('span', { class: 'private-note', text: 'Private to you' }),
+      // The big-screen page lives on its own now (no Live tab); this is the one way in from the Mac.
+      el('a', { class: 'projector-link', href: 'stage.html', target: '_blank', rel: 'noopener', text: 'Projector view' }),
     ),
   );
   renderBrief();
@@ -1120,6 +1122,9 @@ function init() {
   refs.shell = el('div', { class: 'app-shell with-wash' }, header());
   document.getElementById('root').append(refs.shell);
   renderPage();
+  // One quiet line under whichever page is up. The main above it is swapped per page; this stays.
+  refs.shell.append(el('footer', { class: 'page-foot' },
+    el('a', { href: 'legal.html', target: '_blank', rel: 'noopener', text: 'Terms, privacy and consent' })));
 
   window.addEventListener('hashchange', () => { closeFollowUp(); state.confirming = false; renderPage(); window.scrollTo(0, 0); });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && state.modal) closeFollowUp(); });

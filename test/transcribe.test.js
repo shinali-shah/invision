@@ -294,7 +294,8 @@ test('a conversation deleted while its stream is open is not written back or ann
   server.close();
 
   assert.deepEqual(updates, []);
-  assert.deepEqual(published, []);
+  // the one thing the stage hears is that the conversation is gone, so it forgets any live lines
+  assert.deepEqual(published, [{ type: 'deleted', conversationId: 'c1' }]);
 });
 
 // ---- lip lock: cue frames over the same socket ----
@@ -969,6 +970,153 @@ test('a line Muse flushes after done is not announced as a live turn', async () 
   const types = published.map(m => m.type);
   assert.equal(types.lastIndexOf('turn') < types.indexOf('done'), true, `a turn was published after done: ${types.join(',')}`);
   assert.deepEqual(saved.turns.map(t => t.text), ['hi grandma']);
+});
+
+// ---- "end" right behind a burst: everything queued still reaches Muse ----
+
+test('"end" after a 20 s burst waits for the whole queue to reach the session before ending it', async () => {
+  const http = await import('node:http');
+  const { WebSocket } = await import('ws');
+  const { attachTranscribeSocket } = await import('../src/transcribe/wsRoute.js');
+  // the pacer's clock is hand-cranked, so the drain only moves when the test says so
+  let t = 0;
+  const timers = [];
+  const clock = {
+    now: () => t,
+    schedule: (fn, ms) => { const h = { at: t + ms, fn }; timers.push(h); return h; },
+    cancel: h => { const i = timers.indexOf(h); if (i >= 0) timers.splice(i, 1); },
+    tick(ms) {
+      const end = t + ms;
+      for (;;) {
+        timers.sort((a, b) => a.at - b.at);
+        if (!timers[0] || timers[0].at > end) break;
+        const next = timers.shift();
+        t = next.at;
+        next.fn();
+      }
+      t = end;
+    },
+  };
+  const saved = {};
+  const logged = [];
+  let sentAtEnd = null;
+  const openStream = ({ onEvent, onClose }) => Promise.resolve({
+    sent: 0,
+    sendAudio(buf) { this.sent += buf.length; },
+    async end() {
+      sentAtEnd = this.sent;
+      onEvent({ type: 'speechStart', turnId: 1, audioProcessedMs: 0 });
+      onEvent({ type: 'speechComplete', turnId: 1, transcript: 'all of it', audioProcessedMs: 20000 });
+      onClose(1000);
+    },
+  });
+  const server = http.createServer();
+  attachTranscribeSocket({ server, store: memStore(saved), log: (...a) => logged.push(a), config: { mock: false }, openStream, pace: { ...clock, leadMs: 1500, catchUp: 1.5 } });
+  await new Promise(r => server.listen(0, r));
+  const ws = new WebSocket(`ws://localhost:${server.address().port}/ws/transcribe?conversationId=c1`);
+  const got = [];
+  ws.on('message', raw => got.push(JSON.parse(raw.toString())));
+  const until = (pred, what) => new Promise((res, rej) => {
+    const giveUp = setTimeout(() => rej(new Error(`${what} never happened`)), 5000);
+    const tick = () => { if (pred()) { clearTimeout(giveUp); res(); } else setTimeout(tick, 5); };
+    tick();
+  });
+  try {
+    await until(() => got.some(m => m.type === 'ready'), 'ready');
+    // a stalled tunnel lets go: 20 s of audio lands in one burst, "end" right behind it
+    const FRAMES = 250;
+    for (let i = 0; i < FRAMES; i++) ws.send(Buffer.alloc(3840));
+    ws.send(JSON.stringify({ type: 'end' }));
+    await until(() => logged.some(([, , msg]) => /still queued, draining/.test(msg)), 'the drain notice');
+    assert.match(logged.find(([, , msg]) => /still queued/.test(msg))[2], /18\.\ds of audio/); // 20 s minus the 1.5 s lead
+    // the queue needs 20 s / 1.5 = 13.3 s; a fixed 5 s wait would have ended the session here
+    clock.tick(14000);
+    await until(() => got.some(m => m.type === 'done'), 'done');
+    assert.equal(sentAtEnd, FRAMES * 3840, 'every byte reached the session before it was asked to end');
+    assert.deepEqual(saved.turns.map(x => x.text), ['all of it']);
+  } finally {
+    ws.terminate();
+    server.close();
+  }
+});
+
+// ---- a second phone on a conversation that is still being recorded ----
+
+test('a new stream on a conversation still recording takes over: the old one keeps what it had, the new one continues after it', async () => {
+  const http = await import('node:http');
+  const { WebSocket } = await import('ws');
+  const { attachTranscribeSocket } = await import('../src/transcribe/wsRoute.js');
+  const saved = {};
+  const published = [];
+  const calls = [];
+  let ended = 0;
+  const openStream = sessionsStream([
+    { // the first phone: two lines heard, then its tunnel dies; Muse takes a while to confirm the end
+      onAudio(s, { onEvent }) {
+        if (s.sent !== 3840) return;
+        onEvent({ type: 'speechStart', turnId: 1, audioProcessedMs: 0 });
+        onEvent({ type: 'speaker', label: 'A', audioProcessedMs: 50 });
+        onEvent({ type: 'speechComplete', turnId: 1, transcript: 'hi abuela', audioProcessedMs: 900 });
+        onEvent({ type: 'speechStart', turnId: 2, audioProcessedMs: 1200 });
+        onEvent({ type: 'speaker', label: 'B', audioProcessedMs: 1250 });
+        onEvent({ type: 'speechComplete', turnId: 2, transcript: 'hola mija', audioProcessedMs: 2000 });
+      },
+      onEnd(s, { onClose }) { ended++; setTimeout(() => onClose(1000), 60); },
+    },
+    { // the resumed phone: Muse's clock, ids and letters start over
+      onAudio(s, { onEvent }) {
+        if (s.sent !== 3840) return;
+        onEvent({ type: 'speechStart', turnId: 1, audioProcessedMs: 0 });
+        onEvent({ type: 'speaker', label: 'A', audioProcessedMs: 50 });
+        onEvent({ type: 'speechComplete', turnId: 1, transcript: 'sorry, the phone died', audioProcessedMs: 1500 });
+      },
+      onEnd(s, { onClose }) { ended++; onClose(1000); },
+    },
+  ], calls);
+  const server = http.createServer();
+  attachTranscribeSocket({ server, store: memStore(saved), log: () => {}, config: { mock: false }, openStream, stage: { publish: m => published.push(m) } });
+  await new Promise(r => server.listen(0, r));
+  const url = `ws://localhost:${server.address().port}/ws/transcribe?conversationId=c1`;
+  const phone = () => {
+    const ws = new WebSocket(url);
+    const got = [];
+    ws.on('message', raw => got.push(JSON.parse(raw.toString())));
+    const until = type => new Promise(res => { const tick = () => got.some(m => m.type === type) ? res(got.find(m => m.type === type)) : setTimeout(tick, 5); tick(); });
+    return { ws, got, until };
+  };
+
+  const first = phone();
+  const second = phone;
+  let resumed;
+  try {
+    await first.until('ready');
+    first.ws.send(Buffer.alloc(3840));
+    await first.until('turn');
+    first.ws.terminate(); // no close frame, no "end"
+    await new Promise(r => setTimeout(r, 10));
+
+    resumed = second();
+    await resumed.until('ready');
+    assert.deepEqual(saved.turns.map(t => t.text), ['hi abuela', 'hola mija'], 'the first stream was finished with what it had before the second got going');
+    assert.ok(ended >= 1, 'the first Muse session was asked to end');
+    resumed.ws.send(Buffer.alloc(3840));
+    resumed.ws.send(JSON.stringify({ type: 'end' }));
+    const done = await resumed.until('done');
+    await new Promise(r => setTimeout(r, 100)); // the first session's late close must change nothing
+
+    assert.deepEqual(done.turns.map(t => [t.turnId, t.speaker, t.text, t.startMs, t.endMs]), [
+      [1, 'A', 'hi abuela', 0, 900],
+      [2, 'B', 'hola mija', 1200, 2000],
+      [3, 'A', 'sorry, the phone died', 2000, 3500], // ids and clock carry on; the fresh letter settles onto the first session's
+    ]);
+    assert.deepEqual(saved.turns, done.turns, 'the record is what the resumed phone was shown');
+    const dones = published.filter(m => m.type === 'done');
+    assert.deepEqual(dones.map(m => !!m.continued), [true, false], 'the stage heard both streams finish, the first marked as handed over');
+  } finally {
+    first.ws.terminate();
+    resumed?.ws.terminate();
+    server.close();
+  }
 });
 
 // A hand-rolled client that completes the upgrade and then sends one frame with RSV1 set,

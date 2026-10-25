@@ -1,12 +1,19 @@
 // Thin fetch wrapper. Every failure becomes an Error with a message that's
 // safe to put straight on screen.
 
+// The phone reaches the Mac through an ngrok tunnel, and ngrok's free tier puts a "You are
+// about to visit…" page in front of anything that looks like a browser until the user has
+// clicked through once. This header tells it not to bother; it means nothing to our server.
+const NGROK_SKIP = 'ngrok-skip-browser-warning';
+
+const PAGE_NOT_DATA = 'The server sent a web page instead of data. If ngrok showed a warning page, tap “Visit Site” and reload.';
+
 async function request(method, path, body) {
   let res;
   try {
     res = await fetch(path, {
       method,
-      headers: body ? { 'Content-Type': 'application/json' } : undefined,
+      headers: { [NGROK_SKIP]: '1', ...(body ? { 'Content-Type': 'application/json' } : {}) },
       body: body ? JSON.stringify(body) : undefined,
     });
   } catch {
@@ -14,10 +21,14 @@ async function request(method, path, body) {
   }
   if (res.status === 204) return null;
   let data = null;
-  try { data = await res.json(); } catch { /* empty or non-JSON body */ }
+  let parsed = false;
+  try { data = await res.json(); parsed = true; } catch { /* empty or non-JSON body */ }
   if (!res.ok) {
     throw new Error((data && data.error) || `Server said ${res.status}. Try again.`);
   }
+  // Every 2xx from our server is JSON (or a 204 above). A 200 that isn't is somebody else's page
+  // in the middle; handing null back used to crash the caller on `.id` with the mic left open.
+  if (!parsed) throw new Error(PAGE_NOT_DATA);
   return data;
 }
 
@@ -31,6 +42,7 @@ function uploadRecording(id, blob, offsetMs, onProgress) {
   const done = new Promise((resolve, reject) => {
     xhr.open('POST', `/api/conversations/${enc(id)}/recording?offsetMs=${enc(Math.round(offsetMs) || 0)}`);
     xhr.setRequestHeader('Content-Type', (blob.type || 'video/mp4').split(';')[0]);
+    xhr.setRequestHeader(NGROK_SKIP, '1');
     if (onProgress) {
       xhr.upload.onprogress = (e) => { if (e.lengthComputable) onProgress(e.loaded / e.total); };
     }
@@ -76,7 +88,7 @@ export const api = {
       if (otherName) body.otherName = otherName;
       fetch('/api/stage/focus', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', [NGROK_SKIP]: '1' },
         body: JSON.stringify(body),
         keepalive: true,
       }).catch(() => {});

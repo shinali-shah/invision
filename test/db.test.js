@@ -136,3 +136,25 @@ test('a database from before names, hooks and video opens and takes the new fiel
   assert.equal(store.createConversation({ tag: 'friend', otherName: 'Sam' }).otherName, 'Sam');
   store.close();
 });
+
+test('the logs table is capped: a long day keeps the newest few thousand lines, and an old bloated file shrinks on open', () => {
+  const { mkdtempSync, rmSync } = require('node:fs');
+  const { join } = require('node:path');
+  const { tmpdir } = require('node:os');
+  const dir = mkdtempSync(join(tmpdir(), 'playback-logs-'));
+  const path = join(dir, 'playback.db');
+  try {
+    let store = openStore(path);
+    for (let i = 0; i < 6000; i++) store.addLog({ agent: 'test', level: 'info', message: `line ${i}` });
+    const n = store.countLogs();
+    assert.ok(n <= 5000 + 250 && n >= 5000, `logs table holds ${n} rows`);
+    assert.equal(store.listLogs(1)[0].message, 'line 5999', 'the newest line is kept');
+    assert.equal(store.listLogs(100000).length, n);
+    store.close();
+    // reopening sweeps what the last sweep had not got to yet
+    store = openStore(path);
+    assert.equal(store.countLogs(), 5000);
+    assert.equal(store.listLogs(1)[0].message, 'line 5999');
+    store.close();
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});

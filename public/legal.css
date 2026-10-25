@@ -1,0 +1,139 @@
+/* Terms, privacy and consent. One long page of prose in the night / paper / marigold system.
+   Colours and fonts come from tokens.css; nothing here moves, so there is no motion to reduce. */
+@import url("tokens.css");
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font: 400 16px/1.55 var(--font-serif);
+  font-synthesis: none;
+}
+
+:focus-visible { outline: 2.5px solid var(--marigold); outline-offset: 3px; border-radius: 4px; }
+::selection { background: var(--marigold); color: var(--ink); }
+
+/* ---- header: the phone's night bar, with the same brand mark ---- */
+.bar {
+  display: flex; align-items: center; gap: 8px;
+  min-height: 64px;
+  padding: env(safe-area-inset-top) calc(env(safe-area-inset-right) + 16px) 0 calc(env(safe-area-inset-left) + 16px);
+  border-bottom: 1px solid var(--night-line);
+  background: var(--night); color: var(--bone);
+  position: sticky; top: 0; z-index: 10;
+}
+.brand {
+  display: inline-flex; align-items: center; gap: 8px;
+  min-height: 44px;
+  font: 900 24px/.8 var(--font-display); letter-spacing: -.01em; text-transform: uppercase;
+  color: var(--bone); text-decoration: none;
+}
+.brand-mark { width: 36px; height: 22px; flex: none; }
+.back {
+  margin-left: auto;
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 0 8px; min-height: 44px;
+  color: var(--bone);
+  font: 700 11.5px/1 var(--font-serif); letter-spacing: .12em; text-transform: uppercase; white-space: nowrap;
+  text-decoration: underline; text-underline-offset: 3px;
+}
+.back:hover, .back:active { color: var(--marigold); }
+
+/* ---- the document ---- */
+main {
+  max-width: 680px; margin: 0 auto;
+  padding: 28px calc(env(safe-area-inset-right) + 16px) 56px calc(env(safe-area-inset-left) + 16px);
+}
+
+.eyebrow {
+  display: block; margin: 0 0 12px;
+  color: var(--ink-2);
+  font-size: 11.5px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase;
+}
+.eyebrow time { color: var(--ink); }
+
+h1 {
+  margin: 0 0 20px;
+  font: 900 clamp(44px, 12vw, 80px)/.84 var(--font-display);
+  letter-spacing: -.01em; text-transform: uppercase;
+  text-wrap: balance;
+}
+
+.intro {
+  margin: 0 0 8px;
+  font-size: 18px; line-height: 1.5;
+  color: var(--ink);
+}
+.intro + .intro { color: var(--ink-2); font-size: 16px; }
+
+/* The sections list at the top doubles as a table of contents; phone screens need it. */
+.contents {
+  margin: 24px 0 8px; padding: 18px 20px;
+  border: 1.5px solid var(--ink); border-radius: 18px;
+  background: var(--white);
+}
+.contents .eyebrow { margin-bottom: 10px; }
+.contents ol {
+  margin: 0; padding: 0; list-style: none;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 6px 18px;
+}
+.contents a {
+  display: inline-block; padding: 4px 0;
+  color: var(--ink); font-weight: 600; text-decoration: underline; text-underline-offset: 3px;
+}
+.contents a:hover { color: var(--you); }
+
+section { padding-top: 36px; scroll-margin-top: 80px; }
+section + section { border-top: 1.5px solid var(--ink); margin-top: 36px; }
+
+h2 {
+  margin: 0 0 14px;
+  font: 900 clamp(28px, 7vw, 36px)/.9 var(--font-display);
+  letter-spacing: -.01em; text-transform: uppercase;
+}
+
+p { margin: 0 0 14px; }
+p:last-child { margin-bottom: 0; }
+a { color: inherit; }
+main a:not(.contents a) { text-decoration: underline; text-underline-offset: 3px; }
+main a:not(.contents a):hover { color: var(--you); }
+
+ul { margin: 0 0 14px; padding-left: 0; list-style: none; }
+li { position: relative; padding-left: 20px; margin-bottom: 10px; }
+li::before {
+  content: ""; position: absolute; left: 0; top: .62em;
+  width: 9px; height: 9px; border-radius: 50%; background: var(--marigold);
+}
+li b { font-weight: 700; }
+
+/* The one thing worth stopping the eye on. */
+.callout {
+  margin: 18px 0; padding: 18px 20px;
+  background: var(--night); color: var(--bone);
+  border-radius: 18px;
+}
+.callout .eyebrow { color: var(--marigold); margin-bottom: 8px; }
+.callout p { color: var(--bone); }
+.callout q { font-weight: 700; color: var(--white); quotes: "\201C" "\201D"; }
+
+code {
+  font: inherit; font-weight: 600;
+  padding: 0 5px; border-radius: 6px; background: var(--tint);
+}
+
+.muted { color: var(--ink-2); }
+
+footer {
+  max-width: 680px; margin: 0 auto;
+  padding: 0 calc(env(safe-area-inset-right) + 16px) 48px calc(env(safe-area-inset-left) + 16px);
+  color: var(--ink-3); font-size: 13px;
+}
+
+@media (max-width: 480px) {
+  .contents ol { grid-template-columns: 1fr; }
+  .intro { font-size: 17px; }
+}

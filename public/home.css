@@ -505,3 +505,14 @@ svg { display: block; vertical-align: middle; }
 .recording-card.is-recording .brief { margin:4px 0 14px; border-bottom:0; }
 
 .who-auto { margin:0; color:var(--bone-2); font-size:14px; line-height:1.5; max-width:52ch; }
+
+/* The one way from the Mac to the big-screen page (stage.html) now that Live is not a tab. Same
+   quiet weight as "Private to you" beside it. */
+.projector-link { color:inherit; text-decoration:underline; text-underline-offset:3px; }
+.projector-link:hover { color:var(--bone); }
+
+/* Legal line under the page. Schibsted at small-print size, the muted ink, nothing that pulls the eye. */
+.page-foot { max-width:1280px; margin:0 auto; padding:0 32px 28px; font-size:12px; line-height:1.5; color:var(--ink-3); }
+.page-foot a { color:inherit; text-decoration:underline; text-underline-offset:3px; }
+.page-foot a:hover { color:var(--ink); }
+@media (max-width:760px) { .page-foot { padding-left:16px; padding-right:16px; } }

@@ -97,6 +97,25 @@ test('hub replays the lines of a recording still going to a late joiner', () => 
   assert.deepEqual(sent.map(m => m.type), ['hello']);
 });
 
+test('a done marked continued (another stream took the recording over) keeps the focus and the live lines', () => {
+  const hub = createStageHub({ mock: true });
+  const sent = [];
+  const fake = () => ({ readyState: 1, OPEN: 1, send: s => sent.push(JSON.parse(s)), on() {} });
+  hub.focus({ view: 'recording', conversationId: 'c1' });
+  hub.publish({ type: 'turn', conversationId: 'c1', turn: { turnId: 1, speaker: 'A', text: 'one', startMs: 0, endMs: 900 } });
+  hub.publish({ type: 'done', conversationId: 'c1', turns: [], continued: true });
+  hub.subscribe(fake());
+  assert.equal(sent[0].focus.view, 'recording', 'the room is still watching a recording');
+  assert.deepEqual(sent.slice(1).map(m => [m.type, m.turn.turnId]), [['turn', 1]], 'the first stream\'s lines are still live');
+  // the stream that continued it ends for real
+  hub.publish({ type: 'turn', conversationId: 'c1', turn: { turnId: 2, speaker: 'B', text: 'two', startMs: 1000, endMs: 2000 } });
+  hub.publish({ type: 'done', conversationId: 'c1', turns: [] });
+  sent.length = 0;
+  hub.subscribe(fake());
+  assert.equal(sent[0].focus.view, 'label');
+  assert.equal(sent.length, 1);
+});
+
 test('hub forgets a deleted conversation, including when it was the one in focus', () => {
   const hub = createStageHub({ mock: true });
   const sent = [];
@@ -143,6 +162,31 @@ test('hub skips closed sockets and cuts off one that stopped reading', () => {
   // a client that sends garbage emits 'error'; without a listener that would crash the process
   assert.equal(typeof listeners.error, 'function');
   assert.doesNotThrow(() => listeners.error(new Error('invalid frame')));
+});
+
+test('hub pings its subscribers and cuts off one that stops answering', async () => {
+  const hub = createStageHub({ mock: true, keepaliveMs: 15 });
+  const sock = ({ answers }) => {
+    const listeners = {};
+    const ws = {
+      readyState: 1, OPEN: 1, pings: 0, terminated: 0,
+      send() {},
+      on(ev, fn) { listeners[ev] = fn; },
+      ping() { this.pings++; if (answers) listeners.pong(); },
+      terminate() { this.terminated++; listeners.close(); },
+    };
+    return ws;
+  };
+  const tv = sock({ answers: true });
+  const dead = sock({ answers: false });
+  hub.subscribe(tv);
+  hub.subscribe(dead);
+  await new Promise(r => setTimeout(r, 60));
+  assert.ok(tv.pings >= 2, `the live one was pinged ${tv.pings} times`);
+  assert.equal(tv.terminated, 0);
+  assert.equal(dead.terminated, 1, 'one missed pong and the dead socket is gone');
+  assert.equal(dead.pings, 1, 'and it is not pinged again');
+  hub.close();
 });
 
 test('focus endpoint validates the view and broadcasts it', async () => {

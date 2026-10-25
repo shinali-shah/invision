@@ -10,8 +10,10 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="tokens.css">
   <style>
-    /* The Mac side in one place: Home plans, Live follows the phone, Replay digs into a finished
-       conversation. All three stay loaded once opened, so switching is instant and nothing loses its place. */
+    /* The Mac side in one place: Home plans and follows the phone, Replay digs into a finished
+       conversation. Both stay loaded once opened, so switching is instant and nothing loses its place.
+       The projector view is its own page (stage.html), not a tab: Home's recording card already shows
+       the live transcript, so a third tab only duplicated it. */
     *, *::before, *::after { box-sizing: border-box; }
     html, body { height: 100%; margin: 0; }
     body { display: flex; flex-direction: column; background: var(--paper); color: var(--ink); font: 400 16px/1.4 var(--sans); font-synthesis: none; }
@@ -81,7 +83,6 @@
     </div>
     <nav class="sd-tabs" role="tablist" aria-label="Sections">
       <button class="status-pill sd-tab" role="tab" id="tab-home" aria-controls="pane-home" aria-selected="true">Home</button>
-      <button class="status-pill sd-tab" role="tab" id="tab-live" aria-controls="pane-live" aria-selected="false" tabindex="-1">Live</button>
       <button class="status-pill sd-tab" role="tab" id="tab-replay" aria-controls="pane-replay" aria-selected="false" tabindex="-1">Replay<span class="sd-dot" id="replay-dot" hidden></span></button>
     </nav>
     <div class="header-actions">
@@ -96,7 +97,6 @@
   </header>
   <div class="sd-panes">
     <iframe class="sd-pane" id="pane-home" role="tabpanel" aria-labelledby="tab-home" title="Home"></iframe>
-    <iframe class="sd-pane" id="pane-live" role="tabpanel" aria-labelledby="tab-live" title="Live" hidden></iframe>
     <iframe class="sd-pane" id="pane-replay" role="tabpanel" aria-labelledby="tab-replay" title="Replay" hidden></iframe>
   </div>
 
@@ -112,9 +112,9 @@
       return s ? `${path}?${s}` : path;
     };
 
-    const ORDER = ['home', 'live', 'replay'];
-    const panes = { home: $('pane-home'), live: $('pane-live'), replay: $('pane-replay') };
-    const pages = { home: 'home.html', live: 'stage.html' };
+    const ORDER = ['home', 'replay'];
+    const panes = { home: $('pane-home'), replay: $('pane-replay') };
+    const pages = { home: 'home.html' };
     let current = 'home';
     let replayId = null; // what the Replay pane was last pointed at
     let readyId = null;
@@ -151,7 +151,7 @@
         tab.setAttribute('aria-selected', String(key === name));
         tab.tabIndex = key === name ? 0 : -1;
       }
-      // Same reason as above: load Home and Live the first time they're actually on screen.
+      // Same reason as above: load Home the first time it's actually on screen.
       if (pages[name] && !panes[name].src) panes[name].src = withTheme(pages[name]);
       // Home's wash runs up behind the header; the other panes sit on plain paper.
       $('shell-header').classList.toggle('with-wash', name === 'home');
@@ -161,7 +161,6 @@
 
     const go = name => (name === 'replay' ? openReplay(replayId ?? readyId) : show(name));
     $('tab-home').addEventListener('click', () => show('home'));
-    $('tab-live').addEventListener('click', () => show('live'));
     $('tab-replay').addEventListener('click', () => openReplay(readyId && !panes.replay.src ? readyId : replayId));
     $('ready-open').addEventListener('click', () => { if (readyId) openReplay(readyId); });
 
@@ -178,7 +177,7 @@
       const t = e.target;
       if (t && t.closest && t.closest('input, textarea, select, [contenteditable]')) return;
       if (e.metaKey || e.ctrlKey || e.altKey) return;
-      const i = ['1', '2', '3'].indexOf(e.key);
+      const i = ['1', '2'].indexOf(e.key);
       if (i >= 0) go(ORDER[i]);
     }
     document.addEventListener('keydown', hotkeys);
@@ -259,6 +258,7 @@
       if (initials) $('avatar').textContent = initials;
     }).catch(() => {});
 
+    // Anything unknown, including the old #live from before the tab went away, lands on Home.
     const [name, id] = location.hash.slice(1).split('=');
     if (name === 'replay') openReplay(id || null);
     else show(ORDER.includes(name) ? name : 'home');

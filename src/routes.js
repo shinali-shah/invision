@@ -1,6 +1,7 @@
 import express from 'express';
 import { createWriteStream, mkdirSync, existsSync, rmSync, readFileSync, writeFileSync, renameSync } from 'node:fs';
 import { join, resolve } from 'node:path';
+import { randomUUID } from 'node:crypto';
 import { pipeline as pump } from 'node:stream/promises';
 import { alignBehavior, cleanFrames } from './behavior/align.js';
 import { generateInsight } from './agents/insight.js';
@@ -192,6 +193,7 @@ export function createApp({ store, llm, log, config, publicDir = 'public', stage
         followUp = await writeFollowUp({ llm, log, convo });
       }
       const updated = store.updateConversation(convo.id, { followUp });
+      if (!updated) return gone(res); // deleted while Muse was drafting
       stage.publish({ type: 'conversation', conversation: updated });
       res.json(updated.followUp);
     } catch (err) { next(err); }
@@ -241,7 +243,9 @@ export function createApp({ store, llm, log, config, publicDir = 'public', stage
     if (!ext) return fail(res, 415, 'Send the video as video/mp4 or video/webm');
     if (Number(req.headers['content-length']) > MAX_VIDEO) return fail(res, 413, 'Video is too large');
     mkdirSync(recordingsDir, { recursive: true });
-    const tmp = join(recordingsDir, `${convo.id}.upload`);
+    // Two uploads for the same conversation (a retry racing the first attempt) each get their
+    // own temp file; sharing one meant interleaved bytes and a rename that threw.
+    const tmp = join(recordingsDir, `${convo.id}.${randomUUID()}.upload`);
     let bytes = 0;
     req.on('data', chunk => {
       bytes += chunk.length;
@@ -252,9 +256,18 @@ export function createApp({ store, llm, log, config, publicDir = 'public', stage
     } catch (err) {
       rmSync(tmp, { force: true });
       if (bytes > MAX_VIDEO) return fail(res, 413, 'Video is too large');
+      // The phone hung up before the last byte (a tunnel drop, a reload, a lying Content-Length):
+      // nobody is there to answer, and it is not a fault of ours to log as one.
+      if (req.destroyed || err.code === 'ECONNRESET' || err.message === 'aborted') {
+        log('video', 'warn', `upload for ${convo.id.slice(0, 8)} dropped after ${(bytes / 1e6).toFixed(1)} MB`);
+        return res.destroy();
+      }
       return next(err);
     }
     if (!bytes) { rmSync(tmp, { force: true }); return fail(res, 400, 'Video was empty'); }
+    // Deleted while the bytes were arriving: the delete already swept the folder, so a rename
+    // now would leave a video for a conversation that no longer exists.
+    if (!store.getConversation(convo.id)) { rmSync(tmp, { force: true }); return gone(res); }
     removeVideo(convo.id);
     renameSync(tmp, join(recordingsDir, `${convo.id}.${ext}`));
     const offsetMs = Number.isFinite(Number(req.query.offsetMs)) ? Math.round(Number(req.query.offsetMs)) : 0;
@@ -312,16 +325,20 @@ export function createApp({ store, llm, log, config, publicDir = 'public', stage
         model: req.body.model, fps: Number(req.body.fps), frames,
         turns: speechTurns(labeled.turns), userLabel: userLabelFor(labeled), signals: labeled.signals, hooks: labeled.hooks,
       });
+      let updated = store.updateConversation(convo.id, { behavior, insight: null });
+      if (!updated) return gone(res);
       mkdirSync(recordingsDir, { recursive: true });
       writeFileSync(framesPath(convo.id), JSON.stringify(frames));
       log('vision', 'info', `face cues aligned: ${behavior.frameCount} frames, face in ${Math.round(behavior.faceSeenPct * 100)}%`, behavior.stats);
-      let updated = store.updateConversation(convo.id, { behavior, insight: null });
       stage.publish({ type: 'conversation', conversation: updated });
       const insight = await insightFor(updated);
-      // The video may have been replaced while Muse was thinking.
-      if (store.getConversation(convo.id)?.recording?.uploadedAt !== updated.recording?.uploadedAt) return fail(res, 409, 'The video changed; analyse it again');
+      // The video may have been replaced, or the whole conversation deleted, while Muse was thinking.
+      const current = store.getConversation(convo.id);
+      if (!current) return gone(res);
+      if (current.recording?.uploadedAt !== updated.recording?.uploadedAt) return fail(res, 409, 'The video changed; analyse it again');
       log('insight', insight.source === 'fallback' ? 'warn' : 'info', insight.source === 'fallback' ? 'insight from the numbers alone' : 'insight written');
       updated = store.updateConversation(convo.id, { insight });
+      if (!updated) return gone(res);
       stage.publish({ type: 'conversation', conversation: updated });
       res.json({ behavior, insight });
     } catch (err) { next(err); }
@@ -347,6 +364,7 @@ export function createApp({ store, llm, log, config, publicDir = 'public', stage
       if (!ready) return gone(res);
       const insight = await insightFor(ready);
       const updated = store.updateConversation(convo.id, { insight });
+      if (!updated) return gone(res); // deleted while Muse was thinking
       stage.publish({ type: 'conversation', conversation: updated });
       res.json(insight);
     } catch (err) { next(err); }

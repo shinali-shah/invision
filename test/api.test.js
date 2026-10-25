@@ -357,7 +357,8 @@ async function scratchApp({ store, llm, stage } = {}) {
   const http = await import('node:http');
   const real = openStore();
   store = store ? store(real) : real;
-  const app = createApp({ store, llm: llm ?? createLlm({ mock: true }), log: createLogger(real, { quiet: true }), config, stage, recordingsDir: mkdtempSync(join(tmpdir(), 'playback-scratch-')) });
+  const recordingsDir = mkdtempSync(join(tmpdir(), 'playback-scratch-'));
+  const app = createApp({ store, llm: llm ?? createLlm({ mock: true }), log: createLogger(real, { quiet: true }), config, stage, recordingsDir });
   const server = http.createServer(app);
   await new Promise(r => server.listen(0, r));
   const call = async (method, path, body) => {
@@ -369,7 +370,13 @@ async function scratchApp({ store, llm, stage } = {}) {
   for (const e of DEMO_EVENTS) asm.push(e);
   const frames = [];
   for (let t = 0; t <= 32500; t += 200) frames.push({ t, face: true, smile: 0.3, jawOpen: t % 400 ? 0.5 : 0.1, browUp: 0, yaw: 0, pitch: 0 });
-  return { store: real, call, frames, turns: asm.flush(), close: () => server.close() };
+  // raw body upload, for the video route
+  const upload = async (path, body, headers = {}) => {
+    const res = await fetch(`http://localhost:${server.address().port}${path}`, { method: 'POST', headers: { 'Content-Type': 'video/mp4', ...headers }, body });
+    const text = await res.text();
+    return { status: res.status, body: text ? JSON.parse(text) : null };
+  };
+  return { store: real, call, upload, frames, turns: asm.flush(), recordingsDir, port: () => server.address().port, close: () => server.close() };
 }
 
 test('a conversation deleted while coaching runs answers 404 on every screen, not a crash or a null', async () => {
@@ -516,4 +523,129 @@ test('behavior, process, insight and a tag change landing together pay Muse once
   } finally {
     server.close();
   }
+});
+
+test('.env typos behave as the README says: MOCK=true is mock, a bad PORT falls back, blanks mean defaults', async () => {
+  const { readConfig } = await import('../src/config.js');
+  assert.equal(readConfig({ MODEL_API_KEY: 'k', MOCK: 'true' }).mock, true);
+  assert.equal(readConfig({ MODEL_API_KEY: 'k', MOCK: '1' }).mock, true);
+  assert.equal(readConfig({ MODEL_API_KEY: 'k', MOCK: '' }).mock, false);
+  assert.equal(readConfig({ MODEL_API_KEY: 'k', MOCK: '0' }).mock, false);
+  assert.equal(readConfig({ MODEL_API_KEY: '   ' }).mock, true, 'a blank key is no key');
+  assert.equal(readConfig({ PORT: 'abc' }).port, 3000);
+  assert.equal(readConfig({ PORT: '' }).port, 3000);
+  assert.equal(readConfig({ PORT: '41873' }).port, 41873);
+  const bare = readConfig({});
+  assert.deepEqual(bare.languages, ['English', 'Spanish']);
+  assert.equal(bare.userName, 'Parth');
+  assert.equal(bare.dbPath, 'data/playback.db');
+  assert.equal(bare.recordingsDir, 'data/recordings');
+  assert.equal(readConfig({ USER_NAME: ' Priya ' }).userName, 'Priya');
+  assert.deepEqual(readConfig({ DEMO_LANGUAGES: 'English, Hindi ,' }).languages, ['English', 'Hindi']);
+});
+
+// ---- deleted while a slower screen was still working on it ----
+
+test('a conversation deleted while the follow-up drafts, the insight writes or the cues align answers 404 and writes nothing back', async () => {
+  const { readdirSync } = await import('node:fs');
+  const quick = (await import('../src/llm.js')).createLlm({ mock: true });
+  const slow = { mock: true, json: async args => { await new Promise(r => setTimeout(r, 30)); return quick.json(args); } };
+  const published = [];
+  const { store, call, frames, turns, recordingsDir, close } = await scratchApp({ llm: slow, stage: { publish: m => published.push(m), focus() {} } });
+  const later = ms => new Promise(r => setTimeout(r, ms));
+  const coached = async () => {
+    const convo = store.createConversation({ tag: 'friend', otherName: 'Sam' });
+    store.updateConversation(convo.id, { turns, userLabel: 'A' });
+    assert.equal((await call('POST', `/api/conversations/${convo.id}/process`, { reflection: '' })).status, 200);
+    return convo;
+  };
+  try {
+    for (const [name, start] of [
+      ['follow-up', id => call('POST', `/api/conversations/${id}/follow-up`, { regenerate: true })],
+      ['insight', id => call('POST', `/api/conversations/${id}/insight`, {})],
+      ['behavior', id => call('POST', `/api/conversations/${id}/behavior`, { frames, fps: 5 })],
+    ]) {
+      const convo = await coached();
+      const pending = start(convo.id);
+      await later(10); // Muse is "thinking" when the delete lands
+      assert.equal((await call('DELETE', `/api/conversations/${convo.id}`)).status, 204, name);
+      const r = await pending;
+      assert.equal(r.status, 404, `${name}: ${JSON.stringify(r.body)}`);
+      assert.equal(r.body.error, 'Conversation not found', name);
+      assert.equal(store.getConversation(convo.id), null, name);
+      assert.ok(!readdirSync(recordingsDir).some(f => f.startsWith(convo.id)), `${name}: left ${readdirSync(recordingsDir)}`);
+    }
+    assert.ok(published.every(m => m.type !== 'conversation' || m.conversation), 'no screen was handed a null conversation');
+  } finally { close(); }
+});
+
+test('an upload that finishes after its conversation was deleted is dropped, and two uploads racing leave one consistent file', async () => {
+  const { readdirSync, statSync } = await import('node:fs');
+  const { join } = await import('node:path');
+  const http = await import('node:http');
+  const { store, upload, recordingsDir, port, close } = await scratchApp();
+  const files = id => readdirSync(recordingsDir).filter(f => f.startsWith(id));
+  // streams `chunks` with a pause between them, so a delete (or another upload) can land mid-way
+  const slowUpload = (id, chunks, { between, query = '' } = {}) => new Promise((resolve, reject) => {
+    const req = http.request(`http://localhost:${port()}/api/conversations/${id}/recording${query}`, { method: 'POST', headers: { 'Content-Type': 'video/mp4', 'Content-Length': chunks.reduce((n, c) => n + c.length, 0) } }, res => {
+      let text = '';
+      res.on('data', d => { text += d; });
+      res.on('end', () => resolve({ status: res.statusCode, body: text ? JSON.parse(text) : null }));
+    });
+    req.on('error', reject);
+    (async () => {
+      for (const [i, c] of chunks.entries()) {
+        req.write(c);
+        if (i === 0) await between?.();
+        await new Promise(r => setTimeout(r, 5));
+      }
+      req.end();
+    })();
+  });
+  try {
+    const gone = store.createConversation({ tag: 'friend', otherName: 'Sam' });
+    const r = await slowUpload(gone.id, [Buffer.alloc(4096), Buffer.alloc(4096)], {
+      between: async () => { store.deleteConversation(gone.id); },
+    });
+    assert.equal(r.status, 404, JSON.stringify(r.body));
+    assert.deepEqual(files(gone.id), [], 'no video for a conversation that is gone');
+
+    const convo = store.createConversation({ tag: 'friend', otherName: 'Sam' });
+    let quick;
+    const slow = slowUpload(convo.id, Array.from({ length: 4 }, () => Buffer.alloc(16384, 7)), {
+      query: '?offsetMs=10',
+      between: async () => { quick = await upload(`/api/conversations/${convo.id}/recording?offsetMs=20`, Buffer.alloc(1024, 9), { 'Content-Type': 'video/webm' }); },
+    });
+    const late = await slow;
+    assert.equal(quick.status, 201);
+    assert.equal(late.status, 201, JSON.stringify(late.body));
+    const left = files(convo.id);
+    const recording = store.getConversation(convo.id).recording;
+    assert.deepEqual(left, [`${convo.id}.${recording.ext}`], 'exactly one video, the one on record');
+    assert.equal(statSync(join(recordingsDir, left[0])).size, recording.bytes);
+    assert.equal(recording.bytes, 4 * 16384, 'the upload that finished last is the one kept');
+    assert.equal(recording.offsetMs, 10);
+  } finally { close(); }
+});
+
+test('a phone that hangs up mid-upload leaves no temp file and is not logged as a server error', async () => {
+  const { readdirSync } = await import('node:fs');
+  const http = await import('node:http');
+  const { store, recordingsDir, port, close } = await scratchApp();
+  try {
+    const convo = store.createConversation({ tag: 'friend', otherName: 'Sam' });
+    await new Promise(resolve => {
+      const req = http.request(`http://localhost:${port()}/api/conversations/${convo.id}/recording`, { method: 'POST', headers: { 'Content-Type': 'video/mp4', 'Content-Length': 100000 } });
+      req.on('error', () => resolve());
+      req.on('close', () => resolve());
+      req.write(Buffer.alloc(10000));
+      setTimeout(() => req.destroy(), 20);
+    });
+    await new Promise(r => setTimeout(r, 50));
+    assert.deepEqual(readdirSync(recordingsDir).filter(f => f.startsWith(convo.id)), []);
+    assert.equal(store.getConversation(convo.id).recording, null);
+    const logs = store.listLogs(50);
+    assert.ok(!logs.some(l => l.level === 'error'), JSON.stringify(logs.filter(l => l.level === 'error')));
+    assert.ok(logs.some(l => l.agent === 'video' && /dropped/.test(l.message)), 'the drop is noted, as a warning');
+  } finally { close(); }
 });

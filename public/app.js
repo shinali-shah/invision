@@ -1,5 +1,5 @@
 import { api, transcribeSocketUrl } from './api.js';
-import { createResampler, micErrorMessage, isCameraError, pickRecorderMime, createLeveler, rmsOf, toDb } from './mic.js';
+import { createResampler, micErrorMessage, isCameraError, pickRecorderMime, createLeveler, rmsOf, toDb, videoTooLarge } from './mic.js';
 import { startLipLock } from './lips.js';
 
 // Spec copy, verbatim. Mirrors src/agents/context.js TAG_FOCUS.
@@ -21,6 +21,13 @@ const BRIEF_DEBOUNCE_MS = 400;
 
 const FRAME_SAMPLES = 1920; // 80 ms at 24 kHz = 3840 bytes
 const DONE_TIMEOUT_MS = 20000;
+// How long after coming back from the lock screen (or another app) a dropped socket or a dead
+// mic still gets blamed on that, rather than on the tunnel.
+const AWAY_GRACE_MS = 10000;
+
+const PAUSED_COPY = 'Audio paused (screen lock or a call?). Keep the screen on and unlocked. Trying to resume…';
+const MIC_GONE_COPY = 'Recording stopped: the microphone was taken away (screen lock, a call, or another app). Here is what it caught.';
+const AWAY_DROP_COPY = 'Recording stopped because the screen locked or the app went to the background. Here is what it caught.';
 
 const AUDIO_CONSTRAINTS = { echoCancellation: false, noiseSuppression: false, autoGainControl: true };
 const VIDEO_CONSTRAINTS = {
@@ -400,6 +407,9 @@ function beginCapture(convo, ctx, stream, videoNote = null) {
     chunks: [],
     videoAt: null,      // video time 0, from the recorder's start event
     lips: null,         // lip lock, while the camera is on
+    wake: null,         // screen wake lock sentinel, while the screen is ours to keep on
+    backAt: null,       // when the page last came back from the lock screen or another app
+    stopReason: null,   // why we stopped when it wasn't the Stop button; the label view repeats it
   };
   state.rec = rec;
 
@@ -427,18 +437,19 @@ function beginCapture(convo, ctx, stream, videoNote = null) {
     pushSamples(rec, rec.resample(e.data));
   };
 
-  // iOS suspends the context on screen lock, a phone call or Siri, and the
-  // mic just goes quiet. Try to pick back up and say so instead of failing silently.
+  // iOS suspends the context on screen lock, a phone call or Siri (Safari reports it as
+  // 'interrupted'), and the mic just goes quiet. resume() on an interrupted context waits for
+  // the interruption to end, so calling it now is the right move; say so instead of failing silently.
   ctx.onstatechange = () => {
-    if (rec.stopping || ctx.state === 'running' || ctx.state === 'closed') return;
-    showError('rec-error', 'Audio paused (screen lock or a call?). Keep the screen on. Trying to resume…');
-    ctx.resume().then(() => {
-      if (!rec.stopping && ctx.state === 'running') showError('rec-error', null);
-    }).catch(() => {});
+    if (rec.stopping || ctx.state === 'closed') return;
+    if (ctx.state === 'running') { showError('rec-error', null); return; }
+    showError('rec-error', PAUSED_COPY);
+    ctx.resume().catch(() => {});
   };
   // The permission sheet on first use can leave the context suspended even
   // though we resumed it in the tap. Once the mic is live iOS lets us resume.
   if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+  watchDevice(rec);
 
   ws.onopen = () => {
     for (const f of rec.queue) ws.send(f);
@@ -470,6 +481,8 @@ function beginCapture(convo, ctx, stream, videoNote = null) {
     videoNote = 'This browser can’t record video, so this one is audio only.';
   }
   if (rec.recorder) startLips(rec);
+  // Camera was wanted and didn't come: the note says why, the pill says what it means.
+  else if (videoNote) showLipsOff();
   $('rec-note').textContent = videoNote || '';
   $('rec-note').hidden = !videoNote;
   $('stop-btn').disabled = false;
@@ -661,6 +674,13 @@ function startVideo(rec) {
   try {
     recorder = new MediaRecorder(stream, { ...(mimeType ? { mimeType } : {}), videoBitsPerSecond: 1_000_000 });
     recorder.ondataavailable = (e) => { if (e.data && e.data.size) rec.chunks.push(e.data); };
+    // The encoder giving up (iOS does this when the system wants the camera back) leaves the
+    // recorder inactive with its chunks intact; endVideo uploads those at Stop. Just say so.
+    recorder.onerror = () => {
+      if (rec.stopping) return;
+      $('rec-note').textContent = 'Video stopped early. What was captured is kept; the audio carries on.';
+      $('rec-note').hidden = false;
+    };
     // The recording's clock starts when start() is called, not when the start event fires;
     // in Chrome that event lands ~60 ms later, after the encoders have spun up.
     rec.videoAt = Date.now();
@@ -718,6 +738,13 @@ function stopLips(rec) {
   rec.lips = null;
 }
 
+function showLipsOff() {
+  const pill = $('lip-pill');
+  pill.textContent = LIP_COPY.off;
+  pill.className = 'rec-tag lip-tag off';
+  pill.hidden = false;
+}
+
 function renderLipState({ status, box }) {
   const pill = $('lip-pill');
   pill.textContent = LIP_COPY[status] || 'Lip lock';
@@ -764,6 +791,9 @@ function endVideo(rec, keep) {
       if (!blob.size) return;
       // Video time of transcript 0. Negative if audio started before the recorder did.
       const offsetMs = (rec.firstAudioAt ?? rec.startedAt) - (rec.videoAt ?? rec.startedAt);
+      // Past the server's limit there's nothing to retry with, so no blob is kept either.
+      const tooBig = videoTooLarge(blob.size);
+      if (tooBig) { state.uploads.set(id, { blob: null, offsetMs, status: 'failed', pct: 0, error: tooBig, recording: null }); renderVideo(); return; }
       state.uploads.set(id, { blob, offsetMs, status: 'uploading', pct: 0, error: null, recording: null });
       uploadVideo(id);
     };
@@ -781,7 +811,7 @@ function endVideo(rec, keep) {
 
 async function uploadVideo(id) {
   const up = state.uploads.get(id);
-  if (!up || up.status === 'done') return;
+  if (!up || up.status === 'done' || !up.blob) return;
   up.status = 'uploading';
   up.pct = 0;
   up.error = null;
@@ -823,9 +853,10 @@ function renderVideo() {
       return el('p', { class: 'video-line', text: `Uploading video… ${up.pct}%` });
     }
     if (up.status === 'done') return el('p', { class: 'video-line saved', text: 'Video saved' });
+    // The same blob goes again on Retry; a network blip mid-upload doesn't cost the video.
     return el('div', { class: 'video-failed' },
       el('p', { class: 'video-line failed', text: `Video didn’t upload. ${up.error || ''}`.trim() }),
-      el('button', { type: 'button', class: 'retry-btn', text: 'Retry upload', onclick: () => uploadVideo(convo.id) }));
+      up.blob ? el('button', { type: 'button', class: 'retry-btn', text: 'Retry upload', onclick: () => uploadVideo(convo.id) }) : null);
   };
 
   const label = $('label-video');
@@ -941,12 +972,85 @@ function releaseAudio(rec) {
   try { rec.source && rec.source.disconnect(); } catch { /* ignore */ }
   rec.stream.getTracks().forEach((t) => t.stop());
   if (rec.ctx.state !== 'closed') rec.ctx.close().catch(() => {});
+  // The screen is theirs again.
+  if (rec.onVisibility) document.removeEventListener('visibilitychange', rec.onVisibility);
+  if (rec.wake) { rec.wake.release().catch(() => {}); rec.wake = null; }
 }
 
-function stopRecording() {
+// ---------- screen lock, app switch, the mic being taken away ----------
+// iOS Safari (16.4+ for the wake lock; the rest is older) takes the mic and camera back when
+// the screen locks, a call comes in or the user switches apps. Depending on which, the tracks
+// mute and come back, or end for good, the AudioContext goes 'interrupted' and the socket can
+// be dropped. The wake lock keeps the screen from locking on its own while we record; the rest
+// is noticing what happened and ending cleanly instead of sitting on "Wrapping up".
+
+async function holdScreen(rec) {
+  if (!navigator.wakeLock || rec.stopping || rec.wake || document.visibilityState !== 'visible') return;
+  try {
+    const lock = await navigator.wakeLock.request('screen');
+    if (rec.stopping || rec.wake) { lock.release().catch(() => {}); return; }
+    rec.wake = lock;
+    // Released by the system on lock or app switch; visibilitychange asks for it back.
+    lock.addEventListener('release', () => { if (rec.wake === lock) rec.wake = null; });
+  } catch { /* Low Power Mode or an older Safari says no; they keep the screen on by hand */ }
+}
+
+// True while away, or for a little after coming back: what broke then is the lock screen's fault.
+function wasAway(rec) {
+  return document.visibilityState !== 'visible' || (rec.backAt !== null && Date.now() - rec.backAt < AWAY_GRACE_MS);
+}
+
+function watchDevice(rec) {
+  holdScreen(rec);
+  rec.onVisibility = () => {
+    if (rec.stopping || document.visibilityState !== 'visible') return;
+    rec.backAt = Date.now();
+    holdScreen(rec);
+    if (rec.ctx.state !== 'running' && rec.ctx.state !== 'closed') rec.ctx.resume().catch(() => {});
+    // An `ended` that happened while the page was frozen may or may not be delivered as an event.
+    if (rec.stream.getAudioTracks().some((t) => t.readyState === 'ended')) micGone(rec);
+  };
+  document.addEventListener('visibilitychange', rec.onVisibility);
+  for (const t of rec.stream.getAudioTracks()) {
+    t.addEventListener('ended', () => micGone(rec));
+    // Muted is the interruption itself (screen lock, call); unmuted is it ending.
+    t.addEventListener('mute', () => { if (!rec.stopping) showError('rec-error', PAUSED_COPY); });
+    t.addEventListener('unmute', () => {
+      if (rec.stopping) return;
+      if (rec.ctx.state === 'running') showError('rec-error', null);
+      else if (rec.ctx.state !== 'closed') rec.ctx.resume().catch(() => {}); // onstatechange clears the message
+    });
+  }
+  for (const t of rec.stream.getVideoTracks()) {
+    t.addEventListener('ended', () => cameraGone(rec));
+  }
+}
+
+// The mic is gone for good: finish with what we have. Same path as the Stop button, so the
+// server wraps up the transcript and the label step follows; the reason lands on that view.
+function micGone(rec) {
+  if (rec.stopping) return;
+  stopRecording(wasAway(rec) ? AWAY_DROP_COPY : MIC_GONE_COPY);
+}
+
+// The camera went away but the mic is fine: carry on audio only. The recorder is left alone
+// (it stops itself or keeps writing sound); endVideo at Stop uploads whatever it wrote.
+function cameraGone(rec) {
+  if (rec.stopping || !rec.recorder) return;
+  stopLips(rec);
+  hidePreview();
+  showLipsOff();
+  $('rec-note').textContent = 'The camera stopped, so the rest is audio only.';
+  $('rec-note').hidden = false;
+}
+
+// reason: why we stopped when the user didn't tap Stop (the mic was taken away). Shown on the
+// label view once the transcript lands.
+function stopRecording(reason = null) {
   const rec = state.rec;
   if (!rec || rec.stopping) return;
   rec.stopping = true;
+  rec.stopReason = typeof reason === 'string' ? reason : null;
   clearInterval(rec.timer);
   const stopBtn = $('stop-btn');
   stopBtn.disabled = true;
@@ -967,7 +1071,9 @@ function stopRecording() {
 
   rec.doneTimer = setTimeout(() => {
     if (rec.finished) return;
-    showError('label-error', 'The transcript took too long to finish. Showing what arrived.');
+    // A socket the tunnel quietly dropped never answers the end; the mic going away usually
+    // comes with one of those, and then its reason is the one worth reading.
+    showError('label-error', rec.stopReason || 'The transcript took too long to finish. Showing what arrived.');
     finishRecording(rec, rec.turns.length ? rec.turns : liveTurnsAsList(), { keepError: true });
   }, DONE_TIMEOUT_MS);
 }
@@ -982,7 +1088,11 @@ function finishRecording(rec, turns, { keepError = false, userLabel = null, labe
     rec.stopping = true;
     endVideo(rec, true);
     releaseAudio(rec);
-    if (!keepError) showError('label-error', rec.lastError || 'The transcriber disconnected early. Here is what it caught.');
+    const why = rec.lastError || (wasAway(rec) ? AWAY_DROP_COPY : 'The transcriber disconnected early. Here is what it caught.');
+    if (!keepError) showError('label-error', why);
+    keepError = true;
+  } else if (rec.stopReason && !keepError) {
+    showError('label-error', rec.stopReason);
     keepError = true;
   }
   try { if (rec.ws.readyState <= WebSocket.OPEN) rec.ws.close(1000); } catch { /* ignore */ }
@@ -1678,7 +1788,7 @@ function init() {
   $('other-name').addEventListener('input', onNameInput);
   $('add-name-btn').addEventListener('click', () => showNameField(true));
   $('record-btn').addEventListener('click', startRecording);
-  $('stop-btn').addEventListener('click', stopRecording);
+  $('stop-btn').addEventListener('click', () => stopRecording());
   $('rec-person').addEventListener('click', startNameEdit);
   $('person-edit').addEventListener('submit', saveNameEdit);
   $('person-input').addEventListener('keydown', (e) => { if (e.key === 'Escape') cancelNameEdit(); });

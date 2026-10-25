@@ -58,9 +58,10 @@
       </label>
       <p class="hint camera-hint" id="camera-hint">Point the phone at them. Video stays on your Mac.</p>
 
+      <!-- app.js rewrites #consent-text when the camera toggles; the legal link sits beside it so it survives that. -->
       <label class="consent">
         <input type="checkbox" id="consent">
-        <span id="consent-text">I told them I'm recording</span>
+        <span><span id="consent-text">I told them I'm recording</span><br><small><a class="inline-link" href="/legal.html" target="_blank" rel="noopener" style="font-weight: 500; color: var(--ink-2);">Terms, privacy and consent</a></small></span>
       </label>
 
       <div class="record-wrap">

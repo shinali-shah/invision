@@ -145,3 +145,15 @@ test('a sink that pulls itself mid-drain leaves the rest of the queue waiting in
   p.idle(1000).then(() => { idle = true; });
   return Promise.resolve().then(() => assert.equal(idle, false, 'idle must not settle while frames are still queued'));
 });
+
+test('drainMs says how long the queue needs at the catch-up rate', () => {
+  const c = clock();
+  const p = createPacer({ ...c, leadMs: 1500, catchUp: 1.5 });
+  assert.equal(p.drainMs(), 0);
+  for (let i = 0; i < 250; i++) p.push(frame(80)); // 20 s, no sink yet
+  assert.equal(p.queuedMs(), 20000);
+  assert.ok(Math.abs(p.drainMs() - 20000 / 1.5) < 1, `${p.drainMs()}`);
+  p.setSink(() => {});
+  c.tick(20000);
+  assert.equal(p.drainMs(), 0);
+});

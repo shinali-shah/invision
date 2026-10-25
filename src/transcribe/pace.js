@@ -81,6 +81,8 @@ export function createPacer({
     // what came before it. A fresh Muse session starts its clock here.
     positionMs: () => (sent + dropped) / bytesPerMs,
     queuedMs: () => queued / bytesPerMs,
+    // How long the queue takes to empty at the catch-up rate, if nothing else arrives
+    drainMs: () => queued / rate,
     droppedMs: () => dropped / bytesPerMs,
     // Resolves once the queue has emptied, or after timeoutMs if it hasn't
     idle(timeoutMs = 5000) {
