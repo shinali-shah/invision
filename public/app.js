@@ -1,5 +1,5 @@
 import { api, transcribeSocketUrl } from './api.js';
-import { createResampler, micErrorMessage } from './mic.js';
+import { createResampler, micErrorMessage, isCameraError, pickRecorderMime } from './mic.js';
 
 // Spec copy, verbatim. Mirrors src/agents/context.js TAG_FOCUS.
 const TAG_FOCUS = {
@@ -21,12 +21,22 @@ const BRIEF_DEBOUNCE_MS = 400;
 const FRAME_SAMPLES = 1920; // 80 ms at 24 kHz = 3840 bytes
 const DONE_TIMEOUT_MS = 20000;
 
+const AUDIO_CONSTRAINTS = { echoCancellation: false, noiseSuppression: false, autoGainControl: true };
+const VIDEO_CONSTRAINTS = {
+  facingMode: 'environment',
+  width: { ideal: 640 },
+  height: { ideal: 480 },
+  frameRate: { ideal: 15, max: 15 },
+};
+const CAN_RECORD_VIDEO = !!navigator.mediaDevices && typeof window.MediaRecorder === 'function';
+
 const $ = (id) => document.getElementById(id);
 
 const state = {
   convo: null,          // the Conversation we're working on
   liveTurns: new Map(), // turnId -> { speaker, text, partial }
   rec: null,            // active recording handles
+  uploads: new Map(),   // conversationId -> { blob, offsetMs, status, pct, error, recording }
 };
 
 // ---------- small helpers ----------
@@ -142,6 +152,12 @@ function updateFocus() {
   $('tag-focus').textContent = TAG_FOCUS[checkedTag('tag-start')];
 }
 
+function updateCamera() {
+  const on = $('camera').checked;
+  $('camera-hint').hidden = !on;
+  $('consent-text').textContent = on ? "I told them I'm recording audio and video" : "I told them I'm recording";
+}
+
 function updateRecordEnabled() {
   const ok = $('consent').checked;
   $('record-btn').disabled = !ok;
@@ -158,6 +174,7 @@ function resetStart() {
   $('consent').checked = false;
   setCheckedTag('tag-start', 'family');
   updateFocus();
+  updateCamera();
   updateRecordEnabled();
   showError('start-error', null);
   showView('start');
@@ -241,14 +258,26 @@ async function startRecording() {
   }
 
   btn.setAttribute('aria-busy', 'true');
+  const wantVideo = $('camera').checked && CAN_RECORD_VIDEO;
   let stream = null;
+  let videoNote = null;
   try {
     if (!window.isSecureContext || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       throw new Error('getUserMedia unavailable');
     }
-    stream = await navigator.mediaDevices.getUserMedia({
-      audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: true },
-    });
+    if (wantVideo) {
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ audio: AUDIO_CONSTRAINTS, video: VIDEO_CONSTRAINTS });
+      } catch (err) {
+        // The camera is optional. Anything camera-shaped drops us to audio only;
+        // if the mic is the problem the audio-only call below fails and says so.
+        if (!isCameraError(err)) throw err;
+        videoNote = err.name === 'NotAllowedError'
+          ? 'Camera was blocked, so this one is audio only.'
+          : 'No camera available, so this one is audio only.';
+      }
+    }
+    if (!stream) stream = await navigator.mediaDevices.getUserMedia({ audio: AUDIO_CONSTRAINTS });
     await ctx.audioWorklet.addModule('pcm-worklet.js');
   } catch (err) {
     if (stream) stream.getTracks().forEach((t) => t.stop());
@@ -275,10 +304,10 @@ async function startRecording() {
 
   state.convo = convo;
   state.liveTurns = new Map();
-  beginCapture(convo, ctx, stream);
+  beginCapture(convo, ctx, stream, videoNote);
 }
 
-function beginCapture(convo, ctx, stream) {
+function beginCapture(convo, ctx, stream, videoNote = null) {
   const ws = new WebSocket(transcribeSocketUrl(convo.id));
   ws.binaryType = 'arraybuffer';
 
@@ -295,6 +324,10 @@ function beginCapture(convo, ctx, stream) {
     turns: [],
     lastError: null,    // server's own words, so the label view can repeat them
     resample: createResampler(ctx.sampleRate),
+    firstAudioAt: null, // transcript time 0
+    recorder: null,
+    chunks: [],
+    videoAt: null,      // video time 0, from the recorder's start event
   };
   state.rec = rec;
 
@@ -312,6 +345,7 @@ function beginCapture(convo, ctx, stream) {
 
   node.port.onmessage = (e) => {
     if (rec.stopping) return;
+    if (rec.firstAudioAt === null) rec.firstAudioAt = Date.now();
     pushSamples(rec, rec.resample(e.data));
   };
 
@@ -353,6 +387,11 @@ function beginCapture(convo, ctx, stream) {
   $('live-transcript').replaceChildren();
   $('live-transcript').dataset.empty = 'Listening…';
   showError('rec-error', null);
+  if (stream.getVideoTracks().length && !startVideo(rec)) {
+    videoNote = 'This browser can’t record video, so this one is audio only.';
+  }
+  $('rec-note').textContent = videoNote || '';
+  $('rec-note').hidden = !videoNote;
   $('stop-btn').disabled = false;
   $('stop-btn').querySelector('.disc-label').textContent = 'Stop';
   rec.timer = setInterval(() => {
@@ -360,6 +399,123 @@ function beginCapture(convo, ctx, stream) {
     $('rec-timer').textContent = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
   }, 500);
   showView('recording');
+}
+
+// ---------- video ----------
+
+// Returns false if there's no usable MediaRecorder; the camera is turned off then.
+function startVideo(rec) {
+  const stream = rec.stream;
+  const mimeType = pickRecorderMime((m) => MediaRecorder.isTypeSupported(m));
+  let recorder;
+  try {
+    recorder = new MediaRecorder(stream, { ...(mimeType ? { mimeType } : {}), videoBitsPerSecond: 1_000_000 });
+    recorder.ondataavailable = (e) => { if (e.data && e.data.size) rec.chunks.push(e.data); };
+    recorder.onstart = () => { rec.videoAt = Date.now(); };
+    recorder.start(1000);
+  } catch {
+    stream.getVideoTracks().forEach((t) => { t.stop(); stream.removeTrack(t); });
+    return false;
+  }
+  rec.recorder = recorder;
+  // Video only, so the preview never touches the audio session.
+  const preview = $('rec-preview');
+  preview.srcObject = new MediaStream(stream.getVideoTracks());
+  preview.hidden = false;
+  preview.play().catch(() => {});
+  return true;
+}
+
+function hidePreview() {
+  const preview = $('rec-preview');
+  preview.hidden = true;
+  preview.srcObject = null;
+}
+
+// keep = upload what we got; otherwise throw it away. Call before the tracks
+// are stopped so the recorder flushes its last chunk cleanly.
+function endVideo(rec, keep) {
+  hidePreview();
+  const recorder = rec.recorder;
+  if (!recorder) return;
+  rec.recorder = null;
+  const id = state.convo && state.convo.id;
+  if (keep && id) {
+    recorder.onstop = () => {
+      const blob = new Blob(rec.chunks, { type: recorder.mimeType || rec.chunks[0]?.type || 'video/mp4' });
+      rec.chunks = [];
+      if (!blob.size) return;
+      // Video time of transcript 0. Negative if audio started before the recorder did.
+      const offsetMs = (rec.firstAudioAt ?? rec.startedAt) - (rec.videoAt ?? rec.startedAt);
+      state.uploads.set(id, { blob, offsetMs, status: 'uploading', pct: 0, error: null, recording: null });
+      uploadVideo(id);
+    };
+  } else {
+    recorder.ondataavailable = null;
+    recorder.onstop = null;
+    rec.chunks = [];
+  }
+  try { if (recorder.state !== 'inactive') recorder.stop(); } catch { /* already stopped */ }
+}
+
+async function uploadVideo(id) {
+  const up = state.uploads.get(id);
+  if (!up || up.status === 'done') return;
+  up.status = 'uploading';
+  up.pct = 0;
+  up.error = null;
+  renderVideo();
+  try {
+    const recording = await api.uploadRecording(id, up.blob, up.offsetMs, (p) => {
+      up.pct = Math.round(p * 100);
+      renderVideo();
+    });
+    if (state.uploads.get(id) !== up) return; // deleted meanwhile
+    up.status = 'done';
+    up.blob = null; // it's on the Mac now
+    up.recording = recording || { offsetMs: up.offsetMs };
+    if (state.convo && state.convo.id === id) state.convo = { ...state.convo, recording: up.recording };
+  } catch (err) {
+    if (state.uploads.get(id) !== up) return;
+    up.status = 'failed';
+    up.error = err.message;
+  }
+  renderVideo();
+}
+
+// Upload status on the label view, plus the Replay link on coaching.
+function renderVideo() {
+  const convo = state.convo;
+  const up = convo ? state.uploads.get(convo.id) : null;
+  const status = () => {
+    if (!up) return null;
+    if (up.status === 'uploading') {
+      return el('p', { class: 'video-line', text: `Uploading video… ${up.pct}%` });
+    }
+    if (up.status === 'done') return el('p', { class: 'video-line saved', text: 'Video saved' });
+    return el('div', { class: 'video-failed' },
+      el('p', { class: 'video-line failed', text: `Video didn’t upload. ${up.error || ''}`.trim() }),
+      el('button', { type: 'button', class: 'retry-btn', text: 'Retry upload', onclick: () => uploadVideo(convo.id) }));
+  };
+
+  const label = $('label-video');
+  const labelStatus = status();
+  label.replaceChildren(...(labelStatus ? [labelStatus] : []));
+  label.hidden = !labelStatus;
+
+  const card = $('coach-video');
+  const saved = convo && (convo.recording || (up && up.status === 'done'));
+  const coachStatus = up && up.status !== 'done' ? status() : null;
+  if (!saved && !coachStatus) { card.hidden = true; card.replaceChildren(); return; }
+  card.replaceChildren(...[
+    el('div', { class: 'card-head' },
+      el('h2', { class: 'subtitle', text: 'Video' }),
+      saved ? el('span', { class: 'card-meta', text: 'Video saved' }) : null),
+    coachStatus,
+    saved ? el('p', { class: 'hint', text: 'Open Replay on your Mac to see the video analysis.' }) : null,
+    saved ? el('a', { class: 'primary replay-link', href: `/replay.html?id=${encodeURIComponent(convo.id)}`, text: 'Open Replay on the Mac' }) : null,
+  ].filter(Boolean));
+  card.hidden = false;
 }
 
 function pushSamples(rec, samples) {
@@ -462,6 +618,7 @@ function stopRecording() {
     sendFrame(rec, rec.frame);
     rec.frameLen = 0;
   }
+  endVideo(rec, true);
   releaseAudio(rec);
 
   const sendEnd = () => rec.ws.send(JSON.stringify({ type: 'end' }));
@@ -483,6 +640,7 @@ function finishRecording(rec, turns, { keepError = false } = {}) {
   if (!rec.stopping) {
     // Socket died mid-recording. Stop the mic so the indicator goes away.
     rec.stopping = true;
+    endVideo(rec, true);
     releaseAudio(rec);
     if (!keepError) showError('label-error', rec.lastError || 'The transcriber disconnected early. Here is what it caught.');
     keepError = true;
@@ -511,6 +669,7 @@ function showLabelView(keepError = false) {
   renderTranscript('label-transcript', turns, convo, { pickable: true, onPick: pickLabel });
   // With nobody to pick, let them go straight on; the server will say it's too short.
   $('reflect-block').hidden = hasVoices && !convo.userLabel;
+  renderVideo();
   showView('label');
 }
 
@@ -594,6 +753,7 @@ function showCoaching(convo) {
 
   renderHooks(convo);
   renderFollowUp(convo);
+  renderVideo();
   loadCompare(convo);
 
   setCheckedTag('tag-retag', convo.tag);
@@ -909,6 +1069,7 @@ async function deleteConversation() {
   showError('coaching-error', null);
   try {
     await api.remove(convo.id);
+    state.uploads.delete(convo.id);
     state.convo = null;
     await openMemory();
   } catch (err) {
@@ -1112,6 +1273,7 @@ function abandonRecording() {
   rec.stopping = true;
   clearInterval(rec.timer);
   clearTimeout(rec.doneTimer);
+  endVideo(rec, false);
   releaseAudio(rec);
   try { rec.ws.close(1000); } catch { /* ignore */ }
   state.rec = null;
@@ -1123,6 +1285,7 @@ function init() {
     input.addEventListener('change', () => input.checked && retag(input.value));
   }
   $('consent').addEventListener('change', updateRecordEnabled);
+  $('camera').addEventListener('change', updateCamera);
   $('other-name').addEventListener('input', onNameInput);
   $('record-btn').addEventListener('click', startRecording);
   $('stop-btn').addEventListener('click', stopRecording);
@@ -1136,7 +1299,10 @@ function init() {
   $('close-logs').addEventListener('click', closeLogs);
   $('logs-drawer').addEventListener('click', (e) => { if (e.target === e.currentTarget) closeLogs(); });
 
+  $('camera').checked = CAN_RECORD_VIDEO;
+  $('camera').disabled = !CAN_RECORD_VIDEO;
   updateFocus();
+  updateCamera();
   updateRecordEnabled();
   api.stageFocus('start', null); // a reload lands on start, so tell the projector
 

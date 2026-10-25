@@ -52,6 +52,24 @@ The phone records (the mic is plugged into it); the Mac shows what's happening, 
 
 The stage follows the phone: live transcript while recording, the note + counts + highlighted lines after coaching, the trend and next step when the phone opens Memory. Changing the tag on the phone swaps the note on stage.
 
+## Replay page (camera + behavior cues)
+
+Turn **Camera** on before recording (consent covers audio and video). The phone records video next to the
+transcript and uploads it to the Mac when you stop. Open `http://localhost:3000/replay.html` on the Mac:
+
+- **Pretrained model, in the browser:** MediaPipe Face Landmarker (vendored in `public/vendor/mediapipe/`) runs over the
+  video at 5 fps and reports smiling, facing and head pose per frame. Observable cues only, never feelings or sincerity.
+- **Aligned without AI:** `src/behavior/align.js` lines the cues up with each turn: the other person's reaction in the
+  2.5 s after each of your lines, nods, facing, and where upbeat words met a flat face ("mixed").
+- **Headline stat:** their reaction after your follow-up questions vs after your other lines.
+- **Word heatmap:** `src/nlp/heatmap.js` colours every word: threads you picked up, follow-ups, topics, promises,
+  smiles (green), and missed moments, fillers, mixed signals (red), each with its reason.
+- **Did the advice hold up?** Muse Spark (`src/agents/insight.js`) checks the coaching note against the cues, picks
+  moments to replay, and is rejected (numbers-only fallback) if it claims anything about feelings or cites turns that
+  don't exist.
+
+Video stays in `data/recordings/` on the Mac; deleting a conversation deletes its video and cues.
+
 ## How it fits together
 
 | Step | Code | Muse API |

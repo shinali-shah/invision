@@ -66,3 +66,20 @@ export function micErrorMessage(err, { isSecureContext } = {}) {
   }
   return `Couldn't start the microphone: ${(err && err.message) || String(err)}`;
 }
+
+// Errors where it's the camera that's the problem, not the mic, so we can
+// carry on with audio only.
+export function isCameraError(err) {
+  const name = err && err.name;
+  return name === 'NotAllowedError' || name === 'OverconstrainedError' || name === 'NotFoundError';
+}
+
+// iOS only records mp4; Chrome and Firefox want webm. First one supported wins.
+export const RECORDER_MIMES = ['video/mp4;codecs=avc1', 'video/mp4', 'video/webm;codecs=vp8,opus', 'video/webm'];
+
+export function pickRecorderMime(isTypeSupported) {
+  for (const m of RECORDER_MIMES) {
+    try { if (isTypeSupported(m)) return m; } catch { /* treat as unsupported */ }
+  }
+  return '';
+}

@@ -1,4 +1,6 @@
 import http from 'node:http';
+import { mkdtempSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, resolve } from 'node:path';
 import config from './config.js';
@@ -24,7 +26,11 @@ export function createServer({ config: cfg = config, quiet = false, mockSpeed = 
   refreshHooks(store);
 
   const stage = createStageHub({ mock: cfg.mock });
-  const app = createApp({ store, llm, log, config: cfg, publicDir: join(root, 'public'), stage });
+  // In-memory test servers get a throwaway folder so they never touch real recordings.
+  const recordingsDir = cfg.dbPath === ':memory:'
+    ? mkdtempSync(join(tmpdir(), 'playback-rec-'))
+    : resolve(root, cfg.recordingsDir ?? 'data/recordings');
+  const app = createApp({ store, llm, log, config: cfg, publicDir: join(root, 'public'), stage, recordingsDir });
   const server = http.createServer(app);
   server.on('upgrade', (req, socket) => {
     if (!SOCKET_PATHS.has(new URL(req.url, 'http://localhost').pathname)) socket.destroy();

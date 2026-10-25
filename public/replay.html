@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Playback Replay</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E%3Ccircle cx=%2211%22 cy=%2216%22 r=%227%22 fill=%22none%22 stroke=%22%23417460%22 stroke-width=%223%22/%3E%3Ccircle cx=%2221%22 cy=%2216%22 r=%227%22 fill=%22none%22 stroke=%22%23bb7a16%22 stroke-width=%223%22/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,600;1,7..72,400&display=swap">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="replay.css">
+</head>
+<body class="rp-body">
+  <header class="rp-bar">
+    <a class="rp-brand" href="replay.html">
+      <svg class="rp-mark" viewBox="0 0 32 32" aria-hidden="true"><circle cx="11" cy="16" r="7"/><circle cx="21" cy="16" r="7"/></svg>
+      Playback
+    </a>
+    <span class="rp-crumb">Replay</span>
+    <h1 class="rp-title" id="title"></h1>
+    <span class="rp-tag" id="tag" hidden></span>
+    <span class="rp-badge" id="mock-badge" hidden>Demo audio</span>
+    <span class="rp-pill" id="conn-pill" hidden>Reconnecting…</span>
+    <span class="rp-bar-actions">
+      <button class="rp-btn" id="analyze-btn" type="button" hidden>Analyze video</button>
+    </span>
+  </header>
+
+  <main class="rp-main" id="main">
+    <!-- no ?id: pick a conversation -->
+    <section class="rp-list" id="v-list" hidden aria-labelledby="list-title">
+      <h2 class="rp-list-title" id="list-title">Replays</h2>
+      <p class="rp-list-lede">Pick a conversation to see how they responded on camera, lined up with what was said.</p>
+      <ul class="rp-convos" id="convos-video" aria-label="Conversations with video"></ul>
+      <h3 class="rp-list-sub" id="no-video-head" hidden>Transcript only</h3>
+      <ul class="rp-convos rp-convos-muted" id="convos-plain" aria-label="Conversations without video"></ul>
+    </section>
+
+    <p class="rp-gone" id="v-error" hidden></p>
+
+    <!-- one conversation -->
+    <div class="rp-convo" id="v-convo" hidden>
+      <div class="rp-top">
+        <section class="rp-stage" aria-label="Video">
+          <div class="rp-player" id="player">
+            <video id="video" playsinline preload="metadata" controls></video>
+            <canvas class="rp-overlay" id="overlay" aria-hidden="true"></canvas>
+            <div class="rp-meters" id="meters" hidden>
+              <div class="rp-meter" id="m-smile">
+                <span class="rp-meter-label">Smile</span>
+                <span class="rp-meter-track"><span class="rp-meter-fill"></span></span>
+                <span class="rp-meter-val">—</span>
+              </div>
+              <div class="rp-meter" id="m-facing">
+                <span class="rp-meter-label">Facing</span>
+                <span class="rp-meter-track rp-meter-dial"><span class="rp-meter-dot"></span></span>
+                <span class="rp-meter-val">—</span>
+              </div>
+              <div class="rp-meter" id="m-nod">
+                <span class="rp-meter-label">Nod</span>
+                <span class="rp-nod-dot" aria-hidden="true"></span>
+                <span class="rp-meter-val">—</span>
+              </div>
+            </div>
+            <div class="rp-novideo" id="novideo" hidden>
+              <p class="rp-novideo-big">No video for this conversation.</p>
+              <p>Turn on Camera on the phone before recording.</p>
+            </div>
+          </div>
+
+          <div class="rp-analysis" id="analysis" hidden>
+            <div class="rp-analysis-row">
+              <span class="rp-analysis-word" id="word-status"></span>
+              <span class="rp-analysis-meta" id="analysis-meta"></span>
+              <label class="rp-live-toggle" id="live-toggle-wrap" hidden>
+                <input type="checkbox" id="live-toggle" checked>
+                <span>Live face overlay</span>
+              </label>
+              <button class="rp-btn rp-btn-quiet" id="rerun-btn" type="button" hidden>Re-run analysis</button>
+            </div>
+            <div class="rp-progress" id="progress" hidden><span class="rp-progress-fill" id="progress-fill"></span></div>
+            <p class="rp-analysis-msg" id="analysis-msg" hidden></p>
+          </div>
+        </section>
+
+        <aside class="rp-side">
+          <section class="rp-proof" id="proof" aria-label="The numbers"></section>
+          <section class="rp-script" aria-labelledby="script-head">
+            <h2 class="rp-section-head" id="script-head">Transcript <span class="rp-head-note">click a line to jump there</span></h2>
+            <div class="rp-script-scroll" id="script-scroll">
+              <ol class="rp-lines" id="lines"></ol>
+            </div>
+          </section>
+        </aside>
+      </div>
+
+      <section class="rp-timeline" id="timeline" aria-label="Timeline">
+        <div class="rp-lanes">
+          <div class="rp-lane-labels" aria-hidden="true">
+            <span style="--rows: 2">Who's talking</span>
+            <span>Smile</span>
+            <span>Facing</span>
+            <span>Nods</span>
+            <span>Moments</span>
+          </div>
+          <div class="rp-track" id="track">
+            <canvas id="lanes-canvas"></canvas>
+            <div class="rp-markers" id="markers"></div>
+            <div class="rp-playhead" id="playhead" hidden><span class="rp-playhead-time" id="playhead-time"></span></div>
+            <div class="rp-hover" id="hover" hidden></div>
+          </div>
+        </div>
+        <ul class="rp-legend" aria-label="Legend">
+          <li><span class="rp-sw sw-you"></span>You</li>
+          <li><span class="rp-sw sw-them"></span>Them</li>
+          <li><span class="rp-sw sw-smile"></span>Smile <span class="rp-legend-dim">(dashed: their usual)</span></li>
+          <li><span class="rp-sw sw-facing"></span>Facing the camera</li>
+          <li><span class="rp-mk mk-follow">✓</span>Follow-up question</li>
+          <li><span class="rp-mk mk-missed">⚠</span>Missed moment</li>
+          <li><span class="rp-mk mk-cited">★</span>Cited by the note</li>
+          <li><span class="rp-mk mk-insight">◆</span>Insight</li>
+        </ul>
+      </section>
+
+      <section class="rp-advice" id="advice" aria-labelledby="advice-head">
+        <h2 class="rp-advice-head" id="advice-head">Did the advice hold up?</h2>
+        <div class="rp-advice-grid">
+          <div class="rp-advice-col">
+            <article class="rp-note" id="note" hidden>
+              <p class="rp-kicker">The coaching note</p>
+              <p class="rp-note-text" id="note-text"></p>
+              <p class="rp-note-sugg" id="note-sugg"></p>
+            </article>
+            <p class="rp-dim" id="note-none" hidden></p>
+            <section class="rp-check" id="check" aria-label="Advice checked against the video"></section>
+          </div>
+          <div class="rp-advice-col">
+            <section class="rp-moments" id="moments" aria-label="Moments worth replaying"></section>
+            <section class="rp-hooks" id="hooks" hidden aria-label="What we picked up"></section>
+          </div>
+        </div>
+      </section>
+
+      <section class="rp-heat" id="heat" hidden aria-labelledby="heat-head">
+        <h2 class="rp-advice-head" id="heat-head">Key moments, word by word</h2>
+        <ul class="rp-heat-legend" id="heat-legend" aria-label="What the colours mean"></ul>
+        <p class="rp-heat-why" id="heat-why" aria-live="polite">Hover or tap a coloured word to see why. Click a line to play it.</p>
+        <ol class="rp-heat-lines" id="heat-lines"></ol>
+      </section>
+
+      <footer class="rp-how" aria-label="How this works">
+        <p class="rp-kicker">How this works</p>
+        <p>Cues come from a pretrained face model (MediaPipe Face Landmarker) running in this browser. It measures smiling, facing and nodding, not feelings or sincerity.</p>
+        <p>Numbers are computed without AI; Muse Spark only writes the insight, and every claim points to a moment you can play.</p>
+        <p class="rp-how-small">The video stays on this Mac. Face analysis runs locally in Chrome at 5 frames per second of video; only the per-frame numbers are sent to the local server.</p>
+      </footer>
+    </div>
+  </main>
+
+  <script type="module" src="replay.js"></script>
+</body>
+</html>

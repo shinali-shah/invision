@@ -23,6 +23,28 @@ async function request(method, path, body) {
 
 const enc = encodeURIComponent;
 
+// Raw video body, so not request(). XHR rather than fetch because fetch can't
+// report upload progress. Resolves to the server's Recording.
+function uploadRecording(id, blob, offsetMs, onProgress) {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', `/api/conversations/${enc(id)}/recording?offsetMs=${enc(Math.round(offsetMs) || 0)}`);
+    xhr.setRequestHeader('Content-Type', (blob.type || 'video/mp4').split(';')[0]);
+    if (onProgress) {
+      xhr.upload.onprogress = (e) => { if (e.lengthComputable) onProgress(e.loaded / e.total); };
+    }
+    xhr.onload = () => {
+      let data = null;
+      try { data = JSON.parse(xhr.responseText); } catch { /* empty or non-JSON body */ }
+      if (xhr.status >= 200 && xhr.status < 300) resolve(data);
+      else reject(new Error((data && data.error) || `Server said ${xhr.status}. Try again.`));
+    };
+    xhr.onerror = () => reject(new Error("Couldn't reach the server to save the video."));
+    xhr.onabort = () => reject(new Error('Upload cancelled.'));
+    xhr.send(blob);
+  });
+}
+
 export const api = {
   health: () => request('GET', '/api/health'),
   createConversation: ({ tag, otherName }) =>
@@ -40,6 +62,7 @@ export const api = {
   followUp: (id, body = {}) => request('POST', `/api/conversations/${enc(id)}/follow-up`, body),
   markFollowUpSent: (id, text) => request('POST', `/api/conversations/${enc(id)}/follow-up/sent`, text ? { text } : {}),
   getBrief: (name) => request('GET', `/api/brief?name=${enc(name)}`),
+  uploadRecording,
   // Tells the projector page which screen the phone is on. Fire and forget:
   // the stage is a nice-to-have, so it never gets to break the phone flow.
   stageFocus: (view, conversationId, otherName) => {

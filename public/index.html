@@ -44,9 +44,15 @@
 
       <section class="brief" id="brief-card" hidden aria-labelledby="brief-title"></section>
 
+      <label class="consent camera-toggle">
+        <input type="checkbox" id="camera">
+        <span>Camera</span>
+      </label>
+      <p class="hint camera-hint" id="camera-hint">Point the phone at them. Video stays on your Mac.</p>
+
       <label class="consent">
         <input type="checkbox" id="consent">
-        <span>I told them I'm recording</span>
+        <span id="consent-text">I told them I'm recording</span>
       </label>
 
       <div class="record-wrap">
@@ -66,12 +72,14 @@
         <span class="rec-timer" id="rec-timer">0:00</span>
       </div>
       <p class="hint" id="rec-with"></p>
+      <p class="hint rec-note" id="rec-note" hidden></p>
       <ol class="transcript live" id="live-transcript" aria-live="polite"></ol>
       <p class="error" id="rec-error" role="alert" hidden></p>
       <div class="sticky-action">
         <button type="button" class="disc disc-stop" id="stop-btn">
           <span class="disc-label">Stop</span>
         </button>
+        <video class="rec-preview" id="rec-preview" playsinline muted autoplay hidden aria-label="Camera preview"></video>
       </div>
     </section>
 
@@ -79,6 +87,7 @@
     <section class="view" id="view-label" hidden aria-labelledby="label-title">
       <h1 id="label-title" class="title">Which voice is yours?</h1>
       <p class="hint" id="label-hint">Tap one of your own lines.</p>
+      <div class="video-status" id="label-video" hidden></div>
       <ol class="transcript pickable" id="label-transcript"></ol>
       <p class="error" id="label-error" role="alert" hidden></p>
 
@@ -103,6 +112,7 @@
       </article>
       <p class="dropped" id="note-dropped" hidden></p>
 
+      <section class="card video" id="coach-video" hidden aria-label="Video"></section>
       <section class="card compare" id="compare-card" hidden aria-labelledby="compare-title"></section>
       <section class="card hooks" id="hooks-card" hidden aria-labelledby="hooks-title"></section>
       <section class="card follow" id="follow-card" hidden aria-labelledby="follow-title"></section>

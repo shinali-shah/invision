@@ -11,6 +11,7 @@ const config = Object.freeze({
   sparkModel: env.MUSE_SPARK_MODEL || 'muse-spark-1.3',
   asrModel: env.MUSE_ASR_MODEL || 'muse-voice-transcribe-1.0',
   dbPath: env.DB_PATH || 'data/playback.db',
+  recordingsDir: env.RECORDINGS_DIR || 'data/recordings',
 });
 
 export default config;

@@ -170,4 +170,29 @@ function followUp({ otherName, hooks, tag } = {}) {
   return { text: parts.join(' '), hooksUsed: [topic, event?.when, promise?.text].filter(Boolean) };
 }
 
-export default { classify, coach, review, pattern, nextStep, followUp };
+// Picks the warmest reaction and any missed bid, the way a careful reader of the numbers would.
+function insight({ note, stats, turns, hooks } = {}) {
+  const ts = Array.isArray(turns) ? turns : [];
+  const warm = ts.filter(t => t.reaction).sort((a, b) => b.reaction.smileDelta - a.reaction.smileDelta)[0];
+  const moments = [];
+  if (warm && warm.reaction.smileDelta > 0.03) {
+    moments.push({ turnId: warm.turnId, title: 'This landed', observation: `Right after you said this, their smile rose ${Math.round(warm.reaction.smileDelta * 100)} points over baseline.`, why: 'Questions that pick up their words get the warmest reactions; keep doing it.' });
+  }
+  const bid = hooks?.missedBids?.[0];
+  if (bid) moments.push({ turnId: bid.turnId, title: 'Left hanging', observation: `They brought up ${bid.cue} and the next line moved on.`, why: 'One question about it would have kept the thread going.' });
+  if (!moments.length && ts[0]) moments.push({ turnId: ts[0].turnId, title: 'Opening', observation: 'The conversation starts here.', why: 'Open with a question about them.' });
+  const fu = stats?.afterFollowUps;
+  const other = stats?.afterOther;
+  const backed = fu?.n && fu.smileDelta != null && (other?.smileDelta == null || fu.smileDelta > other.smileDelta);
+  return {
+    moments,
+    adviceCheck: note?.suggestion ? [{
+      advice: note.suggestion,
+      verdict: backed ? 'backed' : fu?.n ? 'partly' : 'not yet',
+      evidenceTurnIds: warm ? [warm.turnId] : [],
+      reason: fu?.n ? `After your follow-ups their smile moved ${Math.round((fu.smileDelta ?? 0) * 100)} points vs ${other?.smileDelta == null ? 'no data' : `${Math.round(other.smileDelta * 100)} points`} after other lines.` : 'No follow-ups on camera to compare yet.',
+    }] : [],
+  };
+}
+
+export default { classify, coach, review, pattern, nextStep, followUp, insight };
