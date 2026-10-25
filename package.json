@@ -11,7 +11,7 @@
     "dev": "MOCK=1 node --watch src/server.js",
     "test": "node --test \"test/**/*.test.js\"",
     "synthetic": "node src/synthetic/cli.js",
-    "dev:synthetic": "PLAYBACK_DB=demo MOCK=1 USER_NAME=Shinali node --watch src/server.js"
+    "dev:synthetic": "node src/synthetic/cli.js && PLAYBACK_DB=demo MOCK=1 USER_NAME=Shinali node --watch src/server.js"
   },
   "dependencies": {
     "express": "^5.3.0",

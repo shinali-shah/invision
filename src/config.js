@@ -14,8 +14,9 @@ const config = Object.freeze({
   languages: (env.DEMO_LANGUAGES || 'English,Spanish').split(',').map(s => s.trim()).filter(Boolean),
   sparkModel: env.MUSE_SPARK_MODEL || 'muse-spark-1.3',
   asrModel: env.MUSE_ASR_MODEL || 'muse-voice-transcribe-1.0',
-  dbPath: env.DB_PATH || (demo ? 'data/demo.db' : 'data/playback.db'),
-  recordingsDir: env.RECORDINGS_DIR || (demo ? 'data/demo-recordings' : 'data/recordings'),
+  // The demo always means data/demo.db, even with a DB_PATH left over in the shell or .env.
+  dbPath: demo ? 'data/demo.db' : env.DB_PATH || 'data/playback.db',
+  recordingsDir: demo ? 'data/demo-recordings' : env.RECORDINGS_DIR || 'data/recordings',
 });
 
 export default config;

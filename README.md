@@ -85,8 +85,9 @@ To see the app the way it looks after two weeks of use, build the demo account. 
 synthetic: every conversation has `synthetic: true`, and the database is marked as a synthetic dataset.
 
 ```bash
-npm run synthetic       # writes data/demo.db (never data/playback.db)
-npm run dev:synthetic   # serves it: PLAYBACK_DB=demo, mock mode, USER_NAME=Shinali, http://localhost:3000
+npm run dev:synthetic   # builds data/demo.db, then serves it: PLAYBACK_DB=demo, mock mode,
+                        # USER_NAME=Shinali, http://localhost:3000 (stop any running server first)
+npm run synthetic       # only rebuilds data/demo.db (never data/playback.db); restart the server after
 ```
 
 It holds 13 conversations, one a day from Oct 12 to Oct 24 2026, with teammates Prat, Priya and Parth
