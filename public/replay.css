@@ -577,6 +577,72 @@ button.rp-hook-chip:hover { background: color-mix(in srgb, var(--them) 18%, var(
 .rp-how p { margin: 0; font: 400 15px/1.45 var(--sans); }
 .rp-how .rp-how-small { color: var(--muted); font-size: 13.5px; }
 
+/* ---- which voice is yours ---- */
+.rp-voice {
+  padding: 20px 24px;
+  border-radius: 18px;
+  background: var(--surface);
+  border: 3px solid var(--you);
+  display: grid; gap: 10px;
+}
+.rp-voice-title { margin: 0; font: 400 clamp(26px, 2vw, 34px)/1.15 var(--serif); letter-spacing: -0.015em; }
+.rp-voice-lede { margin: 0; font: 500 15.5px/1.4 var(--sans); color: var(--muted); }
+.rp-voice-busy { margin: 0; font: italic 400 20px/1.4 var(--serif); color: var(--muted); }
+.rp-voice-busy::after { content: ""; display: inline-block; width: .45em; height: .45em; margin-left: .5em; border-radius: 50%; background: var(--you); animation: breathe 1.2s ease-in-out infinite; }
+.rp-voice-error { margin: 0; font: 600 15px/1.4 var(--sans); color: var(--danger); }
+.rp-voice-lines {
+  list-style: none; margin: 4px 0 0; padding: 0;
+  display: grid; gap: 4px;
+  max-height: 340px; overflow-y: auto;
+}
+.rp-voice-line {
+  width: 100%; text-align: left;
+  display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; gap: 12px; align-items: center;
+  padding: 8px 12px;
+  border: 0; border-radius: 12px;
+  background: color-mix(in srgb, var(--bg) 55%, transparent);
+  transition: background .15s;
+}
+.rp-voice-line:hover, .rp-voice-line:focus-visible { background: var(--you-wash); }
+.rp-voice-letter {
+  display: grid; place-items: center;
+  width: 30px; height: 30px; border-radius: 50%;
+  font: 800 14px/1 var(--sans);
+  background: var(--surface-2); color: var(--ink);
+}
+.rp-voice-letter.spk-1 { background: var(--ink); color: var(--bg); }
+.rp-voice-text { font: 400 16.5px/1.4 var(--serif); overflow-wrap: anywhere; }
+.rp-voice-pick {
+  font: 700 12.5px/1 var(--sans); color: var(--you);
+  padding: .5em .9em; border-radius: 999px; box-shadow: inset 0 0 0 2px var(--you);
+  white-space: nowrap; opacity: 0; transition: opacity .15s;
+}
+.rp-voice-line:hover .rp-voice-pick, .rp-voice-line:focus-visible .rp-voice-pick { opacity: 1; }
+
+/* ---- awkward moments: context the face can't give ---- */
+:root { --awk: #c2413a; }
+:root[data-theme="dark"] { --awk: #ec6a60; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --awk: #ec6a60; } }
+.rp-mk.mk-awk { background: var(--awk); color: #fff; font-weight: 900; }
+.rp-score.bad .rp-score-num { color: var(--awk); }
+.rp-chip.awk { display: inline-flex; align-items: center; gap: 5px; cursor: help; }
+.rp-chip.awk.mine { background: color-mix(in srgb, var(--awk) 16%, var(--surface)); color: var(--awk); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--awk) 55%, transparent); }
+.rp-chip.awk.theirs { color: var(--muted); }
+.rp-awk-icon { font-size: 1.05em; }
+.rp-hook-chip.awk.mine { background: none; box-shadow: inset 0 0 0 2px var(--awk); color: var(--awk); }
+.rp-seam {
+  margin: 6px 0 2px;
+  padding: 6px 12px;
+  border-left: 3px dashed var(--you);
+  border-radius: 0 10px 10px 0;
+  background: color-mix(in srgb, var(--you-wash) 55%, transparent);
+}
+.rp-seam-text { margin: 0; font: 400 17px/1.55 var(--serif); }
+.rp-seam-text .rp-chip { margin-left: 8px; vertical-align: 2px; }
+.rp-seam-who { margin-right: 8px; font: 800 11.5px/1 var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--you); }
+.rp-seam-note { margin: 2px 0 0; font: italic 400 13px/1.3 var(--serif); color: var(--muted); }
+.rp-tk-evidence { overflow-wrap: anywhere; text-wrap: pretty; }
+
 /* ---- list (no ?id) ---- */
 .rp-list { max-width: 900px; }
 .rp-list-title { margin: 12px 0 6px; font: 400 40px/1.1 var(--serif); letter-spacing: -0.02em; }

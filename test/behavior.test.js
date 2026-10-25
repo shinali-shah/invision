@@ -248,3 +248,83 @@ test('heatmap keeps at most three coloured words per line', () => {
   const map = buildHeatmap({ turns: maya, userLabel: 'A', hooks, signals: null, behavior: null });
   for (const t of map.turns) assert.ok(t.words.filter(w => w.kind).length <= 3, `turn ${t.turnId}`);
 });
+
+// ---------- awkward moments (from a real HackTX recording) ----------
+
+import { detectAwkward } from '../src/nlp/awkward.js';
+import { inferUserLabel } from '../src/behavior/speaker.js';
+
+const shinali = [
+  { turnId: 0, speaker: 'A', text: 'Hello.', startMs: 1100, endMs: 1740 },
+  { turnId: 1, speaker: 'B', text: 'Hello?', startMs: 1900, endMs: 2540 },
+  { turnId: 2, speaker: 'A', text: "Wait, what's your name?", startMs: 2780, endMs: 3580 },
+  { turnId: 3, speaker: 'B', text: "Shanali, what's your name?", startMs: 3740, endMs: 5340 },
+  { turnId: 4, speaker: 'A', text: "Oh, I'm Parth. Wait, what do you do right now? Are you like YouTube?", startMs: 5500, endMs: 9900 },
+  { turnId: 5, speaker: 'B', text: "Um I'm a wait aren't you the same roommate that like the girl cheated on her boyfriend with from Purdue? Um I'm not sure.", startMs: 10140, endMs: 19340 },
+  { turnId: 6, speaker: 'A', text: 'Wait are you sure?', startMs: 19420, endMs: 20460 },
+  { turnId: 7, speaker: 'B', text: "Yeah, I'm sure. I'm not sure.", startMs: 20540, endMs: 22860 },
+  { turnId: 8, speaker: 'A', text: "Okay, okay, okay. Well I do CS at UTD but like I'm low-key just just bored that's why I like that's what I heard", startMs: 22860, endMs: 29980 },
+  { turnId: 9, speaker: 'B', text: "That's cool.", startMs: 30140, endMs: 31900 },
+  { turnId: 10, speaker: 'A', text: 'Okay.', startMs: 32140, endMs: 35500 },
+];
+
+test('the rumour and the cut-in are yours, even where the voices got merged into her line', () => {
+  const a = detectAwkward(shinali, 'A');
+  const mine = a.flags.filter(f => f.who === 'you').map(f => `${f.turnId} ${f.kind}`);
+  assert.ok(mine.includes('5 cut-in'));
+  assert.ok(mine.includes('5 gossip'));
+  assert.ok(mine.includes('8 gossip'));
+  assert.ok(mine.includes('8 undersell'));
+  assert.ok(a.flags.some(f => f.turnId === 9 && f.kind === 'short-reply' && f.who === 'them'));
+  assert.ok(a.flags.some(f => f.turnId === 7 && f.kind === 'hedge'));
+  assert.equal(a.seams[0].theirs, "Um I'm a");
+  assert.match(a.seams[0].yours, /^wait aren't you the same roommate/);
+});
+
+test('ordinary quick turn-taking is not a cut-in', () => {
+  const polite = [
+    { turnId: 1, speaker: 'B', text: 'Nice to meet you too.', startMs: 0, endMs: 1500 },
+    { turnId: 2, speaker: 'A', text: 'So what do you do?', startMs: 1580, endMs: 3000 },
+  ];
+  assert.deepEqual(detectAwkward(polite, 'A').flags, []);
+  const open = [{ ...polite[0], text: 'I was going to say that the' }, polite[1]];
+  assert.equal(detectAwkward(open, 'A').flags[0].kind, 'cut-in');
+});
+
+test('nothing awkward of yours is ever "keep doing this", whatever the face did', async () => {
+  const hooks = extractHooks(shinali, 'A');
+  const signals = { questions: [{ turnId: 6, isFollowUp: true }, { turnId: 4, isFollowUp: false }] };
+  // Big smile after the rumour: still not praise
+  const frames = Array.from({ length: 180 }, (_, i) => ({ t: i * 200, face: true, smile: i * 200 > 20500 && i * 200 < 23000 ? 0.8 : 0.2, yaw: 0, pitch: 0, jawOpen: 0.1, browUp: 0.1 }));
+  const behavior = alignBehavior({ model: 'x', fps: 5, frames, turns: shinali, userLabel: 'A', signals, hooks });
+  const out = await generateInsight({
+    llm: stub({ moments: [{ turnId: 6, title: 'Great check-in', observation: 'Smile rose 60 points.', why: 'Keep doing this.' }], adviceCheck: [], rewrites: [] }),
+    note: null, behavior, hooks, signals, turns: shinali, userLabel: 'A',
+  });
+  assert.ok(!out.takeaways.some(t => t.kind === 'keep'), 'turn 6 got a hedge back, so no praise');
+  assert.equal(out.takeaways[0].kind, 'try');
+  assert.equal(out.takeaways[0].turnId, 5); // the rumour comes first
+  assert.match(out.takeaways[0].evidence, /Gossip about someone else/);
+});
+
+test('quoting the user is fine; judging the other person is not', async () => {
+  const hooks = extractHooks(shinali, 'A');
+  const ask = observation => generateInsight({
+    llm: stub({ moments: [{ turnId: 8, title: 't', observation, why: 'w' }], adviceCheck: [], rewrites: [] }),
+    note: null, behavior: null, hooks, signals: null, turns: shinali, userLabel: 'A',
+  });
+  assert.equal((await ask('You called yourself just bored.')).source, 'muse-spark');
+  assert.equal((await ask('She was bored by then.')).source, 'fallback');
+  assert.equal((await ask('They seemed uncomfortable.')).source, 'fallback');
+});
+
+test('the voice whose lines move the face on camera is theirs, so the other one is yours', () => {
+  const frames = Array.from({ length: 180 }, (_, i) => {
+    const t = i * 200;
+    const theirs = shinali.some(x => x.speaker === 'B' && t >= x.startMs && t <= x.endMs);
+    return { t, face: true, jawOpen: theirs ? (i % 2 ? 0.3 : 0.05) : 0.05 + (i % 2) * 0.02, smile: 0.2, yaw: 0, pitch: 0, browUp: 0 };
+  });
+  assert.equal(inferUserLabel(shinali, frames).label, 'A');
+  const still = frames.map(f => ({ ...f, jawOpen: 0.1 }));
+  assert.equal(inferUserLabel(shinali, still), null, 'no difference, no guess');
+});

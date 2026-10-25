@@ -198,7 +198,7 @@ test('a long turn answered on-topic is not a missed bid', () => {
 
 test('empty, one-turn, unknown speakers and missing text do not throw', () => {
   const empty = extractHooks([], 'A');
-  assert.deepEqual(empty, { topics: [], events: [], commitments: [], missedBids: [], highlights: [], followUpDetector: [] });
+  assert.deepEqual(empty, { topics: [], events: [], commitments: [], missedBids: [], highlights: [], followUpDetector: [], awkward: { flags: [], score: 0, seams: [], worst: null } });
   assert.deepEqual(extractHooks(undefined, 'A'), empty);
   assert.deepEqual(extractHooks([null, 'junk'], 'A'), empty);
 

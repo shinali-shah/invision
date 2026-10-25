@@ -30,6 +30,7 @@ function systemPrompt(tag) {
     '- If `lastNotes` is not empty, do not repeat their observations or suggestions; find something new.',
     '- If the user wrote a `reflection`, take it into account.',
     '- `hooks` was measured from the transcript without a model: topics they brought up, things coming up for them, promises you made, and missedBids (turns where they shared something and your next line moved on). A missed bid is often the most useful thing to point out; quote what they said.',
+    '- `awkward` lists moments flagged from the words and timing: cutting in, gossip or rumours about people who are not there, underselling yourself, and their short or hedging replies. Context beats counts: if the user gossiped or cut in, that is what the note is about, even if they also asked good questions. Never praise a line that is flagged.',
     '- `citedTurnIds` lists the turnIds your note refers to.',
     '',
     'In `turns`, speaker "you" is the user and "them" is the other person.',
@@ -46,6 +47,7 @@ export async function generateNote({ llm, tag, signals, turns, userLabel, reflec
     signals,
     reflection: reflection || null,
     hooks: hooks && { topics: hooks.topics, events: hooks.events, commitments: hooks.commitments, missedBids: hooks.missedBids },
+    awkward: hooks?.awkward?.flags ?? [],
     // older callers hand us whole Note objects, newer ones just the text
     lastNotes: (lastNotes ?? []).map(n => (typeof n === 'string' ? n : [n?.text, n?.suggestion].filter(Boolean).join(' '))).filter(Boolean),
     turns: turns.map(t => ({ turnId: t.turnId, speaker: t.speaker === userLabel ? 'you' : 'them', text: t.text })),

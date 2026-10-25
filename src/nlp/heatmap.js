@@ -14,6 +14,7 @@ export const LEGEND = [
   { kind: 'topic', label: 'Something they kept coming back to', good: true },
   { kind: 'promise', label: 'A promise you made: follow through', good: true },
   { kind: 'smile', label: 'They were smiling as this was said', good: true },
+  { kind: 'awkward', label: 'Awkward: gossip, cutting in, underselling yourself', good: false },
   { kind: 'missed', label: 'They opened up here and the next line moved on', good: false },
   { kind: 'filler', label: 'Filler', good: false },
   { kind: 'flat', label: 'Upbeat words, flat face (mixed signal)', good: false },
@@ -41,6 +42,18 @@ export function buildHeatmap({ turns, userLabel, hooks, signals, behavior, frame
   const isFollowUp = new Set((signals?.questions ?? []).filter(q => q.isFollowUp).map(q => q.turnId));
   const cues = new Map((behavior?.turns ?? []).map(b => [b.turnId, b]));
   const baseline = behavior?.baseline?.smile ?? null;
+  // Words inside a flagged phrase ("that's what I heard") carry the flag's reason.
+  const awkwardWords = new Map(); // turnId -> [{ words: Set, why }]
+  for (const f of hooks?.awkward?.flags ?? []) {
+    if (f.who !== 'you' || !['gossip', 'undersell', 'cut-in'].includes(f.kind)) continue;
+    const quoted = /“([^”]+)”/.exec(f.evidence)?.[1];
+    const seam = (hooks.awkward.seams ?? []).find(x => x.turnId === f.turnId);
+    const span = quoted ?? (seam ? seam.yours.split(/\s+/).slice(0, 3).join(' ') : null);
+    if (!span) continue;
+    const list = awkwardWords.get(f.turnId) ?? [];
+    list.push({ words: new Set(span.toLowerCase().split(/\s+/).map(bare).filter(w => w.length >= 4 || /['’]/.test(w))), why: `${f.label}: ${f.evidence}` });
+    awkwardWords.set(f.turnId, list);
+  }
 
   // Words the user later echoed back from their lines: the threads they actually pulled on.
   const pickedUp = new Map(); // turnId of their line -> Set of stems
@@ -67,6 +80,8 @@ export function buildHeatmap({ turns, userLabel, hooks, signals, behavior, frame
         const b = bare(w);
         const s = b.length >= 4 ? stem(b) : b;
         const mark = (score, kind, why) => ({ w, score, kind, why });
+        const awk = awkwardWords.get(t.turnId)?.find(a => a.words.has(b));
+        if (awk) return mark(-0.9, 'awkward', awk.why);
 
         if (you) {
           if (FILLERS.has(b)) return mark(-0.35, 'filler', 'Filler word');

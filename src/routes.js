@@ -5,6 +5,7 @@ import { pipeline as pump } from 'node:stream/promises';
 import { alignBehavior, cleanFrames } from './behavior/align.js';
 import { generateInsight } from './agents/insight.js';
 import { buildHeatmap } from './nlp/heatmap.js';
+import { inferUserLabel } from './behavior/speaker.js';
 import { TAGS } from './agents/context.js';
 import { processConversation, recoach, refreshMemory, writeFollowUp } from './pipeline.js';
 import { compareConversations } from './nlp/compare.js';
@@ -223,9 +224,22 @@ export function createApp({ store, llm, log, config, publicDir = 'public', stage
       if (forVideo && convo.recording && forVideo !== convo.recording.uploadedAt) return fail(res, 409, 'The video changed; analyse it again');
       const frames = cleanFrames(req.body?.frames);
       if (!frames.length) return fail(res, 400, 'No frames');
+
+      // Nobody said which voice is theirs: the video usually can. Without it, every line would be
+      // read as the other person's and the advice would be about the wrong person.
+      let labeled = convo;
+      if (!convo.userLabel && (convo.turns ?? []).length >= 2) {
+        const guess = inferUserLabel(convo.turns, frames);
+        if (!guess) return res.status(409).json({ error: 'Which voice is yours? Tap one of your lines.', needsLabel: true });
+        log('vision', 'info', `picked your voice (${guess.label}) from the video: ${guess.evidence}`);
+        store.updateConversation(convo.id, { userLabel: guess.label });
+        stage.publish({ type: 'processing', conversationId: convo.id });
+        labeled = await processConversation({ store, llm, log, id: convo.id, reflection: convo.reflection ?? '' });
+      }
+
       const behavior = alignBehavior({
         model: req.body.model, fps: Number(req.body.fps), frames,
-        turns: convo.turns ?? [], userLabel: convo.userLabel, signals: convo.signals, hooks: convo.hooks,
+        turns: labeled.turns ?? [], userLabel: labeled.userLabel, signals: labeled.signals, hooks: labeled.hooks,
       });
       mkdirSync(recordingsDir, { recursive: true });
       writeFileSync(framesPath(convo.id), JSON.stringify(frames));
@@ -253,6 +267,7 @@ export function createApp({ store, llm, log, config, publicDir = 'public', stage
     try {
       const convo = findConvo(req, res);
       if (!convo) return;
+      if (!convo.userLabel && (convo.turns ?? []).length >= 2) return res.status(409).json({ error: 'Which voice is yours? Tap one of your lines.', needsLabel: true });
       const insight = await insightFor(convo);
       const updated = store.updateConversation(convo.id, { insight });
       stage.publish({ type: 'conversation', conversation: updated });

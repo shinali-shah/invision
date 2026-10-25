@@ -875,6 +875,12 @@ function renderHooks(convo) {
   };
   const plain = (text) => el('span', { class: 'hook-chip', text });
 
+  // Awkward first: a cut-in or a rumour matters more than any topic list.
+  const awkward = (h.awkward && Array.isArray(h.awkward.flags) ? h.awkward.flags : []).filter((f) => f.who === 'you');
+  group('Awkward moments', awkward, (f) => {
+    const chip = el('button', { type: 'button', class: 'hook-chip missed', title: f.evidence, onclick: () => pointAtTurn(f.turnId) }, f.label);
+    return turnText(convo, f.turnId) != null ? chip : el('span', { class: 'hook-chip missed', title: f.evidence, text: f.label });
+  });
   group('Topics', list('topics'), (t) => plain(t.term));
   group('Coming up', list('events'), (e) => plain(e.when && !String(e.text).includes(e.when) ? `${e.text} (${e.when})` : e.text));
   group('You promised', list('commitments'), (c) => plain(c.text));

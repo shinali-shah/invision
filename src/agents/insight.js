@@ -73,6 +73,12 @@ const SYSTEM = [
   '',
   'Face cues are null when there was no video; then talk only about the words.',
   '',
+  'Context comes before the face. `awkward` lists moments flagged from the words and timing: the user cutting in, gossip or rumours',
+  'about people who are not there, underselling themselves, and the other person giving short or hedging answers. People smile and',
+  'nod when they are uncomfortable too, so a smile during or after a flagged moment is not a sign it went well: say "smiled, but…".',
+  'Never present a flagged line of the user\'s as something to keep doing. If the user gossiped or cut in, that is the most important',
+  'moment and the first rewrite.',
+  '',
   'Rules:',
   '- Cues are observable behaviour only. Never say or imply what the other person felt, meant, or whether they were sincere, bored, fake or',
   '  lying. Say "smiled", "looked away", "nodded", not "was happy" or "lost interest".',
@@ -83,7 +89,13 @@ const SYSTEM = [
 ].join('\n');
 
 const FIELD_NAMES = /\b(smileDelta|facingPct|smilePeak|congruence|textTone)\b/;
-const BANNED = /\b(fake|faking|lying|lied|liar|genuine|genuinely|insincere|sincere|pretend\w*|bored|annoyed|uninterested|disinterested|didn['’]t care|lost interest|was happy|was sad|they felt|she felt|he felt)\b/i;
+// Mind-reading is out: words that judge sincerity anywhere, and feelings pinned on the other person.
+// "you called yourself just bored" is fine; "she was bored" is not.
+const BANNED = new RegExp([
+  '\\b(fake|faking|lying|lied|liar|insincere|genuine(?:ly)?|pretend\\w*)\\b',
+  "\\b(she|he|they|them|her|him)\\b[^.!?]{0,20}\\b(was|were|seemed|looked|felt|got|is|are)\\s+(bored|annoyed|uninterested|disinterested|happy|sad|upset|uncomfortable|offended|hurt|interested)\\b",
+  "\\b(didn['’]t care|lost interest|they felt|she felt|he felt)\\b",
+].join('|'), 'i');
 
 const pct = v => (v == null ? '–' : `${Math.round(v * 100)}%`);
 const signed = v => (v == null ? '–' : `${v >= 0 ? '+' : '−'}${Math.abs(Math.round(v * 100))}`);
@@ -97,7 +109,8 @@ export function fallbackInsight({ note, behavior, hooks, turns }) {
     if (turnId != null && !moments.some(m => m.turnId === turnId)) moments.push({ turnId, title, observation, why });
   };
 
-  const best = rows.filter(r => r.reaction).sort((a, b) => b.reaction.smileDelta - a.reaction.smileDelta)[0];
+  const flagged = new Set((hooks?.awkward?.flags ?? []).filter(f => f.who === 'you').map(f => f.turnId));
+  const best = rows.filter(r => r.reaction && !flagged.has(r.turnId)).sort((a, b) => b.reaction.smileDelta - a.reaction.smileDelta)[0];
   if (best && best.reaction.smileDelta > 0) {
     add(best.turnId, 'What landed', `After you said “${text.get(best.turnId) ?? ''}”, their smile went ${signed(best.reaction.smileDelta)} points over their baseline.`,
       'Do more of what you did here.');
@@ -134,17 +147,30 @@ export function fallbackInsight({ note, behavior, hooks, turns }) {
   return { moments: moments.slice(0, 4), adviceCheck, source: 'fallback' };
 }
 
-// Your lines that are worth rewriting: replies to a missed bid first, then lines they visibly cooled after.
+// Your lines that are worth rewriting, worst first: gossip and cutting in, then replies that
+// skipped past what they shared, then lines they visibly cooled after.
 export function rewriteCandidates({ turns, userLabel, hooks, behavior }) {
   const ts = turns ?? [];
   const cues = new Map((behavior?.turns ?? []).map(r => [r.turnId, r]));
+  const awkward = hooks?.awkward ?? { flags: [], seams: [] };
   const out = [];
+  const push = c => { if (!out.some(x => x.turnId === c.turnId)) out.push(c); };
+  const theirsBefore = turn => ts.slice(0, ts.indexOf(turn)).reverse().find(t => t.speaker !== userLabel);
+
+  const mine = awkward.flags.filter(f => f.who === 'you' && f.kind !== 'short-reply').sort((a, b) => b.weight - a.weight);
+  for (const f of mine) {
+    const turn = ts.find(t => t.turnId === f.turnId);
+    if (!turn) continue;
+    // Merged into their line: the part after the break is yours.
+    const seam = awkward.seams?.find(x => x.turnId === f.turnId);
+    if (seam) push({ turnId: f.turnId, said: seam.yours, theySaid: seam.theirs, theirTurnId: f.turnId, reason: f.kind, flag: f });
+    else if (turn.speaker === userLabel) push({ turnId: f.turnId, said: turn.text, theySaid: theirsBefore(turn)?.text ?? '', theirTurnId: theirsBefore(turn)?.turnId ?? null, reason: f.kind, flag: f });
+  }
+
   const add = (reply, reason) => {
-    if (!reply || reply.speaker !== userLabel || out.some(c => c.turnId === reply.turnId)) return;
-    const i = ts.indexOf(reply);
-    const before = ts.slice(0, i).reverse().find(t => t.speaker !== userLabel);
-    if (!before) return;
-    out.push({ turnId: reply.turnId, said: reply.text, theySaid: before.text, theirTurnId: before.turnId, reason });
+    if (!reply || reply.speaker !== userLabel) return;
+    const before = theirsBefore(reply);
+    if (before) push({ turnId: reply.turnId, said: reply.text, theySaid: before.text, theirTurnId: before.turnId, reason });
   };
   for (const b of hooks?.missedBids ?? []) add(ts.find(t => t.turnId === b.replyTurnId), 'missed');
   for (const t of ts) {
@@ -171,6 +197,11 @@ const quote = s => `“${String(s).trim().replace(/^[“"]|[”"]$/g, '')}”`;
 export function buildTakeaways({ rewrites, candidates, moments, hooks, signals, behavior, turns }) {
   const text = new Map((turns ?? []).map(t => [t.turnId, t.text]));
   const takeaways = [];
+  // Everything that went wrong on a line, by name: "Gossip about someone else · Cut in".
+  const flagsOn = id => {
+    const labels = [...new Set((hooks?.awkward?.flags ?? []).filter(f => f.turnId === id && f.who === 'you').sort((a, b) => b.weight - a.weight).map(f => f.label))];
+    return labels.length ? labels.join(' · ') : null;
+  };
 
   const r = rewrites[0];
   if (r) {
@@ -178,7 +209,7 @@ export function buildTakeaways({ rewrites, candidates, moments, hooks, signals, 
     takeaways.push({
       kind: 'try', turnId: r.turnId, title: r.title, text: r.because,
       said: c?.said ?? text.get(r.turnId) ?? null, theySaid: c?.theySaid ?? null, tryInstead: r.tryInstead,
-      evidence: evidenceFor(r.turnId, behavior) ?? (c?.reason === 'missed' ? 'They had just shared something personal' : null),
+      evidence: flagsOn(r.turnId) ?? evidenceFor(r.turnId, behavior) ?? (c?.reason === 'missed' ? 'They had just shared something personal' : null),
     });
   }
 
@@ -186,7 +217,15 @@ export function buildTakeaways({ rewrites, candidates, moments, hooks, signals, 
   const followUps = new Set((signals?.questions ?? []).filter(q => q.isFollowUp).map(q => q.turnId));
   for (const d of hooks?.followUpDetector ?? []) if (d.isFollowUp && !(signals?.questions ?? []).length) followUps.add(d.turnId);
   const warmth = id => behavior?.turns?.find(x => x.turnId === id)?.reaction?.smileDelta ?? null;
-  const keep = [...followUps].sort((a, b) => (warmth(b) ?? 0) - (warmth(a) ?? 0))[0];
+  // A smile after an awkward line is often a nervous one, so context vetoes it.
+  const flags = hooks?.awkward?.flags ?? [];
+  const order = (turns ?? []).map(t => t.turnId);
+  const awkwardTurn = id => flags.some(f => f.turnId === id && f.who === 'you');
+  const coldAnswer = id => {
+    const next = order[order.indexOf(id) + 1];
+    return flags.some(f => f.turnId === next && f.who === 'them' && (f.kind === 'short-reply' || f.kind === 'hedge'));
+  };
+  const keep = [...followUps].filter(id => !awkwardTurn(id) && !coldAnswer(id)).sort((a, b) => (warmth(b) ?? 0) - (warmth(a) ?? 0))[0];
   if (keep != null && (warmth(keep) == null || warmth(keep) > 0)) {
     const m = moments.find(x => x.turnId === keep);
     const overlap = hooks?.followUpDetector?.find(d => d.turnId === keep)?.overlap ?? [];
@@ -206,20 +245,48 @@ export function buildTakeaways({ rewrites, candidates, moments, hooks, signals, 
   } else if (promise) {
     takeaways.push({ kind: 'next', turnId: promise.turnId, title: 'Follow through', text: `You said ${quote(promise.text)} Do it before you talk again.`, said: null, theySaid: null, tryInstead: null, evidence: null });
   }
+  // Nothing to praise and nothing coming up: the next rewrite is more useful than an empty slot.
+  for (const extra of rewrites.slice(1)) {
+    if (takeaways.length >= 3) break;
+    const c = candidates.find(x => x.turnId === extra.turnId);
+    takeaways.push({
+      kind: 'try', turnId: extra.turnId, title: extra.title, text: extra.because,
+      said: c?.said ?? text.get(extra.turnId) ?? null, theySaid: c?.theySaid ?? null, tryInstead: extra.tryInstead,
+      evidence: flagsOn(extra.turnId) ?? evidenceFor(extra.turnId, behavior),
+    });
+  }
   return takeaways.slice(0, 3);
 }
 
 // A rewrite only counts if it picks up something they actually said.
-function validRewrite(r, candidates) {
+function validRewrite(r, candidates, turns, userLabel) {
   const c = candidates.find(x => x.turnId === r.turnId);
   if (!c) return false;
   const tryWords = contentWords(r.tryInstead);
-  const grounded = [...contentWords(c.theySaid)].some(w => tryWords.has(w));
+  // After gossip or a cut-in, the better line hands the floor back: anything they said counts,
+  // or a plain question about them.
+  const theirs = c.flag
+    ? (turns ?? []).filter(t => t.speaker !== userLabel).map(t => t.text).join(' ') + ' ' + c.theySaid
+    : c.theySaid;
+  const grounded = [...contentWords(theirs)].some(w => tryWords.has(w))
+    || (c.flag && /\?\s*$/.test(r.tryInstead) && /\b(you|your)\b/i.test(r.tryInstead));
   return grounded && r.tryInstead.length <= 160 && !BANNED.test(`${r.tryInstead} ${r.because}`);
 }
 
+const PLAIN = {
+  gossip: { title: 'Leave the rumour out', because: 'A story about someone who isn\'t there puts them on the spot; asking about them keeps it about the two of you.' },
+  'cut-in': { title: 'Let them finish', because: 'They were mid-sentence; letting it land, then asking about it, shows you were listening.' },
+  undersell: { title: 'Give them something to ask about', because: 'One real detail about what you do gives them a thread to pull on.' },
+};
+
 function fallbackRewrites(candidates, hooks) {
   return candidates.slice(0, 2).map(c => {
+    if (PLAIN[c.reason]) {
+      const tryInstead = c.reason === 'undersell'
+        ? 'Honestly the thing I\'m most into right now is my project. What got you into yours?'
+        : 'Sorry, go on, you were saying?';
+      return { turnId: c.turnId, ...PLAIN[c.reason], tryInstead };
+    }
     const cue = hooks?.missedBids?.find(b => b.turnId === c.theirTurnId)?.cue
       || [...contentWords(c.theySaid)][0] || 'that';
     return { turnId: c.turnId, title: 'Stay with their story', tryInstead: `Wait, tell me more about ${cue}?`, because: 'One question about what they just said keeps the thread going before you change topic.' };
@@ -248,6 +315,7 @@ export async function generateInsight({ llm, note, behavior, hooks, signals, tur
         stats: behavior?.stats ?? null,
         faceSeenPct: behavior?.faceSeenPct ?? null,
         rewriteCandidates: candidates.map(c => ({ turnId: c.turnId, said: c.said, theySaid: c.theySaid, why: c.reason })),
+        awkward: hooks?.awkward?.flags ?? [],
         turns: (turns ?? []).map(t => {
           const c = cues.get(t.turnId) ?? {};
           return {
@@ -267,8 +335,12 @@ export async function generateInsight({ llm, note, behavior, hooks, signals, tur
 
   const known = new Set((turns ?? []).map(t => t.turnId));
   const clean = s => (typeof s === 'string' ? s.trim() : '');
+  const flaggedYou = new Set((hooks?.awkward?.flags ?? []).filter(f => f.who === 'you').map(f => f.turnId));
+  const PRAISE = /\b(keep|great|nice job|well done|works|worked|landed|helps|win)\b/i;
   const moments = (out?.moments ?? [])
     .filter(m => known.has(m.turnId) && clean(m.observation) && clean(m.title))
+    // Belt and braces: an awkward line of yours never comes back as praise.
+    .filter(m => !(flaggedYou.has(m.turnId) && PRAISE.test(`${m.title} ${m.why}`)))
     .map(m => ({ turnId: m.turnId, title: clean(m.title), observation: clean(m.observation), why: clean(m.why) }))
     .slice(0, 4);
   const adviceCheck = (out?.adviceCheck ?? [])
@@ -280,7 +352,7 @@ export async function generateInsight({ llm, note, behavior, hooks, signals, tur
 
   const rewrites = (out?.rewrites ?? [])
     .map(r => ({ turnId: r.turnId, title: clean(r.title), tryInstead: clean(r.tryInstead), because: clean(r.because) }))
-    .filter(r => r.tryInstead && r.title && validRewrite(r, candidates))
+    .filter(r => r.tryInstead && r.title && validRewrite(r, candidates, turns, userLabel))
     .slice(0, 3);
   // Spark's rewrites that didn't pick up their words are swapped for plain ones, not dropped silently.
   return finish({ moments, adviceCheck, source: 'muse-spark' }, rewrites.length || !candidates.length ? rewrites : fallbackRewrites(candidates, hooks));

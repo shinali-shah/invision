@@ -23,8 +23,9 @@ const MARKS = {
   tk1: { sym: '1', label: 'Takeaway 1' },
   tk2: { sym: '2', label: 'Takeaway 2' },
   tk3: { sym: '3', label: 'Takeaway 3' },
+  awk: { sym: '!', label: 'Awkward moment' },
 };
-const MARK_ORDER = ['tk1', 'tk2', 'tk3', 'follow', 'missed'];
+const MARK_ORDER = ['tk1', 'tk2', 'tk3', 'awk', 'follow', 'missed'];
 const markClass = (k) => (k.startsWith('tk') ? 'mk-tk' : `mk-${k}`);
 const LANES = [
   { key: 'talk', label: "Who's talking", h: 30 },
@@ -49,6 +50,8 @@ const state = {
   framesAsked: null,    // which analysis we last asked the server for frames for
   recKey: null,         // which upload of the video the frames belong to
   heat: { key: null, data: null },
+  labelNeeded: false,   // the server said it can't tell which voice is the user's
+  picking: null,        // { step, error } while saving a picked voice
   insightAsked: null,   // conversation id we already asked POST /insight for
   insightBusy: false,
   insightError: null,
@@ -131,6 +134,7 @@ async function postJson(path, body) {
   if (!res.ok) {
     const err = new Error((data && data.error) || `Server said ${res.status}. Try again.`);
     err.status = res.status;
+    err.needsLabel = !!(data && data.needsLabel);
     throw err;
   }
   return data;
@@ -157,8 +161,17 @@ function behaviorTurns() {
   return new Map((b && Array.isArray(b.turns) ? b.turns : []).map((t) => [t.turnId, t]));
 }
 
-// 'you' | 'them' | null (null until the phone says which voice is the user)
+// Until we know which voice is the user's, nothing on the page may say "you" or "them":
+// that's how a rumour got praised once, with every line counted as hers.
+function needsVoice() {
+  const c = state.convo;
+  if (!c) return false;
+  return state.labelNeeded || (!c.userLabel && turnsOf(c).length >= 2);
+}
+
+// 'you' | 'them' | null (null until we know which voice is the user)
 function sideOf(turn, bt) {
+  if (needsVoice()) return null;
   if (bt && (bt.speaker === 'you' || bt.speaker === 'them')) return bt.speaker;
   const label = state.convo && state.convo.userLabel;
   if (!label) return null;
@@ -196,9 +209,20 @@ function markersByTurn(c) {
   } else if (c.hooks && Array.isArray(c.hooks.followUpDetector)) {
     for (const q of c.hooks.followUpDetector) if (q.isFollowUp) add(q.turnId, 'follow');
   }
+  // follow-ups, missed moments and awkward flags all depend on knowing who's who
+  if (needsVoice()) return new Map();
   for (const b of (c.hooks && c.hooks.missedBids) || []) add(b.turnId, 'missed');
+  for (const f of awkward().flags) if (f.who === 'you') add(f.turnId, 'awk');
   takeaways().forEach((t, i) => add(t.turnId, `tk${i + 1}`));
   return out;
+}
+
+function awkward() {
+  const a = state.convo && state.convo.hooks && state.convo.hooks.awkward;
+  return {
+    flags: a && Array.isArray(a.flags) ? a.flags : [],
+    seams: a && Array.isArray(a.seams) ? a.seams : [],
+  };
 }
 
 function missedCue(turnId) {
@@ -212,6 +236,10 @@ function markerTitle(turnId, kinds) {
     if (k === 'missed') {
       const cue = missedCue(turnId);
       return cue ? `Missed moment: they mentioned “${cue}” and the next line moved on` : MARKS.missed.label;
+    }
+    if (k === 'awk') {
+      return awkward().flags.filter((f) => f.who === 'you' && f.turnId === turnId)
+        .map((f) => `${f.label}${f.evidence ? `: ${f.evidence}` : ''}`).join('\n') || MARKS.awk.label;
     }
     if (k.startsWith('tk')) {
       const t = tks[Number(k.slice(2)) - 1];
@@ -660,8 +688,17 @@ async function upload(frames, recAt) {
     if (!sameVideo(recAt)) return;
     if (data && data.behavior) state.convo.behavior = data.behavior;
     if (data && 'insight' in data) state.convo.insight = data.insight;
+    // The server may have worked out the user's voice from the video; pick that up.
+    if (!state.convo.userLabel) await refreshConvo();
     renderAll();
   } catch (err) {
+    if (err.needsLabel && sameVideo(recAt)) {
+      // keep the frames; they go up again once the user picks their voice
+      state.labelNeeded = true;
+      showAnalysisMsg('');
+      renderAll();
+      return;
+    }
     if (err.status === 409 || !sameVideo(recAt)) {
       // the server has a newer video; renderAll will pick it up and analyse that one
       state.pendingUpload = null;
@@ -701,6 +738,9 @@ function renderAnalysisBar() {
       ].filter(Boolean).join(' · ');
     }
     if (seen === 0) showAnalysisMsg("No face found in this video. The camera needs to see the other person's face to measure smiling, facing or nodding.");
+  } else if (state.pendingUpload && needsVoice()) {
+    $('word-status').textContent = 'Cues ready';
+    $('analysis-meta').textContent = 'Pick which voice is yours above and they get lined up with your lines.';
   } else if (!state.pendingUpload) {
     $('word-status').textContent = 'Not analysed yet';
     $('analysis-meta').textContent = 'Face Landmarker runs here in Chrome, 5 frames per second of video.';
@@ -1205,6 +1245,15 @@ function reactionChip(bt, heatReaction) {
   });
 }
 
+function awkChip(f) {
+  return el('span', {
+    class: `rp-chip awk ${f.who === 'you' ? 'mine' : 'theirs'}`,
+    title: f.evidence || f.label,
+    tabindex: '0',
+    on: { mouseenter: () => showWhy(`${f.label}: ${f.evidence || ''}`), focus: () => showWhy(`${f.label}: ${f.evidence || ''}`) },
+  }, el('span', { class: 'rp-awk-icon', 'aria-hidden': 'true', text: '⚠' }), f.label || f.kind);
+}
+
 // Short names for the one-line legend.
 const LEGEND_SHORT = {
   'picked-up': 'picked up', 'follow-up': 'follow-up', topic: 'their topic', promise: 'promise', smile: 'smiling',
@@ -1272,6 +1321,8 @@ function renderTranscript() {
   const d = state.heat.data;
   const heat = new Map((d && Array.isArray(d.turns) ? d.turns : []).map((t) => [t.turnId, t]));
   const legend = d && Array.isArray(d.legend) ? d.legend : [];
+  const flags = needsVoice() ? [] : awkward().flags;
+  const seams = new Map(needsVoice() ? [] : awkward().seams.map((x) => [x.turnId, x]));
   const tries = new Map(takeaways().filter((t) => t.kind === 'try' && t.tryInstead && Number.isInteger(t.turnId)).map((t) => [t.turnId, t]));
   list.replaceChildren(...turns.map((t) => {
     const bt = bts.get(t.turnId);
@@ -1280,7 +1331,14 @@ function renderTranscript() {
     const kinds = marks.get(t.turnId);
     const tryT = tries.get(t.turnId);
     const sideCls = side ? `is-${side}` : `spk-${Math.max(0, labels.indexOf(t.speaker))}`;
-    const words = ht && Array.isArray(ht.words) && ht.words.length ? heatWords(ht.words, legend) : [t.text || ''];
+    const seam = seams.get(t.turnId);
+    // a seam line shows only their half here; the merged-in half gets its own sub-line
+    const words = seam ? [seam.theirs]
+      : ht && Array.isArray(ht.words) && ht.words.length ? heatWords(ht.words, legend) : [t.text || ''];
+    const awk = flags.filter((f) => f.turnId === t.turnId);
+    // on a seam, your flags belong to the merged-in half
+    const awkMain = seam ? awk.filter((f) => f.who !== 'you') : awk;
+    const awkSeam = seam ? awk.filter((f) => f.who === 'you') : [];
     return el('li', { class: `rp-line ${sideCls}${t.turnId === state.activeTurn ? ' active' : ''}`, 'data-turn': t.turnId },
       el('button', { class: 'rp-who', type: 'button', title: 'Play this line', on: { click: () => seekToTurn(t.turnId) } },
         el('span', { text: speakerName(t, side, labels) }),
@@ -1291,8 +1349,15 @@ function renderTranscript() {
           kinds ? el('span', { class: 'rp-line-marks', title: markerTitle(t.turnId, kinds) },
             ...MARK_ORDER.filter((k) => kinds.has(k)).map((k) => el('span', { class: `rp-mk ${markClass(k)}`, text: MARKS[k].sym }))) : null,
           ...words,
+          ...awkMain.map(awkChip),
           side === 'you' ? reactionChip(bt, ht && ht.reaction) : null,
         ),
+        seam ? el('div', { class: 'rp-seam' },
+          el('p', { class: 'rp-seam-text' },
+            el('span', { class: 'rp-seam-who', text: 'You (merged)' }),
+            seam.yours,
+            ...awkSeam.map(awkChip)),
+          el('p', { class: 'rp-seam-note', text: 'Voice separation merged this into their line.' })) : null,
         side === 'them' ? themCues(bt, b) : null,
         tryT ? el('p', { class: 'rp-tryline' }, el('span', { class: 'rp-tryline-label', text: 'Try instead' }), `“${tryT.tryInstead}”`) : null,
       ),
@@ -1310,7 +1375,7 @@ const TK_ORDER = { try: 0, keep: 1, next: 2 };
 // What the server sent; until it sends takeaways, a stand-in made from the moments.
 function takeaways() {
   const ins = state.convo && state.convo.insight;
-  if (!ins) return [];
+  if (!ins || needsVoice()) return [];
   const kindOf = (k) => (k in TK_KICKER ? k : 'next');
   if (Array.isArray(ins.takeaways) && ins.takeaways.length) {
     return ins.takeaways.slice(0, 3).map((t) => ({ ...t, kind: kindOf(t.kind) }));
@@ -1383,7 +1448,8 @@ function renderTakeaways() {
   }
   let msg;
   let action = null;
-  if (state.uploading || state.insightBusy) msg = 'Writing takeaways…';
+  if (needsVoice()) msg = 'Pick which voice is yours first. Until then we can’t tell your lines from theirs.';
+  else if (state.uploading || state.insightBusy) msg = 'Writing takeaways…';
   else if (state.analysing || (hasVideo() && !c.behavior)) msg = 'Takeaways show up once the video is analysed.';
   else if (state.insightError) {
     msg = `Couldn't write takeaways: ${state.insightError}`;
@@ -1396,7 +1462,7 @@ function renderTakeaways() {
 // No insight yet (no video, or an older conversation): ask for one, once per page view.
 function ensureInsight() {
   const c = state.convo;
-  if (!c || c.insight || state.insightAsked === c.id) return;
+  if (!c || c.insight || state.insightAsked === c.id || needsVoice() || state.picking) return;
   if (state.analysing || state.uploading || (hasVideo() && !c.behavior) || !turnsOf(c).length) return;
   const id = c.id;
   state.insightAsked = id;
@@ -1405,7 +1471,10 @@ function ensureInsight() {
   renderTakeaways();
   postJson(`/api/conversations/${enc(id)}/insight`, {})
     .then((ins) => { if (state.convo && state.convo.id === id && ins && !state.convo.insight) state.convo.insight = ins; })
-    .catch((err) => { state.insightError = err.message; })
+    .catch((err) => {
+      if (err.needsLabel) state.labelNeeded = true;
+      else state.insightError = err.message;
+    })
     .finally(() => {
       state.insightBusy = false;
       if (state.convo && state.convo.id === id) renderAll();
@@ -1418,6 +1487,13 @@ function renderScores() {
   const box = $('scores');
   const c = state.convo;
   const items = [];
+  if (needsVoice()) { box.hidden = true; box.replaceChildren(); return; }
+  const awk = awkward().flags.filter((f) => f.who === 'you');
+  if (c.hooks && c.hooks.awkward) {
+    items.push(el('div', { class: `rp-score${awk.length ? ' bad' : ''}`, title: awk.map((f) => `${f.label}: ${f.evidence || ''}`).join('\n') || null },
+      el('span', { class: 'rp-score-num', text: String(awk.length) }),
+      el('span', { class: 'rp-score-label', text: awk.length === 1 ? 'awkward moment' : 'awkward moments' })));
+  }
   const qs = c.signals && Array.isArray(c.signals.questions) ? c.signals.questions : [];
   if (qs.length) {
     const fu = [...markersByTurn(c).values()].filter((k) => k.has('follow')).length;
@@ -1526,6 +1602,11 @@ function renderHooks() {
     ['Coming up', list('events').map((e) => chip(e.text, e.turnId))],
     ['You promised', list('commitments').map((c) => chip(c.text, c.turnId))],
     ['Missed moments', list('missedBids').map((b) => chip(b.cue, b.turnId, 'missed'))],
+    ['Awkward moments', needsVoice() ? [] : awkward().flags.map((f) => {
+      const c = chip(`${f.who === 'you' ? 'You' : 'Them'}: ${f.label}`, f.turnId, `awk ${f.who === 'you' ? 'mine' : ''}`.trim());
+      if (f.evidence) c.title = f.evidence;
+      return c;
+    })],
   ].filter(([, items]) => items.length);
   const qs = list('followUpDetector');
   fold.hidden = !groups.length && !qs.length;
@@ -1586,6 +1667,7 @@ function renderAll() {
   $('live-toggle-wrap').hidden = !video;
   if (video) loadMainVideo();
   $('hero').classList.toggle('no-video', !video);
+  renderVoicePicker();
   renderAnalysisBar();
   renderTakeaways();
   renderScores();
@@ -1630,6 +1712,83 @@ function startTicking() {
   if (ticking) return;
   ticking = true;
   requestAnimationFrame(tick);
+}
+
+async function refreshConvo() {
+  try {
+    const c = await getJson(`/api/conversations/${enc(state.id)}`);
+    if (state.convo && c.id === state.convo.id) {
+      state.convo = c;
+      if (c.userLabel) state.labelNeeded = false;
+    }
+  } catch { /* keep what we have */ }
+}
+
+// ---------- which voice is yours ----------
+
+function renderVoicePicker() {
+  const box = $('voice');
+  const c = state.convo;
+  if (!needsVoice() && !state.picking) { box.hidden = true; box.replaceChildren(); return; }
+  box.hidden = false;
+  const p = state.picking;
+  if (p && !p.error) {
+    put(box,
+      el('h2', { class: 'rp-voice-title', text: 'Which voice is yours?' }),
+      el('p', { class: 'rp-voice-busy', text: p.step }));
+    return;
+  }
+  const turns = turnsOf(c).filter((t) => t.speaker && t.speaker !== 'unknown');
+  put(box,
+    el('h2', { class: 'rp-voice-title', text: 'Which voice is yours?' }),
+    el('p', { class: 'rp-voice-lede', text: 'We couldn’t tell which voice is you, so nothing here is scored yet. Tap one of your own lines.' }),
+    p && p.error ? el('p', { class: 'rp-voice-error', text: p.error }) : null,
+    el('ol', { class: 'rp-voice-lines' }, ...turns.map((t) => el('li', {},
+      el('button', { class: 'rp-voice-line', type: 'button', on: { click: () => pickVoice(t.speaker) } },
+        el('span', { class: `rp-voice-letter spk-${Math.max(0, speakerLabels(turns).indexOf(t.speaker))}`, text: t.speaker }),
+        el('span', { class: 'rp-voice-text', text: t.text || '' }),
+        el('span', { class: 'rp-voice-pick', text: `That’s me (voice ${t.speaker})` }),
+      )))),
+  );
+}
+
+async function pickVoice(label) {
+  if (state.picking && !state.picking.error) return;
+  const id = state.id;
+  const step = (text) => { state.picking = { step: text, error: null }; renderVoicePicker(); };
+  try {
+    step('Saving your voice…');
+    await postJson(`/api/conversations/${enc(id)}/user-label`, { label });
+    step('Coaching… this takes about half a minute.');
+    const c = await postJson(`/api/conversations/${enc(id)}/process`, { reflection: '' });
+    if (state.id !== id) return;
+    if (c && c.id === id) state.convo = { ...state.convo, ...c };
+    if (!state.convo.userLabel) state.convo.userLabel = label;
+    state.labelNeeded = false;
+    // The old cues were lined up against the wrong voice (or not at all): send them again.
+    const rec = state.convo.recording;
+    const frames = state.pendingUpload || (state.frames && state.frames.length ? state.frames : null);
+    state.picking = null;
+    state.heat.key = null;
+    if (rec && frames) {
+      renderAll();
+      await upload(frames, rec.uploadedAt);
+    } else if (rec) {
+      // no frames on hand: let the analysis run (again) and post with the right voice
+      if (!state.analysing) {
+        state.autoStarted = false;
+        state.convo.behavior = null;
+      }
+      renderAll();
+    } else {
+      state.convo.insight = null;
+      state.insightAsked = null;
+      renderAll();
+    }
+  } catch (err) {
+    state.picking = { step: '', error: `Couldn’t save that: ${err.message}` };
+    renderVoicePicker();
+  }
 }
 
 async function loadConvo() {

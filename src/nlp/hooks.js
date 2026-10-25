@@ -2,6 +2,7 @@
 // up for them, what the user promised, and where the user talked past them. Regexes and
 // counting only, so every hook can point at the turn it came from.
 
+import { detectAwkward } from './awkward.js';
 import { contentTokens, contentWords, isQuestion, overlap, sentences, stripFillers, wordCount } from './text.js';
 
 const MAX_TOPICS = 5;
@@ -342,5 +343,6 @@ export function extractHooks(turns, userLabel, { otherName } = {}) {
     missedBids: missedBidsFrom(ts, userLabel, stats),
     highlights: highlightsFrom(ts, userLabel),
     followUpDetector: detectFollowUps(ts, userLabel),
+    awkward: detectAwkward(ts, userLabel),
   };
 }
