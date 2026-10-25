@@ -165,6 +165,7 @@ function convoView(c) {
   return {
     id: c.id,
     raw: c,
+    named: !!who,          // false: nobody typed or said a name, so copy says "Conversation", not "with them"
     name: who ? cap(who) : 'Someone',
     first: who ? firstName(who) : 'them',
     initials: who ? initialsOf(who) : '?',
@@ -182,6 +183,12 @@ function convoView(c) {
     turns,
     transcript: turns.map((t) => [fmtClock(t.startMs || 0), t.speaker === c.userLabel ? 'me' : 'them', t.text || '', t.turnId, t.speaker]),
   };
+}
+
+// Who said one of their lines: the name when we have one, else the diarizer's letter like the phone.
+function otherLabel(c, speaker) {
+  if (c.named) return c.first;
+  return speaker && speaker !== 'unknown' ? `Speaker ${speaker}` : 'Unclear';
 }
 
 function applyMemory(mem) {
@@ -258,10 +265,10 @@ function tasks() {
   const out = [];
   // Unfinished first: nothing else about that conversation exists until it's done.
   for (const c of state.convos) {
-    if (c.needsLabel) out.push({ key: `label:${c.id}`, text: `Finish coaching for ${c.first}`, convo: c, finish: true });
+    if (c.needsLabel) out.push({ key: `label:${c.id}`, text: c.named ? `Finish coaching for ${c.first}` : 'Finish coaching', convo: c, finish: true });
   }
   for (const c of state.convos) {
-    if (c.followUp && c.followUp.status === 'draft' && c.followUp.text) out.push({ key: `fu:${c.id}`, text: `Follow up with ${c.first}`, convo: c });
+    if (c.followUp && c.followUp.status === 'draft' && c.followUp.text) out.push({ key: `fu:${c.id}`, text: c.named ? `Follow up with ${c.first}` : 'Follow up', convo: c });
   }
   for (const c of state.convos) {
     for (const k of c.commitments) if (k && k.text) out.push({ key: `commit:${c.id}:${k.turnId ?? k.text}`, text: `You said: ${k.text}` });
@@ -559,7 +566,8 @@ function renderLive() {
   for (const [turnId, t] of ordered) {
     let line = box.querySelector(`[data-turn="${turnId}"]`);
     const who = userLabel ? (t.speaker === userLabel ? 'me' : 'them') : 'them';
-    const whoText = userLabel ? (who === 'me' ? 'You' : name) : (t.speaker && t.speaker !== 'unknown' ? t.speaker : '');
+    // Before a voice is picked the lines keep the diarizer's letters, worded like the phone and the wall.
+    const whoText = userLabel ? (who === 'me' ? 'You' : name) : (t.speaker && t.speaker !== 'unknown' ? `Speaker ${t.speaker}` : 'Unclear');
     // A finished turn knows its own transcript time. Our clock only stands in for partials, and
     // after a reload it starts late, so the time is written again on every pass rather than once.
     const when = Number.isFinite(t.startMs) ? t.startMs : t.at - r.startedAt;
@@ -604,14 +612,24 @@ function stopRec() {
 }
 
 // Finished turns carry transcript time. After a reload mid-recording our clock started at the
-// reload, so the first turn that arrives pulls it back to where the session really began. One
-// shot only: turns flushed at stop carry times from the whole session, not from now.
+// reload, so each turn that arrives can pull it back to where the session really began. Every
+// turn, not just the first: the hub replays them oldest-first, and settling on turn 1's endMs
+// left a late joiner six seconds behind the phone for the rest of the recording.
 function syncStart(turn) {
   const r = state.rec;
-  if (!r.active || !r.syncPending || !turn || !(turn.endMs > 0)) return;
-  r.syncPending = false;
-  const impliedStart = Date.now() - turn.endMs;
-  if (impliedStart < r.startedAt) r.startedAt = impliedStart;
+  if (!r.active || !turn || !(turn.endMs > 0)) return;
+  syncStartTo(Date.now() - turn.endMs);
+}
+
+// The last finished turn can be a whole turn behind the mic, so the hub's own stamp for when the
+// phone went to recording is used too. Same Mac as the server, so the clocks agree; a stamp from
+// another day is a stale focus, not a six-hour recording.
+function syncStartTo(at) {
+  const r = state.rec;
+  if (!r.active || !(at > 0)) return;
+  const age = Date.now() - at;
+  if (age < 0 || age > 6 * 3600 * 1000) return;
+  if (at < r.startedAt) r.startedAt = at;
 }
 
 function tick() {
@@ -760,7 +778,7 @@ function takeawayArticle(c, t, i, an) {
   if (t.kind === 'try') {
     return el('article', { class: 'takeaway try' },
       el('span', { class: 'label', text: `${n}Try this next time` }),
-      t.theySaid && el('p', { class: 'tk-them' }, el('b', { text: c.first }), t.theySaid),
+      t.theySaid && el('p', { class: 'tk-them' }, el('b', { text: c.named ? c.first : 'Them' }), t.theySaid),
       t.said && el('p', { class: 'tk-you' }, el('b', { text: 'You' }), t.said),
       t.tryInstead && el('p', { class: 'tk-rewrite' }, el('b', { text: 'Try instead' }), t.tryInstead),
       !t.tryInstead && t.text && el('p', { class: 'tk-note', text: t.text }),
@@ -771,7 +789,7 @@ function takeawayArticle(c, t, i, an) {
     const line = t.turnId != null ? turnText(t.turnId) : null;
     return el('article', { class: 'takeaway keep' },
       el('span', { class: 'label', text: `${n}Keep doing this` }),
-      line && el('p', { class: 'tk-you' }, el('b', { text: line[1] === 'me' ? 'You' : c.first }), line[2]),
+      line && el('p', { class: 'tk-you' }, el('b', { text: line[1] === 'me' ? 'You' : otherLabel(c, line[4]) }), line[2]),
       el('p', { class: 'tk-note', text: t.text || '' }),
       playBtn(t.turnId),
     );
@@ -833,7 +851,7 @@ function transcriptPage(index) {
   return el('main', { class: 'workspace' },
     back,
     el('div', { class: 'page-intro' },
-      el('div', {}, el('h1', { text: `Conversation with ${c.first}` }), el('p', { class: 'intro-subtitle', text: 'Replay: three takeaways, the moments behind them, and the full transcript.' })),
+      el('div', {}, el('h1', { text: c.named ? `Conversation with ${c.first}` : 'Conversation' }), el('p', { class: 'intro-subtitle', text: 'Replay: three takeaways, the moments behind them, and the full transcript.' })),
       el('div', { class: 'intro-actions' },
         el('button', { class: 'button ghost', onclick: () => openReplay(c.id) }, 'Open replay ', icon('arrow', 16)),
         draftBtn),
@@ -888,7 +906,7 @@ function transcriptPage(index) {
           const isFu = an.followUps.has(turnId);
           const isMs = an.missed.includes(turnId);
           // Until a voice is picked every line would read as theirs, so keep the diarizer's letters.
-          const whoText = c.needsLabel ? (speaker && speaker !== 'unknown' ? `Speaker ${speaker}` : 'Unclear') : who === 'me' ? 'You' : c.first;
+          const whoText = c.needsLabel ? (speaker && speaker !== 'unknown' ? `Speaker ${speaker}` : 'Unclear') : who === 'me' ? 'You' : otherLabel(c, speaker);
           return el('div', { class: `line ${who}${isFu ? ' is-fu' : ''}${isMs ? ' is-ms' : ''}`, id: `ln-${turnId}` },
             el('span', { class: 'line-time', text: time }),
             el('span', { class: 'line-who', text: whoText }),
@@ -957,7 +975,7 @@ function openFollowUp(c) {
   refs.modal = el('div', { class: 'modal-backdrop', onclick: closeFollowUp },
     el('div', { class: 'modal', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'followup-title', onclick: (e) => e.stopPropagation() },
       el('div', { class: 'modal-head' },
-        el('div', {}, el('span', { class: 'label', text: `DRAFT FOR ${c.first.toUpperCase()}` }), el('h2', { id: 'followup-title', text: 'Follow-up message' })),
+        el('div', {}, el('span', { class: 'label', text: c.named ? `DRAFT FOR ${c.first.toUpperCase()}` : 'DRAFT' }), el('h2', { id: 'followup-title', text: 'Follow-up message' })),
         el('button', { class: 'modal-close', 'aria-label': 'Close', text: '×', onclick: closeFollowUp }),
       ),
       el('p', { class: 'modal-note', text: `Based on your conversation on ${c.when}. Edit it before you send.` }),
@@ -1006,11 +1024,12 @@ function handle(msg) {
   const id = msg.conversationId;
   switch (msg.type) {
     case 'hello':
+      // Joined mid-recording (reload, reconnect): the clock starts behind the phone's. The focus
+      // carries the server's clock from when the phone went to recording, and the turns the hub
+      // replays next pull it back further if they say so (syncStart).
       if (msg.focus && msg.focus.view === 'recording' && msg.focus.conversationId) {
-        // Joined mid-recording (reload, reconnect): our clock is behind the phone's.
-        const fresh = !(state.rec.active && state.rec.id === msg.focus.conversationId);
         startRec(msg.focus.conversationId, msg.focus.otherName);
-        if (fresh) state.rec.syncPending = true;
+        syncStartTo(msg.focus.at);
       } else stopRec();
       // First connect or a reconnect: anything that changed while we were away.
       refreshMemory();

@@ -66,6 +66,7 @@ const state = {
   insightError: null,
   nods: [],             // transcript ms of each nod found in frames
   analysing: false,
+  analysisFailed: false, // the last pass over this video stopped early; the page carries on without cues
   autoStarted: false,
   pendingUpload: null,  // frames we couldn't post yet
   uploading: false,
@@ -77,6 +78,7 @@ const state = {
   videoSrc: null,
   compare: { id: null, data: null }, // /compare, for the "Last time" numbers
   draftFor: null,       // { id, text }: whose draft is in the modal's textarea, and what we put there
+  drafting: false,      // POST /follow-up in flight for the modal
 };
 
 // ---------- helpers ----------
@@ -324,6 +326,7 @@ function syncFrames() {
     state.recKey = recKey;
     state.framesAsked = null;
     state.autoStarted = false;
+    state.analysisFailed = false;
     abortAnalysis();
     document.body.classList.remove('is-analysing');
     clearOverlay();
@@ -618,6 +621,7 @@ async function analyse() {
   // a re-upload bumps runId through syncFrames, but check the video itself too
   const live = () => state.runId === run && !!state.convo && !!state.convo.recording && state.convo.recording.uploadedAt === recAt;
   state.analysing = true;
+  state.analysisFailed = false;
   state.pendingUpload = null;
   const main = $('video');
   main.pause();
@@ -695,8 +699,9 @@ async function analyse() {
     if (!live()) { clearOverlay(); return; }
     console.error('analysis failed', err);
     state.analysing = false;
+    state.analysisFailed = true;
     clearOverlay();
-    showAnalysisMsg(`Analysis stopped: ${err && err.message ? err.message : 'something went wrong'}.`, true,
+    showAnalysisMsg(`Analysis stopped: ${err && err.message ? err.message.replace(/\.$/, '') : 'something went wrong'}.`, true,
       el('button', { class: 'rp-btn rp-btn-quiet', type: 'button', text: 'Try again', on: { click: () => analyse() } }));
   } finally {
     v.removeAttribute('src');
@@ -709,6 +714,11 @@ async function analyse() {
       drawLanes();
       updatePlayhead();
       if (state.overlay) state.overlay.sync();
+      // A pass that stopped early left the strip on "Analysing the video…" and the takeaways
+      // waiting for cues that aren't coming. Say so, and write the takeaways from the words alone.
+      renderScores();
+      renderTakeaways();
+      ensureInsight();
     }
   }
 }
@@ -1423,6 +1433,13 @@ function takeaways() {
 const turnById = (id) => turnsOf(state.convo).find((t) => t.turnId === id) || null;
 const firstOf = (arr) => (Array.isArray(arr) && arr.length ? arr[0] : null);
 
+// Who said one of their quoted lines on a card: the name, else the voice's letter, else just "Them".
+function theirLabel(turn) {
+  const first = firstName();
+  if (first !== 'them') return first;
+  return turn && turn.speaker && turn.speaker !== 'unknown' ? `Speaker ${turn.speaker}` : 'Them';
+}
+
 // The Figma's three cards: try / keep / ask. Each comes from the matching takeaway when the
 // server wrote one, else from the nearest thing we measured, so the page is rarely blank.
 function threeTakeaways() {
@@ -1464,14 +1481,14 @@ function playButton(turnId) {
   return el('button', { class: 'play', type: 'button', on: { click: () => play(turnId) } }, el('span', { 'aria-hidden': 'true', text: '▶' }), ' Play the moment');
 }
 
-function tryCard(t, first) {
+function tryCard(t) {
   const turn = t && Number.isInteger(t.turnId) ? turnById(t.turnId) : null;
   const kids = [el('span', { class: 'label', text: '1 · Try this next time' })];
   if (!t) {
     kids.push(el('p', { class: 'tk-note tk-empty', text: 'Nothing to redo this time.' }));
   } else {
     kids.push(
-      quoteLine('tk-them', first, t.theySaid || null),
+      quoteLine('tk-them', theirLabel(null), t.theySaid || null),
       quoteLine('tk-you', 'You', t.said || (turn ? turn.text : null)),
       t.tryInstead ? el('p', { class: 'tk-rewrite' }, el('b', { text: 'Try instead' }), t.tryInstead) : null,
       t.text ? el('p', { class: 'tk-note', text: t.text }) : (t.title ? el('p', { class: 'tk-note', text: t.title }) : null),
@@ -1482,7 +1499,7 @@ function tryCard(t, first) {
   return el('article', { class: 'takeaway try' }, ...kids);
 }
 
-function keepCard(t, first) {
+function keepCard(t) {
   const turn = t && Number.isInteger(t.turnId) ? turnById(t.turnId) : null;
   const kids = [el('span', { class: 'label', text: '2 · Keep doing this' })];
   if (!t) {
@@ -1491,7 +1508,7 @@ function keepCard(t, first) {
     const side = turn ? sideOf(turn, behaviorTurns().get(turn.turnId)) : null;
     kids.push(
       t.said ? quoteLine('tk-you', 'You', t.said)
-        : turn ? quoteLine(side === 'them' ? 'tk-them' : 'tk-you', side === 'them' ? first : 'You', turn.text) : null,
+        : turn ? quoteLine(side === 'them' ? 'tk-them' : 'tk-you', side === 'them' ? theirLabel(turn) : 'You', turn.text) : null,
       el('p', { class: 'tk-note', text: t.text || t.title || '' }),
       t.evidence ? el('p', { class: 'tk-note tk-evidence', text: evidenceText(t.evidence) }) : null,
       playButton(t.turnId),
@@ -1514,7 +1531,7 @@ function takeawaysPending() {
   const c = state.convo;
   if (needsVoice()) return { msg: 'Pick which voice is yours first. Until then we can’t tell your lines from theirs.' };
   if (state.uploading || state.insightBusy) return { msg: 'Writing takeaways…', busy: true };
-  if (state.analysing || (hasVideo() && !c.behavior)) return { msg: 'Takeaways show up once the video is analysed.' };
+  if (state.analysing || (hasVideo() && !c.behavior && !state.analysisFailed)) return { msg: 'Takeaways show up once the video is analysed.' };
   if (state.insightError) {
     return {
       msg: `Couldn't write takeaways: ${state.insightError}`,
@@ -1537,15 +1554,15 @@ function renderTakeaways() {
     put(box, el('p', { class: 'rp-tk-empty', text: 'No takeaways this time.' }));
     return;
   }
-  const first = firstName();
-  put(box, tryCard(tryT, first), keepCard(keep, first), askCard(ask));
+  put(box, tryCard(tryT), keepCard(keep), askCard(ask));
 }
 
 // No insight yet (no video, or an older conversation): ask for one, once per page view.
 function ensureInsight() {
   const c = state.convo;
   if (!c || c.insight || state.insightAsked === c.id || needsVoice() || state.picking) return;
-  if (state.analysing || state.uploading || (hasVideo() && !c.behavior) || !turnsOf(c).length) return;
+  // With a video, wait for its cues; if the pass failed, the transcript alone will do.
+  if (state.analysing || state.uploading || (hasVideo() && !c.behavior && !state.analysisFailed) || !turnsOf(c).length) return;
   const id = c.id;
   state.insightAsked = id;
   state.insightBusy = true;
@@ -1624,7 +1641,7 @@ function renderScores() {
     after = 'No camera on this call';
     other = 'No camera on this call';
   } else if (!tally) {
-    after = state.analysing ? 'Analysing the video…' : 'Not analysed yet';
+    after = state.analysing ? 'Analysing the video…' : state.analysisFailed ? 'Video analysis stopped early' : 'Not analysed yet';
     other = after;
   } else {
     after = tally.fu[1] ? `Smiled or nodded after ${tally.fu[0]} of ${plural(tally.fu[1], 'follow-up')}` : 'No follow-ups to react to';
@@ -1780,7 +1797,7 @@ function fmtWhen(iso) {
 function renderHeader() {
   const c = state.convo;
   const first = firstName();
-  $('title').textContent = `Conversation with ${first}`;
+  $('title').textContent = first === 'them' ? 'Conversation' : `Conversation with ${first}`;
   document.title = c ? `Replay of ${first === 'them' ? 'a conversation' : c.otherName}` : 'Playback Replay';
   $('side-title').textContent = first === 'them' ? 'How they responded' : `How ${first} responded`;
   const tag = $('tag');
@@ -1810,7 +1827,7 @@ function openDraft() {
   if (!c) return;
   const fu = c.followUp;
   const first = firstName();
-  $('modal-label').textContent = `Draft for ${first}`;
+  $('modal-label').textContent = first === 'them' ? 'Draft' : `Draft for ${first}`;
   $('modal-note').textContent = `Based on your conversation on ${fmtWhen(c.createdAt) || fmtDate(c.createdAt)}. Edit it before you send.`;
   const ta = $('followup-text');
   // Keep the person's edits while the modal is closed and reopened on the same conversation. If
@@ -1824,6 +1841,32 @@ function openDraft() {
   $('modal-copy').textContent = 'Copy message';
   $('modal').hidden = false;
   ta.focus();
+  // Nothing written yet: ask the agent for one, like Home does, rather than open an empty box.
+  if (!ta.value && !state.drafting) fetchDraft(c);
+}
+
+async function fetchDraft(c) {
+  const ta = $('followup-text');
+  const was = ta.placeholder;
+  state.drafting = true;
+  ta.disabled = true;
+  ta.placeholder = 'Drafting…';
+  try {
+    const fu = await postJson(`/api/conversations/${enc(c.id)}/follow-up`, {});
+    if (state.convo && state.convo.id === c.id && fu && fu.text) {
+      state.convo.followUp = fu;
+      // only fill the box if they haven't started typing into it meanwhile
+      if (!ta.value) { ta.value = fu.text; state.draftFor = { id: c.id, text: fu.text }; }
+    }
+    ta.placeholder = was;
+  } catch (err) {
+    // 400 here means there's no coaching to write from yet; the box stays open for a hand-written one
+    ta.placeholder = `${err.message} Write one here.`;
+  } finally {
+    state.drafting = false;
+    ta.disabled = false;
+    if (!$('modal').hidden) ta.focus();
+  }
 }
 
 function closeDraft() {

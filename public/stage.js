@@ -28,7 +28,7 @@ const state = {
   live: new Map(),       // id -> Map(turnId -> { speaker, text, partial })
   doneTurns: new Map(),  // id -> Turn[] from the 'done' message
   processing: new Map(), // id -> give-up timer
-  rec: null,             // { id, startedAt, stoppedAt, syncPending }
+  rec: null,             // { id, startedAt, stoppedAt }
   memory: null,
   pendingTagId: null,    // a conversation created but not recorded yet
   shownNote: new Map(),  // id -> { tag, key } of what's on screen, for the retag swap
@@ -255,18 +255,28 @@ function updateTimer() {
   timer.replaceChildren(mm, el('span', { class: 'colon', text: ':' }), ss);
 }
 
-function startTimer(id, { late = false } = {}) {
-  if (state.rec && state.rec.id === id) return;
-  // Joined (or reloaded) mid-recording: our clock starts behind the phone's until a turn tells us how far.
-  state.rec = { id, startedAt: Date.now(), stoppedAt: null, syncPending: late };
+function startTimer(id, at) {
+  if (!state.rec || state.rec.id !== id) {
+    // Joined (or reloaded) mid-recording: our clock starts behind the phone's until something says how far.
+    state.rec = { id, startedAt: Date.now(), stoppedAt: null };
+  }
+  // The focus carries the server's clock from when the phone went to recording (same Mac, same
+  // clock). A stamp from hours ago is a stale focus, not a long recording.
+  const age = at > 0 ? Date.now() - at : -1;
+  if (age >= 0 && age < 6 * 3600 * 1000) syncTimerTo(id, at);
 }
 
-// A finished turn says how much audio there has been; the hub replays them to a late joiner.
+// A finished turn says how much audio there has been. Every turn gets a say, because the hub
+// replays them oldest-first to a late joiner: settling on turn 1 left the wall six seconds behind.
 function syncTimer(id, turn) {
+  if (!turn || !(turn.endMs > 0)) return;
+  syncTimerTo(id, Date.now() - turn.endMs);
+}
+
+function syncTimerTo(id, at) {
   const rec = state.rec;
-  if (!rec || rec.id !== id || !rec.syncPending || !turn || !(turn.endMs > 0)) return;
-  rec.syncPending = false;
-  rec.startedAt = Math.min(rec.startedAt, Date.now() - turn.endMs);
+  if (!rec || rec.id !== id || rec.stoppedAt) return;
+  rec.startedAt = Math.min(rec.startedAt, at);
 }
 
 function stopTimer(id) {
@@ -287,9 +297,7 @@ function signalRows(s) {
 function renderCoaching(convo) {
   const id = state.convoId;
   const busy = id && state.processing.has(id);
-  $('coach-title').textContent = convo
-    ? `Your talk with ${convo.otherName || 'them'}`
-    : 'Your talk';
+  $('coach-title').textContent = realName(convo) ? `Your talk with ${convo.otherName}` : 'Your talk';
 
   const tagNode = $('coach-tag');
   const prev = id ? state.shownNote.get(id) : null;
@@ -692,7 +700,7 @@ async function fetchConvo(id) {
   } catch { /* deleted or server away; the WS will tell us */ }
 }
 
-function setFocus(view, conversationId, otherName, { late = false } = {}) {
+function setFocus(view, conversationId, otherName, at = null) {
   if (!VIEWS.includes(view)) return;
   // While recording, renderScript asks for the brief under the conversation's own name.
   if (view !== 'recording') setBriefName(view === 'start' ? realName({ otherName }) : null);
@@ -701,7 +709,7 @@ function setFocus(view, conversationId, otherName, { late = false } = {}) {
   state.jumpedTo = null; // the phone has spoken; we're no longer ahead of it
   state.convoId = conversationId || null;
   if (state.convoId) state.lastConvoId = state.convoId;
-  if (view === 'recording' && state.convoId) startTimer(state.convoId, { late });
+  if (view === 'recording' && state.convoId) startTimer(state.convoId, at);
   if (view !== 'recording' && state.convoId) stopTimer(state.convoId);
   if (view === 'start') state.pendingTagId = null;
   if (view === 'memory' && prevView !== 'memory') refreshMemory();
@@ -736,11 +744,11 @@ function handle(msg) {
       state.mock = !!msg.mock;
       $('mock-badge').hidden = !state.mock;
       refreshMemory();
-      if (msg.focus) setFocus(msg.focus.view, msg.focus.conversationId, msg.focus.otherName, { late: true });
+      if (msg.focus) setFocus(msg.focus.view, msg.focus.conversationId, msg.focus.otherName, msg.focus.at);
       else render();
       break;
     case 'focus':
-      setFocus(msg.view, id, msg.otherName);
+      setFocus(msg.view, id, msg.otherName, msg.at);
       break;
     case 'conversation': {
       const c = msg.conversation;

@@ -8,7 +8,7 @@ const METRICS = [
   { key: 'userQuestions', label: 'Questions you asked', up: true },
   { key: 'storiesAfterQuestions', label: 'Stories after your questions', up: true },
   { key: 'userTalkShare', label: 'Your share of the talking', toward: 0.5 },
-  { key: 'missedBids', label: 'Missed bids', up: false },
+  { key: 'missedBids', label: 'Missed moments', up: false },
 ];
 
 // Words every suggestion has in it; matching on these would say "followed" for any question.

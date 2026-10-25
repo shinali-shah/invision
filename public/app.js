@@ -76,6 +76,11 @@ function el(tag, props = {}, ...kids) {
   return node;
 }
 
+// replaceChildren prints a stray null as the text "null"; this skips the optional bits.
+function put(node, ...kids) {
+  node.replaceChildren(...kids.filter((k) => k != null && k !== false));
+}
+
 function checkedTag(name) {
   const input = document.querySelector(`input[name="${name}"]:checked`);
   return input ? input.value : 'family';
@@ -120,7 +125,7 @@ function speakerName(speaker, convo, labels) {
   if (!userLabel) return `Speaker ${speaker}`;
   if (speaker === userLabel) return 'You';
   const others = labels.filter((l) => l !== userLabel);
-  if (others.length === 1 && convo.otherName) return convo.otherName;
+  if (others.length === 1 && isNamed(convo)) return convo.otherName;
   return `Speaker ${speaker}`;
 }
 
@@ -227,7 +232,7 @@ function renderFinishBanner() {
     box.replaceChildren(...rows.map((c) => el('div', { class: 'finish-row' },
       el('span', { class: 'finish-dot', 'aria-hidden': 'true' }),
       el('span', { class: 'finish-text' },
-        el('strong', { text: `Finish coaching for ${c.otherName || 'them'}` }),
+        el('strong', { text: isNamed(c) ? `Finish coaching for ${c.otherName}` : 'Finish coaching' }),
         document.createTextNode(': tap which voice is yours'),
       ),
       el('button', { type: 'button', class: 'finish-btn', text: 'Finish', onclick: () => openConversation(c) }),
@@ -279,8 +284,8 @@ function renderBrief(brief, { card = $('brief-card'), title = null } = {}) {
     brief.lastMetAt ? `Last talked ${fmtDate(brief.lastMetAt)}` : null,
     brief.conversations ? `${brief.conversations} conversation${brief.conversations === 1 ? '' : 's'}` : null,
   ].filter(Boolean).join(', ');
-  card.replaceChildren(
-    el('h2', { class: 'subtitle', id: `${card.id}-title`, text: title || `Before you talk to ${brief.otherName || 'them'}` }),
+  put(card,
+    el('h2', { class: 'subtitle', id: `${card.id}-title`, text: title || (isNamed(brief) ? `Before you talk to ${brief.otherName}` : 'Before you talk') }),
     meta ? el('p', { class: 'card-meta', text: meta }) : null,
     el('ul', { class: 'brief-items' }, ...items.map((it) => {
       const [glyph, label] = BRIEF_KINDS[it.kind] || ['•', 'Note'];
@@ -334,12 +339,22 @@ async function startRecording() {
       }
     }
     if (!stream) stream = await navigator.mediaDevices.getUserMedia({ audio: AUDIO_CONSTRAINTS });
-    await ctx.audioWorklet.addModule('pcm-worklet.js');
   } catch (err) {
     if (stream) stream.getTracks().forEach((t) => t.stop());
     ctx.close().catch(() => {});
     btn.removeAttribute('aria-busy');
     showError('start-error', micErrorMessage(err, { isSecureContext: window.isSecureContext }));
+    return;
+  }
+  // The worklet is fetched from the server, so with the mic already live the only way this fails
+  // is the server being unreachable. That's not a microphone problem and shouldn't read like one.
+  try {
+    await ctx.audioWorklet.addModule('pcm-worklet.js');
+  } catch {
+    stream.getTracks().forEach((t) => t.stop());
+    ctx.close().catch(() => {});
+    btn.removeAttribute('aria-busy');
+    showError('start-error', "Couldn't reach the server. Check the connection and try again.");
     return;
   }
 
@@ -1072,8 +1087,7 @@ function showCoaching(convo) {
   state.convo = convo;
   showError('coaching-error', null);
   const note = convo.note;
-  const who = convo.otherName || 'them';
-  $('coach-title').textContent = `Your talk with ${who}`;
+  $('coach-title').textContent = isNamed(convo) ? `Your talk with ${convo.otherName}` : 'Your conversation';
   $('coach-meta').textContent = [TAG_NAMES[convo.tag], fmtDate(convo.createdAt)].filter(Boolean).join(', ');
 
   const dropped = !note || note.status === 'dropped' || !note.text;
@@ -1194,7 +1208,7 @@ function renderCompare(convo, cmp) {
     );
   }
 
-  card.replaceChildren(
+  put(card,
     el('div', { class: 'card-head' },
       el('h2', { class: 'subtitle', id: 'compare-title', text: 'Compared with last time' }),
       el('span', { class: 'card-meta', text: sub })),
@@ -1251,7 +1265,7 @@ function renderHooks(convo) {
   ) : null;
 
   if (!groups.length && !detector && !crowd) { card.hidden = true; card.replaceChildren(); return; }
-  card.replaceChildren(
+  put(card,
     el('div', { class: 'card-head' },
       el('h2', { class: 'subtitle', id: 'hooks-title', text: 'What we picked up' }),
       el('span', { class: 'card-meta', text: 'Measured from the transcript. No AI.' })),
@@ -1372,7 +1386,7 @@ function renderFollowUp(convo) {
   });
 
   card.removeAttribute('aria-busy');
-  card.replaceChildren(head, ta, used, el('div', { class: 'follow-actions' }, send, rewrite), status, err);
+  put(card, head, ta, used, el('div', { class: 'follow-actions' }, send, rewrite), status, err);
   card.hidden = false;
 }
 
@@ -1573,9 +1587,10 @@ function renderConvoList(convos) {
     if (c.seeded) sub.push(document.createTextNode(' Sample'));
     if (c.needsLabel) sub.push(el('span', { class: 'tag needs-tap', text: 'Needs your tap' }));
     else if (c.note && c.note.status === 'dropped') sub.push(document.createTextNode(' Counts only'));
-    const name = c.otherName || 'Someone';
+    // 'them' is the server's placeholder, not a name.
+    const name = isNamed(c) ? c.otherName : 'Someone';
     // Up to two initials, like the avatars in the design. Whole code points: w[0] on an emoji is half a surrogate pair.
-    const initials = name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => Array.from(w)[0].toUpperCase()).join('');
+    const initials = isNamed(c) ? name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => Array.from(w)[0].toUpperCase()).join('') : '?';
     return el('li', {}, el('button', {
       type: 'button',
       onclick: () => openConversation(c),
