@@ -203,7 +203,7 @@ h1 { margin-bottom:0; font-size:44px; line-height:1.1; font-weight:500; letter-s
 .transcript { scroll-margin-top:24px; }
 
 .live-transcript { height:190px; margin:20px 0 12px; padding:4px 2px; overflow-y:auto; display:flex; flex-direction:column; gap:12px; border-top:1px solid var(--line); border-bottom:1px solid var(--line); padding-top:14px; padding-bottom:14px; scrollbar-width:thin; }
-.live-transcript .line { display:grid; grid-template-columns:34px 44px 1fr; gap:10px; align-items:baseline; animation:card-in .3s ease both; }
+.live-transcript .line { display:grid; grid-template-columns:34px 68px 1fr; gap:10px; align-items:baseline; animation:card-in .3s ease both; }
 .live-transcript .line-time { font-family:var(--font-mono); font-size:10px; color:var(--ink-3); }
 .live-transcript .line-who { font-size:9px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-3); }
 .live-transcript .line.me .line-who { color:var(--accent); }

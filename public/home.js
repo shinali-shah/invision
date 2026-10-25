@@ -268,7 +268,7 @@ function tasks() {
     if (c.needsLabel) out.push({ key: `label:${c.id}`, text: c.named ? `Finish coaching for ${c.first}` : 'Finish coaching', convo: c, finish: true });
   }
   for (const c of state.convos) {
-    if (c.followUp && c.followUp.status === 'draft' && c.followUp.text) out.push({ key: `fu:${c.id}`, text: c.named ? `Follow up with ${c.first}` : 'Follow up', convo: c });
+    if (c.followUp && c.followUp.status === 'draft' && c.followUp.text) out.push({ key: `fu:${c.id}`, text: c.named ? `Follow up with ${c.first}` : 'Send the follow-up', convo: c });
   }
   for (const c of state.convos) {
     for (const k of c.commitments) if (k && k.text) out.push({ key: `commit:${c.id}:${k.turnId ?? k.text}`, text: `You said: ${k.text}` });
