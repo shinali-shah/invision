@@ -123,6 +123,10 @@ export function openStore(path = ':memory:') {
       return getStep(Number(lastInsertRowid));
     },
 
+    listNextSteps() {
+      return db.prepare('SELECT * FROM next_steps ORDER BY id').all().map(toStep);
+    },
+
     latestNextStep() {
       return toStep(db.prepare('SELECT * FROM next_steps ORDER BY id DESC LIMIT 1').get()) ?? null;
     },

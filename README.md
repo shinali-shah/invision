@@ -79,6 +79,29 @@ ngrok http 3000         # Safari only allows the mic and camera over https
 | `MUSE_ASR_MODEL` | `muse-voice-transcribe-1.0` | |
 | `PORT` / `DB_PATH` / `RECORDINGS_DIR` | `3000` / `data/playback.db` / `data/recordings` | |
 
+## Synthetic account
+
+To see the app the way it looks after a few weeks of use, build the synthetic account:
+
+```bash
+npm run synthetic       # writes data/synthetic.db and data/synthetic-recordings/
+npm run dev:synthetic   # serves it (mock mode) on http://localhost:3000
+```
+
+It holds 12 conversations over five weeks (English, Spanish and both mixed) with six people: Abuela and
+Mamá (family), Jordan, Priya and Marcus (friends), and Daniel and Elena (networking). Every field is
+filled in: diarized turns with lip-lock sources (including two bystander lines filtered out), signals,
+hooks, awkward flags (one conversation has gossip and a cut-in), coaching notes, follow-up messages
+(sent, edited, and still in draft), face cues and Replay takeaways, plus the trend, three weekly goals
+(changed, dismissed, accepted) and the agent logs. Ten conversations come with a stand-in video (drawn
+with ffmpeg, captions only) and per-frame face data, so Replay's timeline and player work too.
+
+The transcripts and Muse Spark's answers are written by hand in `src/synthetic/conversations.js`;
+`src/synthetic/build.js` runs them through the real pipeline, so anything an agent would reject falls back
+the same way it would live (the build lists any that do). It never touches `data/playback.db`, and the two
+sample Abuela calls are not added on top. `fixtures/synthetic/playback.json` is a snapshot of the rows,
+rebuilt with `node src/synthetic/cli.js --no-video --snapshot --db data/snap.db --recordings data/snap-rec`.
+
 ## How it fits together
 
 | Step | Code | Meta API |

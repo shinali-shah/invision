@@ -1,0 +1,7490 @@
+{
+ "dataset": {
+  "name": "synthetic",
+  "builtAt": "2026-10-25T21:00:00.000Z",
+  "conversations": 12
+ },
+ "pattern": {
+  "statement": "Your follow-up questions rose from 2 to 4 per conversation over your last 12 conversations.",
+  "metric": "followUps",
+  "counts": [
+   2,
+   3,
+   2,
+   3,
+   4,
+   0,
+   3,
+   3,
+   3,
+   4,
+   3,
+   4
+  ]
+ },
+ "nextStep": {
+  "id": 3,
+  "text": "Ask at least 4 follow-up questions in each conversation this week, starting with something they told you last time.",
+  "status": "accepted",
+  "createdAt": "2026-10-19T18:32:19.284Z"
+ },
+ "nextSteps": [
+  {
+   "id": 1,
+   "text": "Ask one question about what they just said before changing the subject, and skip stories about people who aren't there.",
+   "status": "changed",
+   "createdAt": "2026-09-28T14:22:55.891Z"
+  },
+  {
+   "id": 2,
+   "text": "Ask two clear questions about their work before you mention yours, in each networking chat this week.",
+   "status": "dismissed",
+   "createdAt": "2026-10-10T16:02:40.657Z"
+  },
+  {
+   "id": 3,
+   "text": "Ask at least 4 follow-up questions in each conversation this week, starting with something they told you last time.",
+   "status": "accepted",
+   "createdAt": "2026-10-19T18:32:19.284Z"
+  }
+ ],
+ "conversations": [
+  {
+   "id": "d8067cae-d352-4d57-9318-2e051add8577",
+   "tag": "family",
+   "otherName": "Abuela",
+   "createdAt": "2026-09-22T19:10:00.000Z",
+   "seeded": false,
+   "turns": [
+    {
+     "turnId": 1,
+     "speaker": "A",
+     "text": "Hola Abuela! ¿Cómo estás? How was your week?",
+     "startMs": 0,
+     "endMs": 3926,
+     "source": "you",
+     "confidence": 0.87
+    },
+    {
+     "turnId": 2,
+     "speaker": "B",
+     "text": "Ay, mija, my knee has been bothering me again. Tengo cita con el doctor el jueves, and your tío has to drive me because I can't do the stairs at the clinic.",
+     "startMs": 4539,
+     "endMs": 17408,
+     "source": "them",
+     "confidence": 0.83
+    },
+    {
+     "turnId": 3,
+     "speaker": "A",
+     "text": "Oh no. I had my first midterm this week, it was so hard, I studied all weekend and I still ran out of time on the last problem.",
+     "startMs": 17926,
+     "endMs": 29276,
+     "source": "you",
+     "confidence": 0.92
+    },
+    {
+     "turnId": 4,
+     "speaker": "B",
+     "text": "Pobrecita. You always work so hard. Are you eating well?",
+     "startMs": 29796,
+     "endMs": 34434,
+     "source": "them",
+     "confidence": 0.82
+    },
+    {
+     "turnId": 5,
+     "speaker": "A",
+     "text": "Yes, I promise. What are you cooking this week?",
+     "startMs": 35115,
+     "endMs": 39355,
+     "source": "you",
+     "confidence": 0.97
+    },
+    {
+     "turnId": 6,
+     "speaker": "B",
+     "text": "Mole for the church dinner on Sunday. My mother's recipe, with the chocolate from Oaxaca that your Tía Lupe sends me.",
+     "startMs": 40004,
+     "endMs": 48840,
+     "source": "them",
+     "confidence": 0.72
+    },
+    {
+     "turnId": 7,
+     "speaker": "A",
+     "text": "Wait, Tía Lupe sends you chocolate from Oaxaca?",
+     "startMs": 49517,
+     "endMs": 53080,
+     "source": "you",
+     "confidence": 0.97
+    },
+    {
+     "turnId": 8,
+     "speaker": "B",
+     "text": "Every Christmas! She wraps it in newspaper so it doesn't break, y siempre pone una notita con la fecha. Your great-grandmother taught us both to grind it by hand on the metate.",
+     "startMs": 53441,
+     "endMs": 66456,
+     "source": "them",
+     "confidence": 0.89
+    },
+    {
+     "turnId": 9,
+     "speaker": "A",
+     "text": "On the metate? How long did it take you to grind it?",
+     "startMs": 67189,
+     "endMs": 72587,
+     "source": "you",
+     "confidence": 0.92
+    },
+    {
+     "turnId": 10,
+     "speaker": "B",
+     "text": "All morning, mija. We would start before the sun came up and sing so the time would go faster.",
+     "startMs": 72941,
+     "endMs": 80714,
+     "source": "them",
+     "confidence": 0.75
+    },
+    {
+     "turnId": 11,
+     "speaker": "A",
+     "text": "I'll call you Thursday after the doctor to see how it went.",
+     "startMs": 81174,
+     "endMs": 86271,
+     "source": "you",
+     "confidence": 0.86
+    },
+    {
+     "turnId": 12,
+     "speaker": "B",
+     "text": "Ay, gracias mija. Te quiero mucho.",
+     "startMs": 86627,
+     "endMs": 89584,
+     "source": "them",
+     "confidence": 0.79
+    }
+   ],
+   "userLabel": "A",
+   "reflection": "She told me about her knee and I jumped straight to my midterm. Oops.",
+   "signals": {
+    "userQuestions": 4,
+    "userTurns": 6,
+    "otherTurns": 6,
+    "userTalkMs": 33574,
+    "otherTalkMs": 50088,
+    "userTalkShare": 0.4,
+    "otherAvgAnswerWords": 26,
+    "followUps": 2,
+    "reflections": 0,
+    "storiesAfterQuestions": 2,
+    "questions": [
+     {
+      "turnId": 1,
+      "isFollowUp": false,
+      "replyTurnId": 2,
+      "replyWords": 32,
+      "storyShared": false
+     },
+     {
+      "turnId": 5,
+      "isFollowUp": false,
+      "replyTurnId": 6,
+      "replyWords": 21,
+      "storyShared": false
+     },
+     {
+      "turnId": 7,
+      "isFollowUp": true,
+      "replyTurnId": 8,
+      "replyWords": 32,
+      "storyShared": true
+     },
+     {
+      "turnId": 9,
+      "isFollowUp": true,
+      "replyTurnId": 10,
+      "replyWords": 19,
+      "storyShared": true
+     }
+    ],
+    "crowd": 0,
+    "source": "muse-spark",
+    "detectorAgreement": {
+     "agree": 4,
+     "of": 4
+    }
+   },
+   "note": {
+    "text": "You asked 4 questions and 2 were follow-ups, and you heard 2 stories after them, about Tía Lupe's chocolate and the metate.",
+    "suggestion": "When she brings up her knee, ask one question about the appointment before you share your own week.",
+    "citedTurnIds": [
+     3,
+     7,
+     9
+    ],
+    "status": "shown",
+    "source": "muse-spark"
+   },
+   "hooks": {
+    "topics": [
+     {
+      "term": "Oaxaca",
+      "turnIds": [
+       6
+      ],
+      "weight": 4
+     },
+     {
+      "term": "Lupe",
+      "turnIds": [
+       6
+      ],
+      "weight": 4
+     },
+     {
+      "term": "Christmas",
+      "turnIds": [
+       8
+      ],
+      "weight": 3
+     },
+     {
+      "term": "doctor",
+      "turnIds": [
+       2
+      ],
+      "weight": 2
+     },
+     {
+      "term": "hard",
+      "turnIds": [
+       4
+      ],
+      "weight": 2
+     }
+    ],
+    "events": [
+     {
+      "text": "Tengo cita con el doctor el jueves,",
+      "when": "el jueves",
+      "hasNoun": true,
+      "turnId": 2
+     },
+     {
+      "text": "Mole for the church dinner on Sunday.",
+      "when": "on sunday",
+      "hasNoun": false,
+      "turnId": 6
+     }
+    ],
+    "commitments": [
+     {
+      "text": "I'll call you Thursday after the doctor to see how it went.",
+      "turnId": 11
+     }
+    ],
+    "missedBids": [
+     {
+      "turnId": 2,
+      "replyTurnId": 3,
+      "cue": "doctor"
+     },
+     {
+      "turnId": 10,
+      "replyTurnId": 11,
+      "cue": "morning"
+     }
+    ],
+    "highlights": [
+     {
+      "turnId": 2,
+      "words": 32
+     },
+     {
+      "turnId": 8,
+      "words": 32
+     }
+    ],
+    "followUpDetector": [
+     {
+      "turnId": 1,
+      "isFollowUp": false,
+      "overlap": []
+     },
+     {
+      "turnId": 5,
+      "isFollowUp": false,
+      "overlap": []
+     },
+     {
+      "turnId": 7,
+      "isFollowUp": true,
+      "overlap": [
+       "lupe",
+       "sends",
+       "chocolate",
+       "oaxaca"
+      ]
+     },
+     {
+      "turnId": 9,
+      "isFollowUp": true,
+      "overlap": [
+       "metate",
+       "grind"
+      ]
+     }
+    ],
+    "awkward": {
+     "flags": [],
+     "score": 0,
+     "seams": [],
+     "worst": null
+    }
+   },
+   "followUp": {
+    "text": "Hola Abuela! I'll call you Thursday after the doctor. And I want to hear more about grinding chocolate on the metate with Tía Lupe.",
+    "hooksUsed": [
+     "Lupe",
+     "doctor",
+     "el jueves",
+     "I'll call you Thursday after the…"
+    ],
+    "source": "muse-spark",
+    "status": "sent",
+    "sentAt": "2026-09-22T19:46:29.584Z"
+   },
+   "recording": {
+    "mime": "video/mp4",
+    "ext": "mp4",
+    "bytes": 4663589,
+    "offsetMs": 240,
+    "uploadedAt": "2026-09-22T19:16:18.584Z"
+   },
+   "behavior": {
+    "model": "mediapipe-face-landmarker@0.10.14",
+    "fps": 5,
+    "frameCount": 465,
+    "faceSeenPct": 0.97,
+    "baseline": {
+     "smile": 0.16,
+     "animation": 0.165
+    },
+    "turns": [
+     {
+      "turnId": 1,
+      "speaker": "you",
+      "smile": 0.14,
+      "smilePeak": 0.16,
+      "facingPct": 0.89,
+      "nods": 0,
+      "animation": 0.075,
+      "reaction": {
+       "smileDelta": 0.06,
+       "nods": 0,
+       "facingPct": 1
+      },
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 2,
+      "speaker": "them",
+      "smile": 0.16,
+      "smilePeak": 0.24,
+      "facingPct": 0.98,
+      "nods": 0,
+      "animation": 0.216,
+      "reaction": null,
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 3,
+      "speaker": "you",
+      "smile": 0.14,
+      "smilePeak": 0.16,
+      "facingPct": 0.95,
+      "nods": 0,
+      "animation": 0.07,
+      "reaction": {
+       "smileDelta": -0.08,
+       "nods": 0,
+       "facingPct": 0.54
+      },
+      "textTone": "negative",
+      "congruence": null
+     },
+     {
+      "turnId": 4,
+      "speaker": "them",
+      "smile": 0.12,
+      "smilePeak": 0.16,
+      "facingPct": 0.74,
+      "nods": 0,
+      "animation": 0.218,
+      "reaction": null,
+      "textTone": "negative",
+      "congruence": "match"
+     },
+     {
+      "turnId": 5,
+      "speaker": "you",
+      "smile": 0.14,
+      "smilePeak": 0.15,
+      "facingPct": 0.95,
+      "nods": 0,
+      "animation": 0.069,
+      "reaction": {
+       "smileDelta": 0.02,
+       "nods": 0,
+       "facingPct": 0.92
+      },
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 6,
+      "speaker": "them",
+      "smile": 0.18,
+      "smilePeak": 0.28,
+      "facingPct": 0.98,
+      "nods": 0,
+      "animation": 0.241,
+      "reaction": null,
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 7,
+      "speaker": "you",
+      "smile": 0.14,
+      "smilePeak": 0.16,
+      "facingPct": 1,
+      "nods": 0,
+      "animation": 0.063,
+      "reaction": {
+       "smileDelta": 0.21,
+       "nods": 0,
+       "facingPct": 1
+      },
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 8,
+      "speaker": "them",
+      "smile": 0.19,
+      "smilePeak": 0.48,
+      "facingPct": 0.95,
+      "nods": 2,
+      "animation": 0.235,
+      "reaction": null,
+      "textTone": "positive",
+      "congruence": "match"
+     },
+     {
+      "turnId": 9,
+      "speaker": "you",
+      "smile": 0.14,
+      "smilePeak": 0.32,
+      "facingPct": 1,
+      "nods": 0,
+      "animation": 0.074,
+      "reaction": {
+       "smileDelta": 0.18,
+       "nods": 0,
+       "facingPct": 1
+      },
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 10,
+      "speaker": "them",
+      "smile": 0.2,
+      "smilePeak": 0.34,
+      "facingPct": 1,
+      "nods": 2,
+      "animation": 0.252,
+      "reaction": null,
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 11,
+      "speaker": "you",
+      "smile": 0.14,
+      "smilePeak": 0.16,
+      "facingPct": 0.96,
+      "nods": 0,
+      "animation": 0.084,
+      "reaction": {
+       "smileDelta": 0.1,
+       "nods": 1,
+       "facingPct": 1
+      },
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 12,
+      "speaker": "them",
+      "smile": 0.22,
+      "smilePeak": 0.27,
+      "facingPct": 1,
+      "nods": 1,
+      "animation": 0.214,
+      "reaction": null,
+      "textTone": "neutral",
+      "congruence": null
+     }
+    ],
+    "stats": {
+     "afterFollowUps": {
+      "n": 2,
+      "smileDelta": 0.2,
+      "nods": 0
+     },
+     "afterOther": {
+      "n": 4,
+      "smileDelta": 0.03,
+      "nods": 0.3
+     },
+     "missedBidReactions": [
+      {
+       "turnId": 2,
+       "smileDelta": -0.08
+      },
+      {
+       "turnId": 10,
+       "smileDelta": 0.1
+      }
+     ]
+    }
+   },
+   "insight": {
+    "moments": [
+     {
+      "turnId": 3,
+      "title": "Her knee, then your midterm",
+      "observation": "After “Oh no. I had my first midterm this week, it was so hard,…”, their smile dropped 8 points and they faced you 54% of the time.",
+      "why": "She opened with the appointment; ask about it before your own news."
+     },
+     {
+      "turnId": 7,
+      "title": "The chocolate question",
+      "observation": "After “Wait, Tía Lupe sends you chocolate from Oaxaca?”, their smile rose 21 points.",
+      "why": "Picking up the exact detail she mentioned opened the longest story of the call."
+     },
+     {
+      "turnId": 9,
+      "title": "Staying on the metate",
+      "observation": "After “On the metate? How long did it take you to grind it?”, their smile rose 18 points.",
+      "why": "A second question on the same story got you the part about singing before sunrise."
+     }
+    ],
+    "adviceCheck": [
+     {
+      "advice": "When she brings up her knee, ask one question about the appointment before you share your own week.",
+      "verdict": "backed",
+      "evidenceTurnIds": [
+       7,
+       9
+      ],
+      "reason": "Their smile moved 20 points after your 2 follow-ups vs 3 after your other 4 lines."
+     }
+    ],
+    "source": "muse-spark",
+    "rewrites": [
+     {
+      "turnId": 3,
+      "title": "Stay with her knee",
+      "tryInstead": "Your knee again? What did the doctor say last time, and is tío taking you Thursday?",
+      "because": "She opened with her knee and the appointment; one question about it shows you heard her before you share your week."
+     }
+    ],
+    "takeaways": [
+     {
+      "kind": "try",
+      "turnId": 3,
+      "title": "Stay with her knee",
+      "text": "She opened with her knee and the appointment; one question about it shows you heard her before you share your week.",
+      "said": "Oh no. I had my first midterm this week, it was so hard, I studied all weekend and I still ran out of time on the last problem.",
+      "theySaid": "Ay, mija, my knee has been bothering me again. Tengo cita con el doctor el jueves, and your tío has to drive me because I can't do the stairs at the clinic.",
+      "tryInstead": "Your knee again? What did the doctor say last time, and is tío taking you Thursday?",
+      "evidence": "Smile −8 · looked away 1.2 s"
+     },
+     {
+      "kind": "keep",
+      "turnId": 7,
+      "title": "The chocolate question",
+      "text": "Picking up the exact detail she mentioned opened the longest story of the call.",
+      "said": null,
+      "theySaid": null,
+      "tryInstead": null,
+      "evidence": "Smile +21"
+     },
+     {
+      "kind": "next",
+      "turnId": 2,
+      "title": "Ask about it next time",
+      "text": "They mentioned “Tengo cita con el doctor el jueves,” Ask how it went.",
+      "said": null,
+      "theySaid": null,
+      "tryInstead": null,
+      "evidence": null
+     }
+    ]
+   }
+  },
+  {
+   "id": "8612266c-bcbe-4346-87f6-f7a3818306b2",
+   "tag": "friend",
+   "otherName": "Jordan Lee",
+   "createdAt": "2026-09-25T21:35:00.000Z",
+   "seeded": false,
+   "turns": [
+    {
+     "turnId": 1,
+     "speaker": "A",
+     "text": "Hey, how was your day?",
+     "startMs": 0,
+     "endMs": 2502,
+     "source": "you",
+     "confidence": 0.85
+    },
+    {
+     "turnId": 2,
+     "speaker": "B",
+     "text": "Kind of nerve-racking honestly. Verdant wants me for a final round interview next Friday, and I'm already nervous about the system design part.",
+     "startMs": 3205,
+     "endMs": 12519,
+     "source": "them",
+     "confidence": 0.83
+    },
+    {
+     "turnId": 3,
+     "speaker": "A",
+     "text": "No way, that's huge! Which team is it for?",
+     "startMs": 13056,
+     "endMs": 17212,
+     "source": "you",
+     "confidence": 0.89
+    },
+    {
+     "turnId": 4,
+     "speaker": "B",
+     "text": "The grid forecasting team. They build models that predict how much solar the Texas grid will get each day. It's exactly what I want to work on.",
+     "startMs": 17991,
+     "endMs": 29066,
+     "source": "them",
+     "confidence": 0.81
+    },
+    {
+     "turnId": 5,
+     "speaker": "A",
+     "text": "That's so you. Is the system design part on a whiteboard or on a laptop?",
+     "startMs": 29436,
+     "endMs": 35655,
+     "source": "you",
+     "confidence": 0.91
+    },
+    {
+     "turnId": 6,
+     "speaker": "B",
+     "text": "Whiteboard, in person. I always freeze when someone watches me draw boxes, my mind just goes blank.",
+     "startMs": 36060,
+     "endMs": 43162,
+     "source": "them",
+     "confidence": 0.71
+    },
+    {
+     "turnId": 7,
+     "speaker": "A",
+     "text": "Ugh, I have an algorithms exam on Thursday and I haven't even started the problem set.",
+     "startMs": 43937,
+     "endMs": 50518,
+     "source": "you",
+     "confidence": 0.93
+    },
+    {
+     "turnId": 8,
+     "speaker": "B",
+     "text": "Oh, that's rough. Good luck.",
+     "startMs": 51289,
+     "endMs": 53930,
+     "source": "them",
+     "confidence": 0.73
+    },
+    {
+     "turnId": 9,
+     "speaker": "A",
+     "text": "Thanks. Wait, going back, what if we practiced the whiteboard part together? I'll send you the mock questions from my club tonight.",
+     "startMs": 54541,
+     "endMs": 63625,
+     "source": "you",
+     "confidence": 0.81
+    },
+    {
+     "turnId": 10,
+     "speaker": "B",
+     "text": "Yes, please. Saturday morning? I'll bring the coffee and a marker that actually works.",
+     "startMs": 64175,
+     "endMs": 70298,
+     "source": "them",
+     "confidence": 0.93
+    },
+    {
+     "turnId": 11,
+     "speaker": "A",
+     "text": "Deal. Saturday at ten, living room whiteboard.",
+     "startMs": 71075,
+     "endMs": 74550,
+     "source": "you",
+     "confidence": 0.77
+    }
+   ],
+   "userLabel": "A",
+   "reflection": "Good save at the end, but I made the whiteboard thing about my exam for a second.",
+   "signals": {
+    "userQuestions": 4,
+    "userTurns": 6,
+    "otherTurns": 5,
+    "userTalkMs": 32017,
+    "otherTalkMs": 36255,
+    "userTalkShare": 0.47,
+    "otherAvgAnswerWords": 20.3,
+    "followUps": 3,
+    "reflections": 1,
+    "storiesAfterQuestions": 1,
+    "questions": [
+     {
+      "turnId": 1,
+      "isFollowUp": false,
+      "replyTurnId": 2,
+      "replyWords": 23,
+      "storyShared": false
+     },
+     {
+      "turnId": 3,
+      "isFollowUp": true,
+      "replyTurnId": 4,
+      "replyWords": 27,
+      "storyShared": true
+     },
+     {
+      "turnId": 5,
+      "isFollowUp": true,
+      "replyTurnId": 6,
+      "replyWords": 17,
+      "storyShared": false
+     },
+     {
+      "turnId": 9,
+      "isFollowUp": true,
+      "replyTurnId": 10,
+      "replyWords": 14,
+      "storyShared": false
+     }
+    ],
+    "crowd": 0,
+    "source": "muse-spark",
+    "detectorAgreement": {
+     "agree": 3,
+     "of": 4
+    }
+   },
+   "note": {
+    "text": "You asked 4 questions and 3 were follow-ups. When Jordan said their mind goes blank at the whiteboard, your next line was about your exam.",
+    "suggestion": "On Saturday, ask Jordan what usually happens right before the blank moment, before you start the practice questions.",
+    "citedTurnIds": [
+     6,
+     7,
+     9
+    ],
+    "status": "shown",
+    "source": "muse-spark"
+   },
+   "hooks": {
+    "topics": [
+     {
+      "term": "Texas",
+      "turnIds": [
+       4
+      ],
+      "weight": 3
+     },
+     {
+      "term": "system",
+      "turnIds": [
+       2
+      ],
+      "weight": 2
+     },
+     {
+      "term": "design",
+      "turnIds": [
+       2
+      ],
+      "weight": 2
+     },
+     {
+      "term": "part",
+      "turnIds": [
+       2
+      ],
+      "weight": 2
+     },
+     {
+      "term": "grid",
+      "turnIds": [
+       4
+      ],
+      "weight": 2
+     }
+    ],
+    "events": [
+     {
+      "text": "Verdant wants me for a final round interview next Friday,",
+      "when": "next friday",
+      "hasNoun": true,
+      "turnId": 2
+     }
+    ],
+    "commitments": [
+     {
+      "text": "I'll send you the mock questions from my club tonight.",
+      "turnId": 9
+     }
+    ],
+    "missedBids": [
+     {
+      "turnId": 6,
+      "replyTurnId": 7,
+      "cue": "whiteboard"
+     }
+    ],
+    "highlights": [
+     {
+      "turnId": 4,
+      "words": 27
+     },
+     {
+      "turnId": 2,
+      "words": 23
+     }
+    ],
+    "followUpDetector": [
+     {
+      "turnId": 1,
+      "isFollowUp": false,
+      "overlap": []
+     },
+     {
+      "turnId": 3,
+      "isFollowUp": true,
+      "overlap": []
+     },
+     {
+      "turnId": 5,
+      "isFollowUp": true,
+      "overlap": []
+     },
+     {
+      "turnId": 9,
+      "isFollowUp": false,
+      "overlap": []
+     }
+    ],
+    "awkward": {
+     "flags": [],
+     "score": 0,
+     "seams": [],
+     "worst": null
+    }
+   },
+   "followUp": {
+    "text": "Sent you the mock questions from my club! Saturday at ten for whiteboard practice before the Verdant interview next Friday. You have this.",
+    "hooksUsed": [
+     "next friday",
+     "I'll send you the mock questions from…"
+    ],
+    "source": "muse-spark",
+    "status": "sent",
+    "sentAt": "2026-09-25T22:26:14.550Z"
+   },
+   "recording": {
+    "mime": "video/mp4",
+    "ext": "mp4",
+    "bytes": 3879154,
+    "offsetMs": 180,
+    "uploadedAt": "2026-09-25T21:41:03.550Z"
+   },
+   "behavior": {
+    "model": "mediapipe-face-landmarker@0.10.14",
+    "fps": 5,
+    "frameCount": 389,
+    "faceSeenPct": 0.96,
+    "baseline": {
+     "smile": 0.19,
+     "animation": 0.168
+    },
+    "turns": [
+     {
+      "turnId": 1,
+      "speaker": "you",
+      "smile": 0.18,
+      "smilePeak": 0.19,
+      "facingPct": 1,
+      "nods": 0,
+      "animation": 0.07,
+      "reaction": {
+       "smileDelta": 0.02,
+       "nods": 0,
+       "facingPct": 1
+      },
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 2,
+      "speaker": "them",
+      "smile": 0.2,
+      "smilePeak": 0.32,
+      "facingPct": 0.98,
+      "nods": 0,
+      "animation": 0.294,
+      "reaction": null,
+      "textTone": "negative",
+      "congruence": "match"
+     },
+     {
+      "turnId": 3,
+      "speaker": "you",
+      "smile": 0.17,
+      "smilePeak": 0.19,
+      "facingPct": 0.9,
+      "nods": 0,
+      "animation": 0.049,
+      "reaction": {
+       "smileDelta": 0.12,
+       "nods": 0,
+       "facingPct": 1
+      },
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 4,
+      "speaker": "them",
+      "smile": 0.21,
+      "smilePeak": 0.33,
+      "facingPct": 0.96,
+      "nods": 1,
+      "animation": 0.253,
+      "reaction": null,
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 5,
+      "speaker": "you",
+      "smile": 0.17,
+      "smilePeak": 0.19,
+      "facingPct": 0.94,
+      "nods": 0,
+      "animation": 0.075,
+      "reaction": {
+       "smileDelta": 0.1,
+       "nods": 0,
+       "facingPct": 0.92
+      },
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 6,
+      "speaker": "them",
+      "smile": 0.22,
+      "smilePeak": 0.31,
+      "facingPct": 0.89,
+      "nods": 1,
+      "animation": 0.249,
+      "reaction": null,
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 7,
+      "speaker": "you",
+      "smile": 0.17,
+      "smilePeak": 0.19,
+      "facingPct": 0.97,
+      "nods": 0,
+      "animation": 0.081,
+      "reaction": {
+       "smileDelta": -0.1,
+       "nods": 0,
+       "facingPct": 0.58
+      },
+      "textTone": "negative",
+      "congruence": null
+     },
+     {
+      "turnId": 8,
+      "speaker": "them",
+      "smile": 0.12,
+      "smilePeak": 0.18,
+      "facingPct": 0.62,
+      "nods": 0,
+      "animation": 0.259,
+      "reaction": null,
+      "textTone": "negative",
+      "congruence": null
+     },
+     {
+      "turnId": 9,
+      "speaker": "you",
+      "smile": 0.17,
+      "smilePeak": 0.19,
+      "facingPct": 0.93,
+      "nods": 0,
+      "animation": 0.066,
+      "reaction": {
+       "smileDelta": 0.26,
+       "nods": 0,
+       "facingPct": 1
+      },
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 10,
+      "speaker": "them",
+      "smile": 0.27,
+      "smilePeak": 0.55,
+      "facingPct": 1,
+      "nods": 2,
+      "animation": 0.259,
+      "reaction": null,
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 11,
+      "speaker": "you",
+      "smile": 0.17,
+      "smilePeak": 0.19,
+      "facingPct": 1,
+      "nods": 0,
+      "animation": 0.065,
+      "reaction": {
+       "smileDelta": -0.02,
+       "nods": 0,
+       "facingPct": 0.92
+      },
+      "textTone": "neutral",
+      "congruence": null
+     }
+    ],
+    "stats": {
+     "afterFollowUps": {
+      "n": 3,
+      "smileDelta": 0.16,
+      "nods": 0
+     },
+     "afterOther": {
+      "n": 3,
+      "smileDelta": -0.03,
+      "nods": 0
+     },
+     "missedBidReactions": [
+      {
+       "turnId": 6,
+       "smileDelta": -0.1
+      }
+     ]
+    }
+   },
+   "insight": {
+    "moments": [
+     {
+      "turnId": 3,
+      "title": "Which team",
+      "observation": "After “No way, that's huge! Which team is it for?”, their smile rose 12 points.",
+      "why": "A plain question about the job got you the grid forecasting details."
+     },
+     {
+      "turnId": 7,
+      "title": "The exam detour",
+      "observation": "After “Ugh, I have an algorithms exam on Thursday and I haven't…”, their smile dropped 10 points and they faced you 58% of the time.",
+      "why": "They had just named the scary part; your exam could have waited one question."
+     },
+     {
+      "turnId": 9,
+      "title": "Coming back to it",
+      "observation": "After “Thanks. Wait, going back, what if we practiced the…”, their smile rose 26 points.",
+      "why": "Going back to the whiteboard, and offering to practice, turned a missed moment into a plan."
+     }
+    ],
+    "adviceCheck": [
+     {
+      "advice": "On Saturday, ask Jordan what usually happens right before the blank moment, before you start the practice questions.",
+      "verdict": "backed",
+      "evidenceTurnIds": [
+       3,
+       5,
+       9
+      ],
+      "reason": "Their smile moved 16 points after your 3 follow-ups vs -3 after your other 3 lines."
+     }
+    ],
+    "source": "muse-spark",
+    "rewrites": [
+     {
+      "turnId": 7,
+      "title": "Stay with the whiteboard",
+      "tryInstead": "Your mind goes blank at the whiteboard? What does that feel like right when it starts?",
+      "because": "Jordan had just told you the part of Friday that worries them; asking about it first would have kept them talking."
+     }
+    ],
+    "takeaways": [
+     {
+      "kind": "try",
+      "turnId": 7,
+      "title": "Stay with the whiteboard",
+      "text": "Jordan had just told you the part of Friday that worries them; asking about it first would have kept them talking.",
+      "said": "Ugh, I have an algorithms exam on Thursday and I haven't even started the problem set.",
+      "theySaid": "Whiteboard, in person. I always freeze when someone watches me draw boxes, my mind just goes blank.",
+      "tryInstead": "Your mind goes blank at the whiteboard? What does that feel like right when it starts?",
+      "evidence": "Smile −10 · looked away 1.1 s"
+     },
+     {
+      "kind": "keep",
+      "turnId": 9,
+      "title": "Coming back to it",
+      "text": "Going back to the whiteboard, and offering to practice, turned a missed moment into a plan.",
+      "said": null,
+      "theySaid": null,
+      "tryInstead": null,
+      "evidence": "Smile +26"
+     },
+     {
+      "kind": "next",
+      "turnId": 2,
+      "title": "Ask about it next time",
+      "text": "They mentioned “Verdant wants me for a final round interview next Friday,” Ask how it went.",
+      "said": null,
+      "theySaid": null,
+      "tryInstead": null,
+      "evidence": null
+     }
+    ]
+   }
+  },
+  {
+   "id": "6b89c157-fbfb-4b38-8a82-a5353de7344d",
+   "tag": "networking",
+   "otherName": "Daniel Okafor",
+   "createdAt": "2026-09-28T14:20:00.000Z",
+   "seeded": false,
+   "turns": [
+    {
+     "turnId": 1,
+     "speaker": "A",
+     "text": "Hi, I'm Daniel from Halcyon Robotics. Are you a student here?",
+     "startMs": 0,
+     "endMs": 5022,
+     "source": "them",
+     "confidence": 0.9
+    },
+    {
+     "turnId": 2,
+     "speaker": "B",
+     "text": "Hi! Yes, I'm a junior in computer science. I'm Sofía.",
+     "startMs": 5479,
+     "endMs": 9898,
+     "source": "you",
+     "confidence": 0.97
+    },
+    {
+     "turnId": 3,
+     "speaker": "C",
+     "text": "Next group for the Halcyon tour, line up over here please.",
+     "startMs": 10048,
+     "endMs": 14949,
+     "source": "crowd",
+     "confidence": 0.97
+    },
+    {
+     "turnId": 4,
+     "speaker": "A",
+     "text": "Nice to meet you. What kind of work are you looking for?",
+     "startMs": 15330,
+     "endMs": 20707,
+     "source": "them",
+     "confidence": 0.81
+    },
+    {
+     "turnId": 5,
+     "speaker": "B",
+     "text": "Honestly, I've been doing a lot of machine learning, I built a model for my research lab that predicts crop yields from satellite images, and I did a hackathon project with drones, and I'm really interested in robotics, and I want a summer internship.",
+     "startMs": 21116,
+     "endMs": 38625,
+     "source": "you",
+     "confidence": 0.94
+    },
+    {
+     "turnId": 6,
+     "speaker": "A",
+     "text": "That's a great mix. Our team works on the warehouse robots, the arms that pick boxes off shelves. The hard part is when a box is crushed or the label is upside down, the arm has to figure it out live.",
+     "startMs": 39255,
+     "endMs": 55356,
+     "source": "them",
+     "confidence": 0.87
+    },
+    {
+     "turnId": 7,
+     "speaker": "B",
+     "text": "That's cool. Is the internship application open yet?",
+     "startMs": 55872,
+     "endMs": 59436,
+     "source": "you",
+     "confidence": 0.93
+    },
+    {
+     "turnId": 8,
+     "speaker": "A",
+     "text": "The internship application opens next week. We have a hiring info session on Tuesday too, I can put your name on the list.",
+     "startMs": 59830,
+     "endMs": 69263,
+     "source": "them",
+     "confidence": 0.89
+    },
+    {
+     "turnId": 9,
+     "speaker": "B",
+     "text": "Yes, please, put me on the list for the info session! Wait, going back to the crushed boxes, how does the arm know a box is crushed?",
+     "startMs": 69909,
+     "endMs": 81038,
+     "source": "you",
+     "confidence": 0.96
+    },
+    {
+     "turnId": 10,
+     "speaker": "A",
+     "text": "Depth cameras, plus a model that compares the box to what it should look like. Half my job is collecting weird failure cases, like a box of cat litter that tore open on the line last month.",
+     "startMs": 81503,
+     "endMs": 96150,
+     "source": "them",
+     "confidence": 0.75
+    },
+    {
+     "turnId": 11,
+     "speaker": "B",
+     "text": "A box of cat litter, that's amazing. Is that the kind of problem an intern would work on?",
+     "startMs": 96743,
+     "endMs": 104412,
+     "source": "you",
+     "confidence": 0.92
+    },
+    {
+     "turnId": 12,
+     "speaker": "A",
+     "text": "Last summer our intern built the tool that labels those failure cases. So yes, exactly that kind of thing.",
+     "startMs": 104778,
+     "endMs": 112661,
+     "source": "them",
+     "confidence": 0.8
+    },
+    {
+     "turnId": 13,
+     "speaker": "B",
+     "text": "I'll email you my resume tonight with the satellite project on top, it has its own pile of failure cases.",
+     "startMs": 113215,
+     "endMs": 121538,
+     "source": "you",
+     "confidence": 0.85
+    },
+    {
+     "turnId": 14,
+     "speaker": "A",
+     "text": "Perfect. Here's my card, it has my email on the back.",
+     "startMs": 122159,
+     "endMs": 126891,
+     "source": "them",
+     "confidence": 0.77
+    }
+   ],
+   "userLabel": "B",
+   "reflection": "I talked way too long about myself at the start. The crushed boxes question was the best part.",
+   "signals": {
+    "userQuestions": 3,
+    "userTurns": 6,
+    "otherTurns": 7,
+    "userTalkMs": 52613,
+    "otherTalkMs": 63195,
+    "userTalkShare": 0.45,
+    "otherAvgAnswerWords": 26.3,
+    "followUps": 2,
+    "reflections": 0,
+    "storiesAfterQuestions": 2,
+    "questions": [
+     {
+      "turnId": 7,
+      "isFollowUp": false,
+      "replyTurnId": 8,
+      "replyWords": 23,
+      "storyShared": false
+     },
+     {
+      "turnId": 9,
+      "isFollowUp": true,
+      "replyTurnId": 10,
+      "replyWords": 37,
+      "storyShared": true
+     },
+     {
+      "turnId": 11,
+      "isFollowUp": true,
+      "replyTurnId": 12,
+      "replyWords": 19,
+      "storyShared": true
+     }
+    ],
+    "crowd": 1,
+    "source": "muse-spark",
+    "detectorAgreement": {
+     "agree": 2,
+     "of": 3
+    }
+   },
+   "note": {
+    "text": "You asked 3 questions and 2 were follow-ups, and Daniel told the cat litter story after one of them. Your first answer about yourself ran long before you asked about his team.",
+    "suggestion": "Next time, ask what their team is working on before you list your projects.",
+    "citedTurnIds": [
+     5,
+     9,
+     11
+    ],
+    "status": "shown",
+    "source": "muse-spark"
+   },
+   "hooks": {
+    "topics": [
+     {
+      "term": "Robotics",
+      "turnIds": [
+       1
+      ],
+      "weight": 4
+     },
+     {
+      "term": "opens",
+      "turnIds": [
+       8,
+       10
+      ],
+      "weight": 4
+     },
+     {
+      "term": "failure",
+      "turnIds": [
+       10,
+       12
+      ],
+      "weight": 4
+     },
+     {
+      "term": "cases",
+      "turnIds": [
+       10,
+       12
+      ],
+      "weight": 4
+     },
+     {
+      "term": "Halcyon",
+      "turnIds": [
+       1
+      ],
+      "weight": 3
+     }
+    ],
+    "events": [
+     {
+      "text": "The internship application opens next week.",
+      "when": "next week",
+      "hasNoun": false,
+      "turnId": 8
+     }
+    ],
+    "commitments": [
+     {
+      "text": "I'll email you my resume tonight with the satellite project on top,",
+      "turnId": 13
+     }
+    ],
+    "missedBids": [],
+    "highlights": [
+     {
+      "turnId": 6,
+      "words": 41
+     },
+     {
+      "turnId": 10,
+      "words": 37
+     }
+    ],
+    "followUpDetector": [
+     {
+      "turnId": 7,
+      "isFollowUp": true,
+      "overlap": []
+     },
+     {
+      "turnId": 9,
+      "isFollowUp": true,
+      "overlap": [
+       "list",
+       "info",
+       "session"
+      ]
+     },
+     {
+      "turnId": 11,
+      "isFollowUp": true,
+      "overlap": [
+       "litter"
+      ]
+     }
+    ],
+    "awkward": {
+     "flags": [],
+     "score": 0,
+     "seams": [],
+     "worst": null
+    }
+   },
+   "followUp": {
+    "text": "Hi Daniel, great meeting you at the Halcyon booth today! Resume attached, satellite project on top. I'd love a spot at the info session on Tuesday, and I'm still thinking about the crushed boxes and the cat litter.",
+    "hooksUsed": [
+     "Halcyon",
+     "I'll email you my resume tonight with…"
+    ],
+    "source": "edited",
+    "status": "sent",
+    "sentAt": "2026-09-28T19:22:06.891Z"
+   },
+   "recording": {
+    "mime": "video/mp4",
+    "ext": "mp4",
+    "bytes": 6630514,
+    "offsetMs": 310,
+    "uploadedAt": "2026-09-28T14:26:55.891Z"
+   },
+   "behavior": {
+    "model": "mediapipe-face-landmarker@0.10.14",
+    "fps": 5,
+    "frameCount": 652,
+    "faceSeenPct": 0.96,
+    "baseline": {
+     "smile": 0.19,
+     "animation": 0.159
+    },
+    "turns": [
+     {
+      "turnId": 1,
+      "speaker": "them",
+      "smile": 0.19,
+      "smilePeak": 0.2,
+      "facingPct": 0.96,
+      "nods": 0,
+      "animation": 0.23,
+      "reaction": null,
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 2,
+      "speaker": "you",
+      "smile": 0.18,
+      "smilePeak": 0.2,
+      "facingPct": 1,
+      "nods": 0,
+      "animation": 0.084,
+      "reaction": {
+       "smileDelta": 0.05,
+       "nods": 0,
+       "facingPct": 1
+      },
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 4,
+      "speaker": "them",
+      "smile": 0.2,
+      "smilePeak": 0.28,
+      "facingPct": 0.96,
+      "nods": 0,
+      "animation": 0.259,
+      "reaction": null,
+      "textTone": "positive",
+      "congruence": null
+     },
+     {
+      "turnId": 5,
+      "speaker": "you",
+      "smile": 0.18,
+      "smilePeak": 0.2,
+      "facingPct": 0.97,
+      "nods": 0,
+      "animation": 0.07,
+      "reaction": {
+       "smileDelta": -0.06,
+       "nods": 0,
+       "facingPct": 0.46
+      },
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 6,
+      "speaker": "them",
+      "smile": 0.19,
+      "smilePeak": 0.3,
+      "facingPct": 0.89,
+      "nods": 1,
+      "animation": 0.234,
+      "reaction": null,
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 7,
+      "speaker": "you",
+      "smile": 0.18,
+      "smilePeak": 0.2,
+      "facingPct": 0.89,
+      "nods": 0,
+      "animation": 0.089,
+      "reaction": {
+       "smileDelta": -0.06,
+       "nods": 0,
+       "facingPct": 0.54
+      },
+      "textTone": "positive",
+      "congruence": null
+     },
+     {
+      "turnId": 8,
+      "speaker": "them",
+      "smile": 0.18,
+      "smilePeak": 0.2,
+      "facingPct": 0.85,
+      "nods": 0,
+      "animation": 0.219,
+      "reaction": null,
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 9,
+      "speaker": "you",
+      "smile": 0.18,
+      "smilePeak": 0.2,
+      "facingPct": 1,
+      "nods": 0,
+      "animation": 0.063,
+      "reaction": {
+       "smileDelta": 0.2,
+       "nods": 0,
+       "facingPct": 0.77
+      },
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 10,
+      "speaker": "them",
+      "smile": 0.22,
+      "smilePeak": 0.4,
+      "facingPct": 0.92,
+      "nods": 2,
+      "animation": 0.281,
+      "reaction": null,
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 11,
+      "speaker": "you",
+      "smile": 0.18,
+      "smilePeak": 0.2,
+      "facingPct": 0.95,
+      "nods": 0,
+      "animation": 0.073,
+      "reaction": {
+       "smileDelta": 0.1,
+       "nods": 0,
+       "facingPct": 0.85
+      },
+      "textTone": "positive",
+      "congruence": null
+     },
+     {
+      "turnId": 12,
+      "speaker": "them",
+      "smile": 0.23,
+      "smilePeak": 0.3,
+      "facingPct": 0.87,
+      "nods": 1,
+      "animation": 0.262,
+      "reaction": null,
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 13,
+      "speaker": "you",
+      "smile": 0.18,
+      "smilePeak": 0.2,
+      "facingPct": 1,
+      "nods": 0,
+      "animation": 0.069,
+      "reaction": {
+       "smileDelta": 0.11,
+       "nods": 0,
+       "facingPct": 0.92
+      },
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 14,
+      "speaker": "them",
+      "smile": 0.24,
+      "smilePeak": 0.38,
+      "facingPct": 0.96,
+      "nods": 0,
+      "animation": 0.226,
+      "reaction": null,
+      "textTone": "neutral",
+      "congruence": null
+     }
+    ],
+    "stats": {
+     "afterFollowUps": {
+      "n": 2,
+      "smileDelta": 0.15,
+      "nods": 0
+     },
+     "afterOther": {
+      "n": 4,
+      "smileDelta": 0.01,
+      "nods": 0
+     },
+     "missedBidReactions": []
+    }
+   },
+   "insight": {
+    "moments": [
+     {
+      "turnId": 5,
+      "title": "The long intro",
+      "observation": "After “Honestly, I've been doing a lot of machine learning, I…”, their smile dropped 6 points and they faced you 46% of the time.",
+      "why": "A two-sentence answer and a question back would have handed him the floor sooner."
+     },
+     {
+      "turnId": 9,
+      "title": "Back to the crushed boxes",
+      "observation": "After “Yes, please, put me on the list for the info session!…”, their smile rose 20 points.",
+      "why": "Going back to the detail he gave you got the most specific answer of the chat."
+     },
+     {
+      "turnId": 11,
+      "title": "Intern-sized problem",
+      "observation": "After “A box of cat litter, that's amazing. Is that the kind of…”, their smile rose 10 points.",
+      "why": "Tying his story to the internship made your ask concrete without pitching."
+     }
+    ],
+    "adviceCheck": [
+     {
+      "advice": "Next time, ask what their team is working on before you list your projects.",
+      "verdict": "backed",
+      "evidenceTurnIds": [
+       9,
+       11
+      ],
+      "reason": "Their smile moved 15 points after your 2 follow-ups vs 1 after your other 4 lines."
+     }
+    ],
+    "source": "muse-spark",
+    "rewrites": [
+     {
+      "turnId": 7,
+      "title": "Ask about the boxes first",
+      "tryInstead": "Wait, what happens when the label is upside down? How does the arm handle that?",
+      "because": "He had just told you the hard part of his job; one question about it would have come before the internship ask."
+     },
+     {
+      "turnId": 5,
+      "title": "Shorter answer, then ask",
+      "tryInstead": "Mostly machine learning, some robotics. What kind of work does your team do?",
+      "because": "A short answer and a question back keeps the first minute about the person you just met."
+     }
+    ],
+    "takeaways": [
+     {
+      "kind": "try",
+      "turnId": 7,
+      "title": "Ask about the boxes first",
+      "text": "He had just told you the hard part of his job; one question about it would have come before the internship ask.",
+      "said": "That's cool. Is the internship application open yet?",
+      "theySaid": "That's a great mix. Our team works on the warehouse robots, the arms that pick boxes off shelves. The hard part is when a box is crushed or the label is upside down, the arm has to figure it out live.",
+      "tryInstead": "Wait, what happens when the label is upside down? How does the arm handle that?",
+      "evidence": "Smile −6 · looked away 1.2 s"
+     },
+     {
+      "kind": "keep",
+      "turnId": 9,
+      "title": "Back to the crushed boxes",
+      "text": "Going back to the detail he gave you got the most specific answer of the chat.",
+      "said": null,
+      "theySaid": null,
+      "tryInstead": null,
+      "evidence": "Smile +20 · looked away 0.6 s"
+     },
+     {
+      "kind": "next",
+      "turnId": 8,
+      "title": "Ask about it next time",
+      "text": "They mentioned “The internship application opens next week.” Ask how it went.",
+      "said": null,
+      "theySaid": null,
+      "tryInstead": null,
+      "evidence": null
+     }
+    ]
+   }
+  },
+  {
+   "id": "cc8188ef-66c4-4e13-a392-f5eacb4eedbe",
+   "tag": "family",
+   "otherName": "Abuela",
+   "createdAt": "2026-10-01T18:05:00.000Z",
+   "seeded": false,
+   "turns": [
+    {
+     "turnId": 1,
+     "speaker": "A",
+     "text": "Hi Abuela! How did it go at the doctor on Thursday?",
+     "startMs": 0,
+     "endMs": 4897
+    },
+    {
+     "turnId": 2,
+     "speaker": "B",
+     "text": "Better than I thought. The doctor says it's arthritis, nothing to operate. I have to do exercises, ay, like a teenager at the gym.",
+     "startMs": 5303,
+     "endMs": 15034
+    },
+    {
+     "turnId": 3,
+     "speaker": "A",
+     "text": "Exercises like what? Show me one next time we video call.",
+     "startMs": 15809,
+     "endMs": 20535
+    },
+    {
+     "turnId": 4,
+     "speaker": "B",
+     "text": "Lifting my leg while I watch my novelas. Twenty times each side. Your tío counts for me and he counts wrong on purpose so I finish early.",
+     "startMs": 21169,
+     "endMs": 32240
+    },
+    {
+     "turnId": 5,
+     "speaker": "A",
+     "text": "Tío counts wrong on purpose? That is so sweet.",
+     "startMs": 33013,
+     "endMs": 37029
+    },
+    {
+     "turnId": 6,
+     "speaker": "B",
+     "text": "He is a good boy. And the tomatoes are coming in, the big ones from Lupe's seeds.",
+     "startMs": 37419,
+     "endMs": 44402
+    },
+    {
+     "turnId": 7,
+     "speaker": "A",
+     "text": "Lupe's seeds from Oaxaca? How does she keep the seeds good for so long?",
+     "startMs": 45030,
+     "endMs": 50864
+    },
+    {
+     "turnId": 8,
+     "speaker": "B",
+     "text": "She dries them on a plate in the window, then folds them in little paper envelopes with the date. Since we were girls she does it. When I moved here she gave me a jar of seeds wrapped in a dish towel.",
+     "startMs": 51303,
+     "endMs": 67951
+    },
+    {
+     "turnId": 9,
+     "speaker": "A",
+     "text": "Wrapped in a dish towel. I want to learn how to do that. I'll call you Sunday and you can teach me.",
+     "startMs": 68431,
+     "endMs": 77654
+    },
+    {
+     "turnId": 10,
+     "speaker": "B",
+     "text": "Sí, mija. Bring paper and a pencil.",
+     "startMs": 78176,
+     "endMs": 81588
+    }
+   ],
+   "userLabel": "A",
+   "reflection": "Remembered to ask about the doctor first this time.",
+   "signals": {
+    "userQuestions": 4,
+    "userTurns": 5,
+    "otherTurns": 5,
+    "userTalkMs": 28696,
+    "otherTalkMs": 47845,
+    "userTalkShare": 0.37,
+    "otherAvgAnswerWords": 27.5,
+    "followUps": 3,
+    "reflections": 1,
+    "storiesAfterQuestions": 2,
+    "questions": [
+     {
+      "turnId": 1,
+      "isFollowUp": false,
+      "replyTurnId": 2,
+      "replyWords": 24,
+      "storyShared": false
+     },
+     {
+      "turnId": 3,
+      "isFollowUp": true,
+      "replyTurnId": 4,
+      "replyWords": 27,
+      "storyShared": true
+     },
+     {
+      "turnId": 5,
+      "isFollowUp": true,
+      "replyTurnId": 6,
+      "replyWords": 17,
+      "storyShared": false
+     },
+     {
+      "turnId": 7,
+      "isFollowUp": true,
+      "replyTurnId": 8,
+      "replyWords": 42,
+      "storyShared": true
+     }
+    ],
+    "crowd": 0,
+    "source": "muse-spark",
+    "detectorAgreement": {
+     "agree": 4,
+     "of": 4
+    }
+   },
+   "note": {
+    "text": "You asked 4 questions and 3 were follow-ups, and you opened by asking about her doctor visit like you promised. She told you how Tía Lupe saves the seeds.",
+    "suggestion": "On Sunday, ask what else she and Lupe grew in Oaxaca, and write down the Spanish word for each plant.",
+    "citedTurnIds": [
+     1,
+     7
+    ],
+    "status": "shown",
+    "source": "muse-spark"
+   },
+   "hooks": {
+    "topics": [
+     {
+      "term": "Lupe",
+      "turnIds": [
+       6
+      ],
+      "weight": 4
+     },
+     {
+      "term": "seeds",
+      "turnIds": [
+       6,
+       8
+      ],
+      "weight": 4
+     },
+     {
+      "term": "counts",
+      "turnIds": [
+       4
+      ],
+      "weight": 3
+     },
+     {
+      "term": "paper",
+      "turnIds": [
+       8,
+       10
+      ],
+      "weight": 3
+     },
+     {
+      "term": "doctor",
+      "turnIds": [
+       2
+      ],
+      "weight": 2
+     }
+    ],
+    "events": [],
+    "commitments": [
+     {
+      "text": "I'll call you Sunday and you can teach me.",
+      "turnId": 9
+     }
+    ],
+    "missedBids": [],
+    "highlights": [
+     {
+      "turnId": 8,
+      "words": 42
+     },
+     {
+      "turnId": 4,
+      "words": 27
+     }
+    ],
+    "followUpDetector": [
+     {
+      "turnId": 1,
+      "isFollowUp": false,
+      "overlap": []
+     },
+     {
+      "turnId": 3,
+      "isFollowUp": true,
+      "overlap": [
+       "exercises"
+      ]
+     },
+     {
+      "turnId": 5,
+      "isFollowUp": true,
+      "overlap": [
+       "counts",
+       "wrong",
+       "purpose"
+      ]
+     },
+     {
+      "turnId": 7,
+      "isFollowUp": true,
+      "overlap": [
+       "lupe",
+       "seeds"
+      ]
+     }
+    ],
+    "awkward": {
+     "flags": [],
+     "score": 0,
+     "seams": [],
+     "worst": null
+    }
+   },
+   "followUp": {
+    "text": "Hola Abuela! I'll call you el domingo so you can teach me Lupe's seed envelopes. Tell tío to count right on your exercises.",
+    "hooksUsed": [
+     "Lupe",
+     "seeds",
+     "counts",
+     "I'll call you Sunday and you can…"
+    ],
+    "source": "muse-spark",
+    "status": "sent",
+    "sentAt": "2026-10-01T18:26:21.588Z"
+   },
+   "recording": null,
+   "behavior": null,
+   "insight": {
+    "moments": [
+     {
+      "turnId": 1,
+      "title": "You kept your promise",
+      "observation": "You opened with the doctor visit you said you would call about.",
+      "why": "Following through on last call is the follow-up she will remember."
+     },
+     {
+      "turnId": 3,
+      "title": "Exercises like what?",
+      "observation": "You asked about the exercises she had just mentioned and heard about the novelas and tío counting wrong.",
+      "why": "A short question about her last word kept her talking."
+     },
+     {
+      "turnId": 7,
+      "title": "Lupe's seeds",
+      "observation": "You picked up “Lupe’s seeds” and she answered with the dish towel story, 42 words.",
+      "why": "Naming the person in her story got you the story behind it."
+     }
+    ],
+    "adviceCheck": [
+     {
+      "advice": "On Sunday, ask what else she and Lupe grew in Oaxaca, and write down the Spanish word for each plant.",
+      "verdict": "not yet",
+      "evidenceTurnIds": [
+       3,
+       5,
+       7
+      ],
+      "reason": "There was no video, so only the words back it up."
+     }
+    ],
+    "source": "muse-spark",
+    "rewrites": [],
+    "takeaways": [
+     {
+      "kind": "keep",
+      "turnId": 3,
+      "title": "Exercises like what?",
+      "text": "A short question about her last word kept her talking.",
+      "said": null,
+      "theySaid": null,
+      "tryInstead": null,
+      "evidence": "Built on: exercises"
+     },
+     {
+      "kind": "next",
+      "turnId": 9,
+      "title": "Follow through",
+      "text": "You said “I'll call you Sunday and you can teach me.” Do it before you talk again.",
+      "said": null,
+      "theySaid": null,
+      "tryInstead": null,
+      "evidence": null
+     }
+    ]
+   }
+  },
+  {
+   "id": "cd320116-8699-4b68-9d00-d4636356ee08",
+   "tag": "friend",
+   "otherName": "Priya Nair",
+   "createdAt": "2026-10-04T12:40:00.000Z",
+   "seeded": false,
+   "turns": [
+    {
+     "turnId": 1,
+     "speaker": "A",
+     "text": "How's training going? Isn't the half marathon soon?",
+     "startMs": 0,
+     "endMs": 3794,
+     "source": "you",
+     "confidence": 0.87
+    },
+    {
+     "turnId": 2,
+     "speaker": "B",
+     "text": "The race is in three weeks! I did fourteen miles on Saturday and my legs are still mad at me. But honestly I'm more stressed about the Seattle offer than the race.",
+     "startMs": 4201,
+     "endMs": 17134,
+     "source": "them",
+     "confidence": 0.89
+    },
+    {
+     "turnId": 3,
+     "speaker": "A",
+     "text": "The Seattle offer? Wait, what's stressing you about it?",
+     "startMs": 17639,
+     "endMs": 21836,
+     "source": "you",
+     "confidence": 0.91
+    },
+    {
+     "turnId": 4,
+     "speaker": "B",
+     "text": "It's the job I wanted, but it means leaving Austin and my whole running group. I keep making pro and con lists and they come out tied every time.",
+     "startMs": 22451,
+     "endMs": 34074,
+     "source": "them",
+     "confidence": 0.86
+    },
+    {
+     "turnId": 5,
+     "speaker": "C",
+     "text": "Oat latte for Priya? Oat latte!",
+     "startMs": 34194,
+     "endMs": 37304,
+     "source": "crowd",
+     "confidence": 1
+    },
+    {
+     "turnId": 6,
+     "speaker": "A",
+     "text": "Tied every time, that's so hard. What's on the con side that you can't get past?",
+     "startMs": 37909,
+     "endMs": 44576,
+     "source": "you",
+     "confidence": 0.97
+    },
+    {
+     "turnId": 7,
+     "speaker": "B",
+     "text": "My mom, mostly. She just started chemo in Houston and Seattle is a four hour flight. I haven't told the recruiter any of this.",
+     "startMs": 44983,
+     "endMs": 54706,
+     "source": "them",
+     "confidence": 0.86
+    },
+    {
+     "turnId": 8,
+     "speaker": "A",
+     "text": "I'm so sorry, Priya. I didn't know about your mom. How is she doing with the chemo?",
+     "startMs": 55289,
+     "endMs": 62337,
+     "source": "you",
+     "confidence": 0.86
+    },
+    {
+     "turnId": 9,
+     "speaker": "B",
+     "text": "Tired, but stubborn. She told me to take the job and stop worrying about her, which is very her.",
+     "startMs": 62824,
+     "endMs": 70641,
+     "source": "them",
+     "confidence": 0.88
+    },
+    {
+     "turnId": 10,
+     "speaker": "A",
+     "text": "That sounds like her. When do you have to give the recruiter an answer?",
+     "startMs": 71227,
+     "endMs": 77105,
+     "source": "you",
+     "confidence": 0.89
+    },
+    {
+     "turnId": 11,
+     "speaker": "B",
+     "text": "By November first. I'm going to visit Seattle next weekend to see if I can picture it.",
+     "startMs": 77804,
+     "endMs": 84997,
+     "source": "them",
+     "confidence": 0.85
+    },
+    {
+     "turnId": 12,
+     "speaker": "A",
+     "text": "I'll drive you to the airport for Seattle. Text me your flight.",
+     "startMs": 85393,
+     "endMs": 90515,
+     "source": "you",
+     "confidence": 0.93
+    },
+    {
+     "turnId": 13,
+     "speaker": "B",
+     "text": "You're the best. Okay, now tell me about your week.",
+     "startMs": 90918,
+     "endMs": 95539,
+     "source": "them",
+     "confidence": 0.71
+    }
+   ],
+   "userLabel": "A",
+   "reflection": "I just listened for once. I had no idea about her mom.",
+   "signals": {
+    "userQuestions": 5,
+    "userTurns": 6,
+    "otherTurns": 6,
+    "userTalkMs": 32706,
+    "otherTalkMs": 53910,
+    "userTalkShare": 0.38,
+    "otherAvgAnswerWords": 24.2,
+    "followUps": 4,
+    "reflections": 1,
+    "storiesAfterQuestions": 1,
+    "questions": [
+     {
+      "turnId": 1,
+      "isFollowUp": false,
+      "replyTurnId": 2,
+      "replyWords": 32,
+      "storyShared": false
+     },
+     {
+      "turnId": 3,
+      "isFollowUp": true,
+      "replyTurnId": 4,
+      "replyWords": 29,
+      "storyShared": false
+     },
+     {
+      "turnId": 6,
+      "isFollowUp": true,
+      "replyTurnId": 7,
+      "replyWords": 24,
+      "storyShared": false
+     },
+     {
+      "turnId": 8,
+      "isFollowUp": true,
+      "replyTurnId": 9,
+      "replyWords": 19,
+      "storyShared": true
+     },
+     {
+      "turnId": 10,
+      "isFollowUp": true,
+      "replyTurnId": 11,
+      "replyWords": 17,
+      "storyShared": false
+     }
+    ],
+    "crowd": 1,
+    "source": "muse-spark",
+    "detectorAgreement": {
+     "agree": 5,
+     "of": 5
+    }
+   },
+   "note": {
+    "text": "You asked 5 questions and 4 were follow-ups, and you let Priya finish before sharing anything about your own week. When the chemo came up, you slowed down and asked about it.",
+    "suggestion": "After the Seattle trip next weekend, ask what Priya could and couldn't picture there before you give your opinion.",
+    "citedTurnIds": [
+     6,
+     8
+    ],
+    "status": "shown",
+    "source": "muse-spark"
+   },
+   "hooks": {
+    "topics": [
+     {
+      "term": "Seattle",
+      "turnIds": [
+       2,
+       7,
+       11
+      ],
+      "weight": 8
+     },
+     {
+      "term": "Austin",
+      "turnIds": [
+       4
+      ],
+      "weight": 3
+     },
+     {
+      "term": "Houston",
+      "turnIds": [
+       7
+      ],
+      "weight": 3
+     },
+     {
+      "term": "race",
+      "turnIds": [
+       2
+      ],
+      "weight": 2
+     },
+     {
+      "term": "offer",
+      "turnIds": [
+       2
+      ],
+      "weight": 2
+     }
+    ],
+    "events": [
+     {
+      "text": "The race is in three weeks!",
+      "when": "in three weeks",
+      "hasNoun": false,
+      "turnId": 2
+     },
+     {
+      "text": "I'm going to visit Seattle next weekend to see if I can picture it.",
+      "when": "next weekend",
+      "hasNoun": false,
+      "turnId": 11
+     }
+    ],
+    "commitments": [],
+    "missedBids": [],
+    "highlights": [
+     {
+      "turnId": 2,
+      "words": 32
+     },
+     {
+      "turnId": 4,
+      "words": 29
+     }
+    ],
+    "followUpDetector": [
+     {
+      "turnId": 1,
+      "isFollowUp": false,
+      "overlap": []
+     },
+     {
+      "turnId": 3,
+      "isFollowUp": true,
+      "overlap": [
+       "seattle",
+       "offer",
+       "stressing"
+      ]
+     },
+     {
+      "turnId": 6,
+      "isFollowUp": true,
+      "overlap": [
+       "tied"
+      ]
+     },
+     {
+      "turnId": 8,
+      "isFollowUp": true,
+      "overlap": [
+       "chemo"
+      ]
+     },
+     {
+      "turnId": 10,
+      "isFollowUp": true,
+      "overlap": []
+     }
+    ],
+    "awkward": {
+     "flags": [],
+     "score": 0,
+     "seams": [],
+     "worst": null
+    }
+   },
+   "followUp": {
+    "text": "Text me your flight for next weekend and I'll drive you to the airport. Thinking about you and your mom, and good luck with the race in three weeks!",
+    "hooksUsed": [
+     "race",
+     "in three weeks",
+     "next weekend"
+    ],
+    "source": "muse-spark",
+    "status": "sent",
+    "sentAt": "2026-10-04T14:11:35.539Z"
+   },
+   "recording": {
+    "mime": "video/mp4",
+    "ext": "mp4",
+    "bytes": 4994398,
+    "offsetMs": 200,
+    "uploadedAt": "2026-10-04T12:46:24.539Z"
+   },
+   "behavior": {
+    "model": "mediapipe-face-landmarker@0.10.14",
+    "fps": 5,
+    "frameCount": 494,
+    "faceSeenPct": 0.97,
+    "baseline": {
+     "smile": 0.18,
+     "animation": 0.183
+    },
+    "turns": [
+     {
+      "turnId": 1,
+      "speaker": "you",
+      "smile": 0.15,
+      "smilePeak": 0.17,
+      "facingPct": 0.95,
+      "nods": 0,
+      "animation": 0.08,
+      "reaction": {
+       "smileDelta": 0.04,
+       "nods": 0,
+       "facingPct": 1
+      },
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 2,
+      "speaker": "them",
+      "smile": 0.18,
+      "smilePeak": 0.28,
+      "facingPct": 1,
+      "nods": 0,
+      "animation": 0.277,
+      "reaction": null,
+      "textTone": "negative",
+      "congruence": "match"
+     },
+     {
+      "turnId": 3,
+      "speaker": "you",
+      "smile": 0.15,
+      "smilePeak": 0.17,
+      "facingPct": 1,
+      "nods": 0,
+      "animation": 0.075,
+      "reaction": {
+       "smileDelta": 0.09,
+       "nods": 0,
+       "facingPct": 1
+      },
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 4,
+      "speaker": "them",
+      "smile": 0.18,
+      "smilePeak": 0.28,
+      "facingPct": 0.95,
+      "nods": 1,
+      "animation": 0.247,
+      "reaction": null,
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 6,
+      "speaker": "you",
+      "smile": 0.15,
+      "smilePeak": 0.17,
+      "facingPct": 0.94,
+      "nods": 0,
+      "animation": 0.071,
+      "reaction": {
+       "smileDelta": 0.11,
+       "nods": 0,
+       "facingPct": 1
+      },
+      "textTone": "negative",
+      "congruence": null
+     },
+     {
+      "turnId": 7,
+      "speaker": "them",
+      "smile": 0.21,
+      "smilePeak": 0.29,
+      "facingPct": 0.53,
+      "nods": 0,
+      "animation": 0.259,
+      "reaction": null,
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 8,
+      "speaker": "you",
+      "smile": 0.15,
+      "smilePeak": 0.17,
+      "facingPct": 0.94,
+      "nods": 0,
+      "animation": 0.071,
+      "reaction": {
+       "smileDelta": 0.02,
+       "nods": 0,
+       "facingPct": 0.85
+      },
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 9,
+      "speaker": "them",
+      "smile": 0.19,
+      "smilePeak": 0.27,
+      "facingPct": 0.95,
+      "nods": 2,
+      "animation": 0.276,
+      "reaction": null,
+      "textTone": "negative",
+      "congruence": "match"
+     },
+     {
+      "turnId": 10,
+      "speaker": "you",
+      "smile": 0.15,
+      "smilePeak": 0.16,
+      "facingPct": 1,
+      "nods": 0,
+      "animation": 0.064,
+      "reaction": {
+       "smileDelta": 0.06,
+       "nods": 0,
+       "facingPct": 0.92
+      },
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 11,
+      "speaker": "them",
+      "smile": 0.19,
+      "smilePeak": 0.29,
+      "facingPct": 1,
+      "nods": 1,
+      "animation": 0.277,
+      "reaction": null,
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 12,
+      "speaker": "you",
+      "smile": 0.15,
+      "smilePeak": 0.17,
+      "facingPct": 1,
+      "nods": 0,
+      "animation": 0.077,
+      "reaction": {
+       "smileDelta": 0.17,
+       "nods": 0,
+       "facingPct": 0.92
+      },
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 13,
+      "speaker": "them",
+      "smile": 0.25,
+      "smilePeak": 0.37,
+      "facingPct": 0.96,
+      "nods": 0,
+      "animation": 0.268,
+      "reaction": null,
+      "textTone": "positive",
+      "congruence": "match"
+     }
+    ],
+    "stats": {
+     "afterFollowUps": {
+      "n": 4,
+      "smileDelta": 0.07,
+      "nods": 0
+     },
+     "afterOther": {
+      "n": 2,
+      "smileDelta": 0.11,
+      "nods": 0
+     },
+     "missedBidReactions": []
+    }
+   },
+   "insight": {
+    "moments": [
+     {
+      "turnId": 6,
+      "title": "Tied every time",
+      "observation": "After “Tied every time, that's so hard. What's on the con side…”, their smile rose 11 points.",
+      "why": "Repeating her words back, then asking, opened up the part she had not told anyone."
+     },
+     {
+      "turnId": 8,
+      "title": "Slowing down",
+      "observation": "After “I'm so sorry, Priya. I didn't know about your mom. How…”, their smile rose 2 points.",
+      "why": "When something heavy comes up, one gentle question is enough; you did not rush past it."
+     },
+     {
+      "turnId": 12,
+      "title": "An offer, not advice",
+      "observation": "After “I'll drive you to the airport for Seattle. Text me your…”, their smile rose 17 points.",
+      "why": "Offering the airport ride was a concrete way to show up without telling her what to decide."
+     }
+    ],
+    "adviceCheck": [
+     {
+      "advice": "After the Seattle trip next weekend, ask what Priya could and couldn't picture there before you give your opinion.",
+      "verdict": "partly",
+      "evidenceTurnIds": [
+       3,
+       6,
+       8
+      ],
+      "reason": "Their smile moved 7 points after your 4 follow-ups vs 11 after your other 2 lines."
+     }
+    ],
+    "source": "muse-spark",
+    "rewrites": [],
+    "takeaways": [
+     {
+      "kind": "keep",
+      "turnId": 6,
+      "title": "Tied every time",
+      "text": "Repeating her words back, then asking, opened up the part she had not told anyone.",
+      "said": null,
+      "theySaid": null,
+      "tryInstead": null,
+      "evidence": "Smile +11"
+     },
+     {
+      "kind": "next",
+      "turnId": 2,
+      "title": "Ask about it next time",
+      "text": "They mentioned “The race is in three weeks!” Ask how it went.",
+      "said": null,
+      "theySaid": null,
+      "tryInstead": null,
+      "evidence": null
+     }
+    ]
+   }
+  },
+  {
+   "id": "aa9cdfd4-2f28-4a60-a468-055b86a6c34e",
+   "tag": "friend",
+   "otherName": "Marcus Bell",
+   "createdAt": "2026-10-07T22:15:00.000Z",
+   "seeded": false,
+   "turns": [
+    {
+     "turnId": 1,
+     "speaker": "A",
+     "text": "Marcus! How's the new apartment?",
+     "startMs": 0,
+     "endMs": 2570,
+     "source": "you",
+     "confidence": 0.76
+    },
+    {
+     "turnId": 2,
+     "speaker": "B",
+     "text": "Finally unpacked. The landlord is a nightmare though, the heater broke twice and he keeps saying he'll come Friday and then never shows up.",
+     "startMs": 3239,
+     "endMs": 13128,
+     "source": "them",
+     "confidence": 0.76
+    },
+    {
+     "turnId": 3,
+     "speaker": "A",
+     "text": "Ugh. Wait, did you hear that Tyler cheated on Dana? Apparently she found out at the formal.",
+     "startMs": 13591,
+     "endMs": 20902,
+     "source": "you",
+     "confidence": 0.93
+    },
+    {
+     "turnId": 4,
+     "speaker": "B",
+     "text": "Uh, I don't know, I'm not really close with them.",
+     "startMs": 21463,
+     "endMs": 25948,
+     "source": "them",
+     "confidence": 0.85
+    },
+    {
+     "turnId": 5,
+     "speaker": "A",
+     "text": "Yeah, it's a whole thing. Anyway, are you still doing the pottery class?",
+     "startMs": 26330,
+     "endMs": 32029,
+     "source": "you",
+     "confidence": 0.84
+    },
+    {
+     "turnId": 6,
+     "speaker": "B",
+     "text": "Yeah, Thursdays. I'm making a set of mugs for my sister. Her wedding is in two months, and the hard part is the handles, every time I attach them they crack in the kiln and I have to",
+     "startMs": 32390,
+     "endMs": 47390,
+     "source": "them",
+     "confidence": 0.82
+    },
+    {
+     "turnId": 7,
+     "speaker": "A",
+     "text": "Oh my god, speaking of the formal, you have to see the video Tyler posted.",
+     "startMs": 46490,
+     "endMs": 52827,
+     "source": "you",
+     "confidence": 0.72
+    },
+    {
+     "turnId": 8,
+     "speaker": "B",
+     "text": "Maybe later. I should get going, I have an early class.",
+     "startMs": 53416,
+     "endMs": 58145,
+     "source": "them",
+     "confidence": 0.85
+    },
+    {
+     "turnId": 9,
+     "speaker": "A",
+     "text": "Oh, okay. I'll text you about the game Saturday.",
+     "startMs": 58787,
+     "endMs": 63026,
+     "source": "you",
+     "confidence": 0.92
+    },
+    {
+     "turnId": 10,
+     "speaker": "B",
+     "text": "Sure.",
+     "startMs": 63798,
+     "endMs": 65039,
+     "source": "them",
+     "confidence": 0.64
+    }
+   ],
+   "userLabel": "A",
+   "reflection": "That went badly. I was trying to have something to talk about and it came out as gossip.",
+   "signals": {
+    "userQuestions": 3,
+    "userTurns": 5,
+    "otherTurns": 5,
+    "userTalkMs": 26156,
+    "otherTalkMs": 35344,
+    "userTalkShare": 0.43,
+    "otherAvgAnswerWords": 24,
+    "followUps": 0,
+    "reflections": 0,
+    "storiesAfterQuestions": 0,
+    "questions": [
+     {
+      "turnId": 1,
+      "isFollowUp": false,
+      "replyTurnId": 2,
+      "replyWords": 24,
+      "storyShared": false
+     },
+     {
+      "turnId": 3,
+      "isFollowUp": false,
+      "replyTurnId": 4,
+      "replyWords": 10,
+      "storyShared": false
+     },
+     {
+      "turnId": 5,
+      "isFollowUp": false,
+      "replyTurnId": 6,
+      "replyWords": 38,
+      "storyShared": false
+     }
+    ],
+    "crowd": 0,
+    "source": "muse-spark",
+    "detectorAgreement": {
+     "agree": 2,
+     "of": 3
+    }
+   },
+   "note": {
+    "text": "When Marcus brought up the landlord and the broken heater, you moved to a rumour about Tyler and Dana, and later cut in on the story about the wedding mugs.",
+    "suggestion": "Next time, leave the rumour out and ask Marcus how the mugs for the wedding are coming along.",
+    "citedTurnIds": [
+     3,
+     7
+    ],
+    "status": "shown",
+    "source": "muse-spark"
+   },
+   "hooks": {
+    "topics": [
+     {
+      "term": "Thursdays",
+      "turnIds": [
+       6
+      ],
+      "weight": 3
+     },
+     {
+      "term": "class",
+      "turnIds": [
+       8
+      ],
+      "weight": 2
+     }
+    ],
+    "events": [
+     {
+      "text": "Her wedding is in two months,",
+      "when": "in two months",
+      "hasNoun": true,
+      "turnId": 6
+     }
+    ],
+    "commitments": [
+     {
+      "text": "I'll text you about the game Saturday.",
+      "turnId": 9
+     }
+    ],
+    "missedBids": [
+     {
+      "turnId": 6,
+      "replyTurnId": 7,
+      "cue": "Thursdays"
+     }
+    ],
+    "highlights": [
+     {
+      "turnId": 6,
+      "words": 38
+     },
+     {
+      "turnId": 2,
+      "words": 24
+     }
+    ],
+    "followUpDetector": [
+     {
+      "turnId": 1,
+      "isFollowUp": false,
+      "overlap": []
+     },
+     {
+      "turnId": 3,
+      "isFollowUp": true,
+      "overlap": []
+     },
+     {
+      "turnId": 5,
+      "isFollowUp": false,
+      "overlap": []
+     }
+    ],
+    "awkward": {
+     "flags": [
+      {
+       "turnId": 3,
+       "who": "you",
+       "kind": "gossip",
+       "label": "Gossip about someone else",
+       "evidence": "“Apparently she”: a story about someone who isn't here",
+       "weight": 4
+      },
+      {
+       "turnId": 4,
+       "who": "them",
+       "kind": "hedge",
+       "label": "Hedging",
+       "evidence": "“I don't know”",
+       "weight": 1
+      },
+      {
+       "turnId": 7,
+       "who": "you",
+       "kind": "cut-in",
+       "label": "Cut in",
+       "evidence": "You started talking 0.9 s before they finished",
+       "weight": 3
+      },
+      {
+       "turnId": 10,
+       "who": "them",
+       "kind": "short-reply",
+       "label": "Short reply, no question back",
+       "evidence": "“Sure.” after your 9-word line",
+       "weight": 2
+      }
+     ],
+     "score": 100,
+     "seams": [],
+     "worst": {
+      "turnId": 3,
+      "who": "you",
+      "kind": "gossip",
+      "label": "Gossip about someone else",
+      "evidence": "“Apparently she”: a story about someone who isn't here",
+      "weight": 4
+     }
+    }
+   },
+   "followUp": {
+    "text": "Hey Marcus, sorry I cut you off about the mugs. How are the handles holding up in the kiln? I'll text you about the game Saturday.",
+    "hooksUsed": [
+     "I'll text you about the game Saturday."
+    ],
+    "source": "edited",
+    "status": "sent",
+    "sentAt": "2026-10-08T10:16:05.039Z"
+   },
+   "recording": {
+    "mime": "video/webm",
+    "ext": "webm",
+    "bytes": 3414713,
+    "offsetMs": 150,
+    "uploadedAt": "2026-10-07T22:20:54.039Z"
+   },
+   "behavior": {
+    "model": "mediapipe-face-landmarker@0.10.14",
+    "fps": 5,
+    "frameCount": 341,
+    "faceSeenPct": 0.93,
+    "baseline": {
+     "smile": 0.17,
+     "animation": 0.17
+    },
+    "turns": [
+     {
+      "turnId": 1,
+      "speaker": "you",
+      "smile": 0.16,
+      "smilePeak": 0.18,
+      "facingPct": 0.85,
+      "nods": 0,
+      "animation": 0.071,
+      "reaction": {
+       "smileDelta": 0.05,
+       "nods": 0,
+       "facingPct": 0.77
+      },
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 2,
+      "speaker": "them",
+      "smile": 0.18,
+      "smilePeak": 0.27,
+      "facingPct": 0.9,
+      "nods": 1,
+      "animation": 0.254,
+      "reaction": null,
+      "textTone": "positive",
+      "congruence": null
+     },
+     {
+      "turnId": 3,
+      "speaker": "you",
+      "smile": 0.16,
+      "smilePeak": 0.18,
+      "facingPct": 0.89,
+      "nods": 0,
+      "animation": 0.067,
+      "reaction": {
+       "smileDelta": 0.04,
+       "nods": 0,
+       "facingPct": 0.42
+      },
+      "textTone": "negative",
+      "congruence": null
+     },
+     {
+      "turnId": 4,
+      "speaker": "them",
+      "smile": 0.19,
+      "smilePeak": 0.26,
+      "facingPct": 0.68,
+      "nods": 0,
+      "animation": 0.277,
+      "reaction": null,
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 5,
+      "speaker": "you",
+      "smile": 0.16,
+      "smilePeak": 0.17,
+      "facingPct": 0.96,
+      "nods": 0,
+      "animation": 0.071,
+      "reaction": {
+       "smileDelta": 0.02,
+       "nods": 0,
+       "facingPct": 0.92
+      },
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 6,
+      "speaker": "them",
+      "smile": 0.18,
+      "smilePeak": 0.28,
+      "facingPct": 0.93,
+      "nods": 0,
+      "animation": 0.235,
+      "reaction": null,
+      "textTone": "negative",
+      "congruence": "match"
+     },
+     {
+      "turnId": 7,
+      "speaker": "you",
+      "smile": 0.17,
+      "smilePeak": 0.28,
+      "facingPct": 0.9,
+      "nods": 0,
+      "animation": 0.096,
+      "reaction": {
+       "smileDelta": -0.1,
+       "nods": 0,
+       "facingPct": 0.38
+      },
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 8,
+      "speaker": "them",
+      "smile": 0.14,
+      "smilePeak": 0.28,
+      "facingPct": 0.67,
+      "nods": 0,
+      "animation": 0.249,
+      "reaction": null,
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 9,
+      "speaker": "you",
+      "smile": 0.17,
+      "smilePeak": 0.18,
+      "facingPct": 0.9,
+      "nods": 0,
+      "animation": 0.076,
+      "reaction": {
+       "smileDelta": -0.04,
+       "nods": 0,
+       "facingPct": 0.54
+      },
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 10,
+      "speaker": "them",
+      "smile": 0.14,
+      "smilePeak": 0.13,
+      "facingPct": 0,
+      "nods": 0,
+      "animation": 0.263,
+      "reaction": null,
+      "textTone": "neutral",
+      "congruence": null
+     }
+    ],
+    "stats": {
+     "afterFollowUps": {
+      "n": 0,
+      "smileDelta": null,
+      "nods": null
+     },
+     "afterOther": {
+      "n": 5,
+      "smileDelta": -0.01,
+      "nods": 0
+     },
+     "missedBidReactions": [
+      {
+       "turnId": 6,
+       "smileDelta": -0.1
+      }
+     ]
+    }
+   },
+   "insight": {
+    "moments": [
+     {
+      "turnId": 2,
+      "title": "The heater",
+      "observation": "They answered in 24 words and nodded 1 time, facing you 90% of the time.",
+      "why": "This was the opening: a landlord who never shows up is easy to ask about."
+     },
+     {
+      "turnId": 3,
+      "title": "The rumour",
+      "observation": "After “Ugh. Wait, did you hear that Tyler cheated on Dana?…”, their smile rose 4 points and they faced you 42% of the time. It came right after a flagged line, so it is not a sign it went well.",
+      "why": "Leave stories about people who aren't there out of it; ask about the heater instead."
+     },
+     {
+      "turnId": 7,
+      "title": "Cut in on the mugs",
+      "observation": "After “Oh my god, speaking of the formal, you have to see the…”, their smile dropped 10 points and they faced you 38% of the time.",
+      "why": "Let the handle story finish before you change the subject."
+     }
+    ],
+    "adviceCheck": [
+     {
+      "advice": "Next time, leave the rumour out and ask Marcus how the mugs for the wedding are coming along.",
+      "verdict": "not yet",
+      "evidenceTurnIds": [],
+      "reason": "There was no video, so only the words back it up."
+     }
+    ],
+    "source": "muse-spark",
+    "rewrites": [
+     {
+      "turnId": 3,
+      "title": "Leave the rumour out",
+      "tryInstead": "He keeps saying Friday? Has the heater been fixed at all, or are you still cold?",
+      "because": "Marcus had just told you about the heater; a question about it keeps the conversation about the two of you."
+     },
+     {
+      "turnId": 7,
+      "title": "Let them finish",
+      "tryInstead": "Sorry, go on, the handles crack in the kiln?",
+      "because": "Marcus was mid-sentence about the handles; letting it land, then asking about it, shows you were listening."
+     }
+    ],
+    "takeaways": [
+     {
+      "kind": "try",
+      "turnId": 3,
+      "title": "Leave the rumour out",
+      "text": "Marcus had just told you about the heater; a question about it keeps the conversation about the two of you.",
+      "said": "Ugh. Wait, did you hear that Tyler cheated on Dana? Apparently she found out at the formal.",
+      "theySaid": "Finally unpacked. The landlord is a nightmare though, the heater broke twice and he keeps saying he'll come Friday and then never shows up.",
+      "tryInstead": "He keeps saying Friday? Has the heater been fixed at all, or are you still cold?",
+      "evidence": "Gossip about someone else"
+     },
+     {
+      "kind": "next",
+      "turnId": 6,
+      "title": "Ask about it next time",
+      "text": "They mentioned “Her wedding is in two months,” Ask how it went.",
+      "said": null,
+      "theySaid": null,
+      "tryInstead": null,
+      "evidence": null
+     },
+     {
+      "kind": "try",
+      "turnId": 7,
+      "title": "Let them finish",
+      "text": "Marcus was mid-sentence about the handles; letting it land, then asking about it, shows you were listening.",
+      "said": "Oh my god, speaking of the formal, you have to see the video Tyler posted.",
+      "theySaid": "Yeah, Thursdays. I'm making a set of mugs for my sister. Her wedding is in two months, and the hard part is the handles, every time I attach them they crack in the kiln and I have to",
+      "tryInstead": "Sorry, go on, the handles crack in the kiln?",
+      "evidence": "Cut in"
+     }
+    ]
+   }
+  },
+  {
+   "id": "876fb39e-edb1-4fc3-ac9c-3408e38eb751",
+   "tag": "networking",
+   "otherName": "Elena Ruiz",
+   "createdAt": "2026-10-10T16:00:00.000Z",
+   "seeded": false,
+   "turns": [
+    {
+     "turnId": 1,
+     "speaker": "A",
+     "text": "Thanks so much for making time, Elena. How did you end up as a product manager at Lumen Health?",
+     "startMs": 0,
+     "endMs": 8098,
+     "source": "you",
+     "confidence": 0.88
+    },
+    {
+     "turnId": 2,
+     "speaker": "B",
+     "text": "I was a nurse for six years first. I kept seeing nurses fight the charting software at three in the morning, and at some point I decided I'd rather fix it than complain about it.",
+     "startMs": 8814,
+     "endMs": 22887,
+     "source": "them",
+     "confidence": 0.87
+    },
+    {
+     "turnId": 3,
+     "speaker": "A",
+     "text": "That's a big jump. I'm actually really interested in health tech too, I've been building an app for my research lab that tracks sleep data, and I'm hoping to find an internship where I can do something like that.",
+     "startMs": 23339,
+     "endMs": 38980,
+     "source": "you",
+     "confidence": 0.9
+    },
+    {
+     "turnId": 4,
+     "speaker": "B",
+     "text": "Nice. What does the app do with the data?",
+     "startMs": 39614,
+     "endMs": 43755,
+     "source": "them",
+     "confidence": 0.82
+    },
+    {
+     "turnId": 5,
+     "speaker": "A",
+     "text": "It flags nights when students sleep under five hours before an exam. What was the hardest part of going from nursing to product?",
+     "startMs": 44357,
+     "endMs": 53928,
+     "source": "you",
+     "confidence": 0.95
+    },
+    {
+     "turnId": 6,
+     "speaker": "B",
+     "text": "Learning to say no. Nurses say yes to everything because someone's health depends on it. In product, if you say yes to everything, nothing ships.",
+     "startMs": 54415,
+     "endMs": 64729,
+     "source": "them",
+     "confidence": 0.87
+    },
+    {
+     "turnId": 7,
+     "speaker": "A",
+     "text": "Learning to say no, I like that. How do you decide what to say no to?",
+     "startMs": 65471,
+     "endMs": 72137,
+     "source": "you",
+     "confidence": 0.99
+    },
+    {
+     "turnId": 8,
+     "speaker": "B",
+     "text": "I ask whether it helps the nurse at three in the morning. If it doesn't, it waits. I'm actually presenting that framework at a conference in two weeks, in Denver.",
+     "startMs": 72869,
+     "endMs": 84786,
+     "source": "them",
+     "confidence": 0.84
+    },
+    {
+     "turnId": 9,
+     "speaker": "A",
+     "text": "In Denver? What's the talk called?",
+     "startMs": 85237,
+     "endMs": 88213,
+     "source": "you",
+     "confidence": 0.91
+    },
+    {
+     "turnId": 10,
+     "speaker": "B",
+     "text": "Ruthless for the night shift. My manager hates the title, so I'm keeping it.",
+     "startMs": 88756,
+     "endMs": 94787,
+     "source": "them",
+     "confidence": 0.88
+    },
+    {
+     "turnId": 11,
+     "speaker": "A",
+     "text": "That's a great title. I'll send you the article about alarm fatigue from my HCI class, it's the same problem from the nurse's side.",
+     "startMs": 95532,
+     "endMs": 105331,
+     "source": "you",
+     "confidence": 0.91
+    },
+    {
+     "turnId": 12,
+     "speaker": "B",
+     "text": "Please do. And send me your resume, I'll pass it to our intern lead.",
+     "startMs": 105721,
+     "endMs": 111657,
+     "source": "them",
+     "confidence": 0.91
+    }
+   ],
+   "userLabel": "A",
+   "reflection": "Pitched myself too early again, but the Denver talk part was a real conversation.",
+   "signals": {
+    "userQuestions": 4,
+    "userTurns": 6,
+    "otherTurns": 6,
+    "userTalkMs": 52751,
+    "otherTalkMs": 52412,
+    "userTalkShare": 0.5,
+    "otherAvgAnswerWords": 26,
+    "followUps": 3,
+    "reflections": 1,
+    "storiesAfterQuestions": 1,
+    "questions": [
+     {
+      "turnId": 1,
+      "isFollowUp": false,
+      "replyTurnId": 2,
+      "replyWords": 35,
+      "storyShared": true
+     },
+     {
+      "turnId": 5,
+      "isFollowUp": true,
+      "replyTurnId": 6,
+      "replyWords": 25,
+      "storyShared": false
+     },
+     {
+      "turnId": 7,
+      "isFollowUp": true,
+      "replyTurnId": 8,
+      "replyWords": 30,
+      "storyShared": false
+     },
+     {
+      "turnId": 9,
+      "isFollowUp": true,
+      "replyTurnId": 10,
+      "replyWords": 14,
+      "storyShared": false
+     }
+    ],
+    "crowd": 0,
+    "source": "muse-spark",
+    "detectorAgreement": {
+     "agree": 3,
+     "of": 4
+    }
+   },
+   "note": {
+    "text": "You asked 4 questions and 3 were follow-ups, and Elena told you about the nurses fighting the charting software. Right after that story you pitched your own app.",
+    "suggestion": "Next time someone tells you why they switched careers, ask one question about it before you mention your work.",
+    "citedTurnIds": [
+     2,
+     3,
+     7
+    ],
+    "status": "shown",
+    "source": "muse-spark"
+   },
+   "hooks": {
+    "topics": [
+     {
+      "term": "nurse",
+      "turnIds": [
+       2,
+       6,
+       8
+      ],
+      "weight": 7
+     },
+     {
+      "term": "Denver",
+      "turnIds": [
+       8
+      ],
+      "weight": 4
+     },
+     {
+      "term": "three",
+      "turnIds": [
+       2,
+       8
+      ],
+      "weight": 3
+     },
+     {
+      "term": "morning",
+      "turnIds": [
+       2,
+       8
+      ],
+      "weight": 3
+     },
+     {
+      "term": "data",
+      "turnIds": [
+       4
+      ],
+      "weight": 2
+     }
+    ],
+    "events": [
+     {
+      "text": "I'm actually presenting that framework at a conference in two weeks, in Denver.",
+      "when": "in two weeks",
+      "hasNoun": true,
+      "turnId": 8
+     }
+    ],
+    "commitments": [
+     {
+      "text": "I'll send you the article about alarm fatigue from my HCI class,",
+      "turnId": 11
+     }
+    ],
+    "missedBids": [
+     {
+      "turnId": 2,
+      "replyTurnId": 3,
+      "cue": "nurse"
+     }
+    ],
+    "highlights": [
+     {
+      "turnId": 2,
+      "words": 35
+     },
+     {
+      "turnId": 8,
+      "words": 30
+     }
+    ],
+    "followUpDetector": [
+     {
+      "turnId": 1,
+      "isFollowUp": false,
+      "overlap": []
+     },
+     {
+      "turnId": 5,
+      "isFollowUp": false,
+      "overlap": []
+     },
+     {
+      "turnId": 7,
+      "isFollowUp": true,
+      "overlap": [
+       "learning"
+      ]
+     },
+     {
+      "turnId": 9,
+      "isFollowUp": true,
+      "overlap": [
+       "denver"
+      ]
+     }
+    ],
+    "awkward": {
+     "flags": [],
+     "score": 0,
+     "seams": [],
+     "worst": null
+    }
+   },
+   "followUp": {
+    "text": "Hi Elena, thank you for the coffee! Here is the alarm fatigue article I promised, and my resume is attached. Good luck in Denver with Ruthless for the night shift.",
+    "hooksUsed": [
+     "Denver",
+     "in two weeks",
+     "I'll send you the article about alarm…"
+    ],
+    "source": "muse-spark",
+    "status": "sent",
+    "sentAt": "2026-10-10T18:21:51.657Z"
+   },
+   "recording": {
+    "mime": "video/mp4",
+    "ext": "mp4",
+    "bytes": 5842799,
+    "offsetMs": 260,
+    "uploadedAt": "2026-10-10T16:06:40.657Z"
+   },
+   "behavior": {
+    "model": "mediapipe-face-landmarker@0.10.14",
+    "fps": 5,
+    "frameCount": 575,
+    "faceSeenPct": 0.97,
+    "baseline": {
+     "smile": 0.22,
+     "animation": 0.152
+    },
+    "turns": [
+     {
+      "turnId": 1,
+      "speaker": "you",
+      "smile": 0.2,
+      "smilePeak": 0.22,
+      "facingPct": 0.98,
+      "nods": 0,
+      "animation": 0.079,
+      "reaction": {
+       "smileDelta": 0.04,
+       "nods": 0,
+       "facingPct": 0.85
+      },
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 2,
+      "speaker": "them",
+      "smile": 0.22,
+      "smilePeak": 0.32,
+      "facingPct": 0.94,
+      "nods": 0,
+      "animation": 0.257,
+      "reaction": null,
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 3,
+      "speaker": "you",
+      "smile": 0.2,
+      "smilePeak": 0.22,
+      "facingPct": 0.99,
+      "nods": 0,
+      "animation": 0.071,
+      "reaction": {
+       "smileDelta": -0.09,
+       "nods": 0,
+       "facingPct": 0.33
+      },
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 4,
+      "speaker": "them",
+      "smile": 0.19,
+      "smilePeak": 0.34,
+      "facingPct": 0.71,
+      "nods": 0,
+      "animation": 0.219,
+      "reaction": null,
+      "textTone": "positive",
+      "congruence": null
+     },
+     {
+      "turnId": 5,
+      "speaker": "you",
+      "smile": 0.2,
+      "smilePeak": 0.22,
+      "facingPct": 1,
+      "nods": 0,
+      "animation": 0.075,
+      "reaction": {
+       "smileDelta": 0.07,
+       "nods": 0,
+       "facingPct": 1
+      },
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 6,
+      "speaker": "them",
+      "smile": 0.22,
+      "smilePeak": 0.29,
+      "facingPct": 0.94,
+      "nods": 2,
+      "animation": 0.199,
+      "reaction": null,
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 7,
+      "speaker": "you",
+      "smile": 0.21,
+      "smilePeak": 0.22,
+      "facingPct": 0.97,
+      "nods": 0,
+      "animation": 0.073,
+      "reaction": {
+       "smileDelta": 0.15,
+       "nods": 0,
+       "facingPct": 0.92
+      },
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 8,
+      "speaker": "them",
+      "smile": 0.24,
+      "smilePeak": 0.38,
+      "facingPct": 0.97,
+      "nods": 1,
+      "animation": 0.232,
+      "reaction": null,
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 9,
+      "speaker": "you",
+      "smile": 0.2,
+      "smilePeak": 0.22,
+      "facingPct": 1,
+      "nods": 0,
+      "animation": 0.075,
+      "reaction": {
+       "smileDelta": 0.22,
+       "nods": 0,
+       "facingPct": 1
+      },
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 10,
+      "speaker": "them",
+      "smile": 0.3,
+      "smilePeak": 0.44,
+      "facingPct": 0.93,
+      "nods": 0,
+      "animation": 0.292,
+      "reaction": null,
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 11,
+      "speaker": "you",
+      "smile": 0.2,
+      "smilePeak": 0.22,
+      "facingPct": 0.98,
+      "nods": 0,
+      "animation": 0.072,
+      "reaction": {
+       "smileDelta": 0.11,
+       "nods": 0,
+       "facingPct": 1
+      },
+      "textTone": "positive",
+      "congruence": null
+     },
+     {
+      "turnId": 12,
+      "speaker": "them",
+      "smile": 0.26,
+      "smilePeak": 0.4,
+      "facingPct": 1,
+      "nods": 1,
+      "animation": 0.264,
+      "reaction": null,
+      "textTone": "neutral",
+      "congruence": null
+     }
+    ],
+    "stats": {
+     "afterFollowUps": {
+      "n": 3,
+      "smileDelta": 0.15,
+      "nods": 0
+     },
+     "afterOther": {
+      "n": 3,
+      "smileDelta": 0.02,
+      "nods": 0
+     },
+     "missedBidReactions": [
+      {
+       "turnId": 2,
+       "smileDelta": -0.09
+      }
+     ]
+    }
+   },
+   "insight": {
+    "moments": [
+     {
+      "turnId": 3,
+      "title": "Pitching after her story",
+      "observation": "After “That's a big jump. I'm actually really interested in…”, their smile dropped 9 points and they faced you 33% of the time.",
+      "why": "One question about the night shift would have come before your app."
+     },
+     {
+      "turnId": 7,
+      "title": "Saying no",
+      "observation": "After “Learning to say no, I like that. How do you decide what…”, their smile rose 15 points.",
+      "why": "Repeating her phrase back before asking showed you were following the idea, not waiting to talk."
+     },
+     {
+      "turnId": 9,
+      "title": "The talk title",
+      "observation": "After “In Denver? What's the talk called?”, their smile rose 22 points.",
+      "why": "Asking about the talk, not the conference, got you the line you will both remember."
+     }
+    ],
+    "adviceCheck": [
+     {
+      "advice": "Next time someone tells you why they switched careers, ask one question about it before you mention your work.",
+      "verdict": "backed",
+      "evidenceTurnIds": [
+       5,
+       7,
+       9
+      ],
+      "reason": "Their smile moved 15 points after your 3 follow-ups vs 2 after your other 3 lines."
+     }
+    ],
+    "source": "muse-spark",
+    "rewrites": [
+     {
+      "turnId": 3,
+      "title": "Stay with the night shift",
+      "tryInstead": "Nurses fighting the charting software at three in the morning? What did they do instead?",
+      "because": "Elena had just explained the switch from nursing; one question about it would have kept that story going before your pitch."
+     }
+    ],
+    "takeaways": [
+     {
+      "kind": "try",
+      "turnId": 3,
+      "title": "Stay with the night shift",
+      "text": "Elena had just explained the switch from nursing; one question about it would have kept that story going before your pitch.",
+      "said": "That's a big jump. I'm actually really interested in health tech too, I've been building an app for my research lab that tracks sleep data, and I'm hoping to find an internship where I can do something like that.",
+      "theySaid": "I was a nurse for six years first. I kept seeing nurses fight the charting software at three in the morning, and at some point I decided I'd rather fix it than complain about it.",
+      "tryInstead": "Nurses fighting the charting software at three in the morning? What did they do instead?",
+      "evidence": "Smile −9 · looked away 1.7 s"
+     },
+     {
+      "kind": "keep",
+      "turnId": 9,
+      "title": "The talk title",
+      "text": "Asking about the talk, not the conference, got you the line you will both remember.",
+      "said": null,
+      "theySaid": null,
+      "tryInstead": null,
+      "evidence": "Smile +22"
+     },
+     {
+      "kind": "next",
+      "turnId": 8,
+      "title": "Ask about it next time",
+      "text": "They mentioned “I'm actually presenting that framework at a conference in two weeks, in Denver.” Ask how it went.",
+      "said": null,
+      "theySaid": null,
+      "tryInstead": null,
+      "evidence": null
+     }
+    ]
+   }
+  },
+  {
+   "id": "2ab8f2cd-d317-4c92-9530-f65331b8d798",
+   "tag": "family",
+   "otherName": "Mamá",
+   "createdAt": "2026-10-13T20:45:00.000Z",
+   "seeded": false,
+   "turns": [
+    {
+     "turnId": 1,
+     "speaker": "A",
+     "text": "Hola Mamá, ¿cómo están todos?",
+     "startMs": 0,
+     "endMs": 2595
+    },
+    {
+     "turnId": 2,
+     "speaker": "B",
+     "text": "Bien, mija, un poco nerviosa. La cirugía de tu papá es el próximo martes, la de la rodilla, y ya sabes cómo se pone él con los hospitales.",
+     "startMs": 3290,
+     "endMs": 14686
+    },
+    {
+     "turnId": 3,
+     "speaker": "A",
+     "text": "Ay, yo también tengo mucho estrés con la escuela, tengo tres proyectos esta semana y no he dormido nada.",
+     "startMs": 15084,
+     "endMs": 22908
+    },
+    {
+     "turnId": 4,
+     "speaker": "B",
+     "text": "Ay, mija, no te estreses. ¿Estás comiendo bien?",
+     "startMs": 23624,
+     "endMs": 27470
+    },
+    {
+     "turnId": 5,
+     "speaker": "A",
+     "text": "Sí, sí. Oye, ¿y papá qué dice de la cirugía? ¿Tiene miedo?",
+     "startMs": 28131,
+     "endMs": 33325
+    },
+    {
+     "turnId": 6,
+     "speaker": "B",
+     "text": "Dice que no, pero anoche no durmió. Le preguntó al doctor una y otra vez cuánto tiempo va a estar sin manejar. Para él no manejar es como no tener piernas.",
+     "startMs": 33871,
+     "endMs": 46446
+    },
+    {
+     "turnId": 7,
+     "speaker": "A",
+     "text": "¿Cuánto tiempo va a estar sin manejar?",
+     "startMs": 46805,
+     "endMs": 49971
+    },
+    {
+     "turnId": 8,
+     "speaker": "B",
+     "text": "Seis semanas. Ya le dije que yo lo llevo a todos lados, pero él quiere que lo lleve tu tío porque según él yo manejo como taxista.",
+     "startMs": 50398,
+     "endMs": 61359
+    },
+    {
+     "turnId": 9,
+     "speaker": "A",
+     "text": "Jaja, sí manejas como taxista. ¿Quieres que vaya a casa el fin de semana después de la cirugía para ayudar?",
+     "startMs": 61734,
+     "endMs": 70019
+    },
+    {
+     "turnId": 10,
+     "speaker": "B",
+     "text": "Ay, sí mija, eso le alegraría mucho. Y a mí también.",
+     "startMs": 70612,
+     "endMs": 75637
+    },
+    {
+     "turnId": 11,
+     "speaker": "A",
+     "text": "Te llamo el martes después de la cirugía.",
+     "startMs": 76191,
+     "endMs": 80018
+    },
+    {
+     "turnId": 12,
+     "speaker": "B",
+     "text": "Gracias, mi amor. Cuídate mucho y come algo, ¿eh?",
+     "startMs": 80421,
+     "endMs": 84561
+    }
+   ],
+   "userLabel": "A",
+   "reflection": "I made her nerves about me for a second. Asked about papá after.",
+   "signals": {
+    "userQuestions": 4,
+    "userTurns": 6,
+    "otherTurns": 6,
+    "userTalkMs": 30891,
+    "otherTalkMs": 47943,
+    "userTalkShare": 0.39,
+    "otherAvgAnswerWords": 24.3,
+    "followUps": 3,
+    "reflections": 1,
+    "storiesAfterQuestions": 1,
+    "questions": [
+     {
+      "turnId": 1,
+      "isFollowUp": false,
+      "replyTurnId": 2,
+      "replyWords": 28,
+      "storyShared": false
+     },
+     {
+      "turnId": 5,
+      "isFollowUp": true,
+      "replyTurnId": 6,
+      "replyWords": 31,
+      "storyShared": true
+     },
+     {
+      "turnId": 7,
+      "isFollowUp": true,
+      "replyTurnId": 8,
+      "replyWords": 27,
+      "storyShared": false
+     },
+     {
+      "turnId": 9,
+      "isFollowUp": true,
+      "replyTurnId": 10,
+      "replyWords": 11,
+      "storyShared": false
+     }
+    ],
+    "crowd": 0,
+    "source": "muse-spark",
+    "detectorAgreement": {
+     "agree": 4,
+     "of": 4
+    }
+   },
+   "note": {
+    "text": "You asked 4 questions and 3 were follow-ups about your dad's surgery. When she told you it was next Tuesday, your first answer was about your projects.",
+    "suggestion": "On Tuesday, ask how she is holding up too: “¿Y tú cómo estás con todo esto?”",
+    "citedTurnIds": [
+     3,
+     5,
+     7
+    ],
+    "status": "shown",
+    "source": "muse-spark"
+   },
+   "hooks": {
+    "topics": [
+     {
+      "term": "manejar",
+      "turnIds": [
+       6
+      ],
+      "weight": 3
+     },
+     {
+      "term": "cirugía",
+      "turnIds": [
+       2
+      ],
+      "weight": 2
+     },
+     {
+      "term": "papá",
+      "turnIds": [
+       2
+      ],
+      "weight": 2
+     },
+     {
+      "term": "dice",
+      "turnIds": [
+       6
+      ],
+      "weight": 2
+     },
+     {
+      "term": "tiempo",
+      "turnIds": [
+       6
+      ],
+      "weight": 2
+     }
+    ],
+    "events": [
+     {
+      "text": "La cirugía de tu papá es el próximo martes,",
+      "when": "el próximo martes",
+      "hasNoun": false,
+      "turnId": 2
+     }
+    ],
+    "commitments": [
+     {
+      "text": "Te llamo el martes después de la cirugía.",
+      "turnId": 11
+     }
+    ],
+    "missedBids": [
+     {
+      "turnId": 2,
+      "replyTurnId": 3,
+      "cue": "cirugía"
+     }
+    ],
+    "highlights": [
+     {
+      "turnId": 6,
+      "words": 31
+     },
+     {
+      "turnId": 2,
+      "words": 28
+     }
+    ],
+    "followUpDetector": [
+     {
+      "turnId": 1,
+      "isFollowUp": false,
+      "overlap": []
+     },
+     {
+      "turnId": 5,
+      "isFollowUp": true,
+      "overlap": []
+     },
+     {
+      "turnId": 7,
+      "isFollowUp": true,
+      "overlap": [
+       "tiempo",
+       "manejar"
+      ]
+     },
+     {
+      "turnId": 9,
+      "isFollowUp": true,
+      "overlap": [
+       "taxista",
+       "quieres",
+       "semana"
+      ]
+     }
+    ],
+    "awkward": {
+     "flags": [],
+     "score": 0,
+     "seams": [],
+     "worst": null
+    }
+   },
+   "followUp": {
+    "text": "Mamá, te llamo el martes después de la cirugía. Y el fin de semana voy a casa para ayudar con papá. Te quiero.",
+    "hooksUsed": [
+     "cirugía",
+     "papá",
+     "el próximo martes",
+     "Te llamo el martes después de la…"
+    ],
+    "source": "muse-spark",
+    "status": "sent",
+    "sentAt": "2026-10-13T21:01:24.561Z"
+   },
+   "recording": null,
+   "behavior": null,
+   "insight": {
+    "moments": [
+     {
+      "turnId": 3,
+      "title": "Your stress, not hers",
+      "observation": "She said the surgery is next Tuesday and your next line was about your three projects.",
+      "why": "Ask about the surgery, and about her, before your own week."
+     },
+     {
+      "turnId": 5,
+      "title": "Back to papá",
+      "observation": "“¿Y papá qué dice de la cirugía?” brought back the surgery and got the longest answer of the call.",
+      "why": "Going back to what she said is always available, even after a detour."
+     }
+    ],
+    "adviceCheck": [
+     {
+      "advice": "On Tuesday, ask how she is holding up too: “¿Y tú cómo estás con todo esto?”",
+      "verdict": "not yet",
+      "evidenceTurnIds": [
+       5,
+       7,
+       9
+      ],
+      "reason": "There was no video, so only the words back it up."
+     }
+    ],
+    "source": "muse-spark",
+    "rewrites": [
+     {
+      "turnId": 3,
+      "title": "Ask about the surgery first",
+      "tryInstead": "¿La cirugía de papá es el martes? ¿Y tú cómo estás con eso?",
+      "because": "She had just told you about the surgery; a question about it, and about her, would have come before your week."
+     }
+    ],
+    "takeaways": [
+     {
+      "kind": "try",
+      "turnId": 3,
+      "title": "Ask about the surgery first",
+      "text": "She had just told you about the surgery; a question about it, and about her, would have come before your week.",
+      "said": "Ay, yo también tengo mucho estrés con la escuela, tengo tres proyectos esta semana y no he dormido nada.",
+      "theySaid": "Bien, mija, un poco nerviosa. La cirugía de tu papá es el próximo martes, la de la rodilla, y ya sabes cómo se pone él con los hospitales.",
+      "tryInstead": "¿La cirugía de papá es el martes? ¿Y tú cómo estás con eso?",
+      "evidence": "They had just shared something personal"
+     },
+     {
+      "kind": "keep",
+      "turnId": 5,
+      "title": "Back to papá",
+      "text": "Going back to what she said is always available, even after a detour.",
+      "said": null,
+      "theySaid": null,
+      "tryInstead": null,
+      "evidence": null
+     },
+     {
+      "kind": "next",
+      "turnId": 2,
+      "title": "Ask about it next time",
+      "text": "They mentioned “La cirugía de tu papá es el próximo martes,” Ask how it went.",
+      "said": null,
+      "theySaid": null,
+      "tryInstead": null,
+      "evidence": null
+     }
+    ]
+   }
+  },
+  {
+   "id": "0ccc2679-791a-45c7-b1ad-c7fe85c33d2f",
+   "tag": "friend",
+   "otherName": "Jordan Lee",
+   "createdAt": "2026-10-16T22:05:00.000Z",
+   "seeded": false,
+   "turns": [
+    {
+     "turnId": 1,
+     "speaker": "A",
+     "text": "So? How did the Verdant interview go?!",
+     "startMs": 0,
+     "endMs": 3392,
+     "source": "you",
+     "confidence": 0.89
+    },
+    {
+     "turnId": 2,
+     "speaker": "B",
+     "text": "I think it went well? The whiteboard part was actually fine because we practiced. I drew the forecasting pipeline and didn't freeze once.",
+     "startMs": 3831,
+     "endMs": 13335,
+     "source": "them",
+     "confidence": 0.84
+    },
+    {
+     "turnId": 3,
+     "speaker": "A",
+     "text": "You didn't freeze once! What did they ask you to design?",
+     "startMs": 13757,
+     "endMs": 18596,
+     "source": "you",
+     "confidence": 0.92
+    },
+    {
+     "turnId": 4,
+     "speaker": "B",
+     "text": "A system that predicts solar output for every rooftop in Austin. I started with the weather data like you said, and the interviewer literally said that is how their team does it.",
+     "startMs": 19048,
+     "endMs": 31744,
+     "source": "them",
+     "confidence": 0.79
+    },
+    {
+     "turnId": 5,
+     "speaker": "A",
+     "text": "Wait, the interviewer said that is how their team does it? That has to be a good sign.",
+     "startMs": 32446,
+     "endMs": 40166,
+     "source": "you",
+     "confidence": 0.93
+    },
+    {
+     "turnId": 6,
+     "speaker": "B",
+     "text": "Maybe. The recruiter said I'll hear back about the final step tomorrow. I'm trying not to refresh my email every five minutes.",
+     "startMs": 40592,
+     "endMs": 49618,
+     "source": "them",
+     "confidence": 0.8
+    },
+    {
+     "turnId": 7,
+     "speaker": "A",
+     "text": "That's so exciting. What happens in the final step?",
+     "startMs": 50345,
+     "endMs": 54329,
+     "source": "you",
+     "confidence": 0.99
+    },
+    {
+     "turnId": 8,
+     "speaker": "B",
+     "text": "Lunch with the team lead. Which is scarier than the whiteboard honestly, I never know what to talk about at those.",
+     "startMs": 54934,
+     "endMs": 63559,
+     "source": "them",
+     "confidence": 0.91
+    },
+    {
+     "turnId": 9,
+     "speaker": "A",
+     "text": "Ask the team lead about their favorite forecasting failure, people love telling those. And I'll grab you a coffee tomorrow morning so you're not refreshing alone.",
+     "startMs": 64041,
+     "endMs": 74577,
+     "source": "you",
+     "confidence": 0.93
+    },
+    {
+     "turnId": 10,
+     "speaker": "B",
+     "text": "Deal. Thank you for the practice, seriously. It made a difference.",
+     "startMs": 74958,
+     "endMs": 80012,
+     "source": "them",
+     "confidence": 0.87
+    }
+   ],
+   "userLabel": "A",
+   "reflection": "This felt like the best one. I remembered everything from last time.",
+   "signals": {
+    "userQuestions": 4,
+    "userTurns": 5,
+    "otherTurns": 5,
+    "userTalkMs": 30471,
+    "otherTalkMs": 44905,
+    "userTalkShare": 0.4,
+    "otherAvgAnswerWords": 24.5,
+    "followUps": 3,
+    "reflections": 1,
+    "storiesAfterQuestions": 1,
+    "questions": [
+     {
+      "turnId": 1,
+      "isFollowUp": false,
+      "replyTurnId": 2,
+      "replyWords": 23,
+      "storyShared": false
+     },
+     {
+      "turnId": 3,
+      "isFollowUp": true,
+      "replyTurnId": 4,
+      "replyWords": 32,
+      "storyShared": true
+     },
+     {
+      "turnId": 5,
+      "isFollowUp": true,
+      "replyTurnId": 6,
+      "replyWords": 22,
+      "storyShared": false
+     },
+     {
+      "turnId": 7,
+      "isFollowUp": true,
+      "replyTurnId": 8,
+      "replyWords": 21,
+      "storyShared": false
+     }
+    ],
+    "crowd": 0,
+    "source": "muse-spark",
+    "detectorAgreement": {
+     "agree": 4,
+     "of": 4
+    }
+   },
+   "note": {
+    "text": "You asked 4 questions and 3 were follow-ups, and you opened with the interview you two practiced for. Jordan walked you through the rooftop solar question after your first follow-up.",
+    "suggestion": "Tomorrow, ask Jordan what they want to learn from the team lead at lunch before you suggest what to ask.",
+    "citedTurnIds": [
+     1,
+     3,
+     5
+    ],
+    "status": "shown",
+    "source": "muse-spark"
+   },
+   "hooks": {
+    "topics": [
+     {
+      "term": "team",
+      "turnIds": [
+       4,
+       8
+      ],
+      "weight": 4
+     },
+     {
+      "term": "whiteboard",
+      "turnIds": [
+       2,
+       8
+      ],
+      "weight": 3
+     },
+     {
+      "term": "Austin",
+      "turnIds": [
+       4
+      ],
+      "weight": 3
+     },
+     {
+      "term": "freeze",
+      "turnIds": [
+       2
+      ],
+      "weight": 2
+     },
+     {
+      "term": "once",
+      "turnIds": [
+       2
+      ],
+      "weight": 2
+     }
+    ],
+    "events": [
+     {
+      "text": "The recruiter said I'll hear back about the final step tomorrow.",
+      "when": "tomorrow",
+      "hasNoun": false,
+      "turnId": 6
+     }
+    ],
+    "commitments": [
+     {
+      "text": "I'll grab you a coffee tomorrow morning so you're not refreshing alone.",
+      "turnId": 9
+     }
+    ],
+    "missedBids": [],
+    "highlights": [
+     {
+      "turnId": 4,
+      "words": 32
+     },
+     {
+      "turnId": 2,
+      "words": 23
+     }
+    ],
+    "followUpDetector": [
+     {
+      "turnId": 1,
+      "isFollowUp": false,
+      "overlap": []
+     },
+     {
+      "turnId": 3,
+      "isFollowUp": true,
+      "overlap": [
+       "freeze",
+       "once"
+      ]
+     },
+     {
+      "turnId": 5,
+      "isFollowUp": true,
+      "overlap": [
+       "interviewer",
+       "team"
+      ]
+     },
+     {
+      "turnId": 7,
+      "isFollowUp": true,
+      "overlap": [
+       "final",
+       "step"
+      ]
+     }
+    ],
+    "awkward": {
+     "flags": [],
+     "score": 0,
+     "seams": [],
+     "worst": null
+    }
+   },
+   "followUp": {
+    "text": "Coffee's on me tomorrow morning. Good luck with the final step, and remember you didn't freeze once at the whiteboard!",
+    "hooksUsed": [
+     "whiteboard",
+     "freeze",
+     "once",
+     "tomorrow",
+     "I'll grab you a coffee tomorrow…"
+    ],
+    "source": "muse-spark",
+    "status": "sent",
+    "sentAt": "2026-10-16T22:16:20.012Z"
+   },
+   "recording": {
+    "mime": "video/mp4",
+    "ext": "mp4",
+    "bytes": 4185814,
+    "offsetMs": 220,
+    "uploadedAt": "2026-10-16T22:11:09.012Z"
+   },
+   "behavior": {
+    "model": "mediapipe-face-landmarker@0.10.14",
+    "fps": 5,
+    "frameCount": 417,
+    "faceSeenPct": 0.97,
+    "baseline": {
+     "smile": 0.23,
+     "animation": 0.186
+    },
+    "turns": [
+     {
+      "turnId": 1,
+      "speaker": "you",
+      "smile": 0.2,
+      "smilePeak": 0.31,
+      "facingPct": 1,
+      "nods": 0,
+      "animation": 0.084,
+      "reaction": {
+       "smileDelta": 0.1,
+       "nods": 0,
+       "facingPct": 1
+      },
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 2,
+      "speaker": "them",
+      "smile": 0.24,
+      "smilePeak": 0.33,
+      "facingPct": 0.96,
+      "nods": 1,
+      "animation": 0.263,
+      "reaction": null,
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 3,
+      "speaker": "you",
+      "smile": 0.19,
+      "smilePeak": 0.38,
+      "facingPct": 0.96,
+      "nods": 0,
+      "animation": 0.078,
+      "reaction": {
+       "smileDelta": 0.19,
+       "nods": 0,
+       "facingPct": 0.92
+      },
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 4,
+      "speaker": "them",
+      "smile": 0.24,
+      "smilePeak": 0.41,
+      "facingPct": 0.98,
+      "nods": 2,
+      "animation": 0.303,
+      "reaction": null,
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 5,
+      "speaker": "you",
+      "smile": 0.19,
+      "smilePeak": 0.21,
+      "facingPct": 0.92,
+      "nods": 0,
+      "animation": 0.071,
+      "reaction": {
+       "smileDelta": 0.21,
+       "nods": 0,
+       "facingPct": 0.92
+      },
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 6,
+      "speaker": "them",
+      "smile": 0.26,
+      "smilePeak": 0.45,
+      "facingPct": 0.96,
+      "nods": 1,
+      "animation": 0.242,
+      "reaction": null,
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 7,
+      "speaker": "you",
+      "smile": 0.19,
+      "smilePeak": 0.21,
+      "facingPct": 0.95,
+      "nods": 0,
+      "animation": 0.074,
+      "reaction": {
+       "smileDelta": 0.08,
+       "nods": 0,
+       "facingPct": 1
+      },
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 8,
+      "speaker": "them",
+      "smile": 0.23,
+      "smilePeak": 0.41,
+      "facingPct": 1,
+      "nods": 0,
+      "animation": 0.262,
+      "reaction": null,
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 9,
+      "speaker": "you",
+      "smile": 0.19,
+      "smilePeak": 0.21,
+      "facingPct": 1,
+      "nods": 0,
+      "animation": 0.074,
+      "reaction": {
+       "smileDelta": 0.16,
+       "nods": 0,
+       "facingPct": 0.92
+      },
+      "textTone": "positive",
+      "congruence": null
+     },
+     {
+      "turnId": 10,
+      "speaker": "them",
+      "smile": 0.3,
+      "smilePeak": 0.39,
+      "facingPct": 0.96,
+      "nods": 1,
+      "animation": 0.261,
+      "reaction": null,
+      "textTone": "neutral",
+      "congruence": null
+     }
+    ],
+    "stats": {
+     "afterFollowUps": {
+      "n": 3,
+      "smileDelta": 0.16,
+      "nods": 0
+     },
+     "afterOther": {
+      "n": 2,
+      "smileDelta": 0.13,
+      "nods": 0
+     },
+     "missedBidReactions": []
+    }
+   },
+   "insight": {
+    "moments": [
+     {
+      "turnId": 3,
+      "title": "Didn't freeze once",
+      "observation": "After “You didn't freeze once! What did they ask you to design?”, their smile rose 19 points.",
+      "why": "Starting from the thing you practiced together made it easy for Jordan to tell the story."
+     },
+     {
+      "turnId": 5,
+      "title": "Their words back",
+      "observation": "After “Wait, the interviewer said that is how their team does…”, their smile rose 21 points.",
+      "why": "Repeating the interviewer's line back got the biggest reaction of the night."
+     },
+     {
+      "turnId": 9,
+      "title": "Advice, then coffee",
+      "observation": "After “Ask the team lead about their favorite forecasting…”, their smile rose 16 points.",
+      "why": "Next time, ask what Jordan wants from the lunch before you suggest a question."
+     }
+    ],
+    "adviceCheck": [
+     {
+      "advice": "Tomorrow, ask Jordan what they want to learn from the team lead at lunch before you suggest what to ask.",
+      "verdict": "partly",
+      "evidenceTurnIds": [
+       3,
+       5,
+       7
+      ],
+      "reason": "Their smile moved 16 points after your 3 follow-ups vs 13 after your other 2 lines."
+     }
+    ],
+    "source": "muse-spark",
+    "rewrites": [],
+    "takeaways": [
+     {
+      "kind": "keep",
+      "turnId": 5,
+      "title": "Their words back",
+      "text": "Repeating the interviewer's line back got the biggest reaction of the night.",
+      "said": null,
+      "theySaid": null,
+      "tryInstead": null,
+      "evidence": "Smile +21"
+     },
+     {
+      "kind": "next",
+      "turnId": 6,
+      "title": "Ask about it next time",
+      "text": "They mentioned “The recruiter said I'll hear back about the final step tomorrow.” Ask how it went.",
+      "said": null,
+      "theySaid": null,
+      "tryInstead": null,
+      "evidence": null
+     }
+    ]
+   }
+  },
+  {
+   "id": "63b0e81b-f7a2-4cda-9913-3a2e8c9e0176",
+   "tag": "family",
+   "otherName": "Abuela",
+   "createdAt": "2026-10-19T18:30:00.000Z",
+   "seeded": false,
+   "turns": [
+    {
+     "turnId": 1,
+     "speaker": "A",
+     "text": "Hola Abuela! I've been thinking about the mole since you told me about the metate. ¿Me enseñas la receta?",
+     "startMs": 0,
+     "endMs": 7749,
+     "source": "you",
+     "confidence": 0.92
+    },
+    {
+     "turnId": 2,
+     "speaker": "B",
+     "text": "¡Claro que sí! But it is not a recipe, mija, it is a whole day. Twenty-six ingredients, and the chiles have to be toasted until the whole house smells like smoke.",
+     "startMs": 8170,
+     "endMs": 20811,
+     "source": "them",
+     "confidence": 0.84
+    },
+    {
+     "turnId": 3,
+     "speaker": "A",
+     "text": "Twenty-six ingredients? Which chile is the hardest to get here?",
+     "startMs": 21167,
+     "endMs": 25773,
+     "source": "you",
+     "confidence": 0.93
+    },
+    {
+     "turnId": 4,
+     "speaker": "B",
+     "text": "The chilhuacle negro. You can only find it in Oaxaca, so Lupe brings it in her suitcase. She's coming next month, for Día de Muertos.",
+     "startMs": 26380,
+     "endMs": 36760,
+     "source": "them",
+     "confidence": 0.88
+    },
+    {
+     "turnId": 5,
+     "speaker": "A",
+     "text": "Tía Lupe is coming for Día de Muertos? Will you make the altar together?",
+     "startMs": 37410,
+     "endMs": 43331,
+     "source": "you",
+     "confidence": 0.84
+    },
+    {
+     "turnId": 6,
+     "speaker": "B",
+     "text": "Sí, every year we put the altar for my mother and father. Pan de muerto, cempasúchil, and a little cup of mezcal for my father because he would be angry without it.",
+     "startMs": 44051,
+     "endMs": 57035,
+     "source": "them",
+     "confidence": 0.8
+    },
+    {
+     "turnId": 7,
+     "speaker": "A",
+     "text": "A cup of mezcal for your father, I love that. What was he like?",
+     "startMs": 57475,
+     "endMs": 63634,
+     "source": "you",
+     "confidence": 0.94
+    },
+    {
+     "turnId": 8,
+     "speaker": "B",
+     "text": "Stubborn like your papá. He sold corn in the market in Oaxaca and he knew every family by name. When he laughed the whole market could hear it.",
+     "startMs": 64014,
+     "endMs": 75330,
+     "source": "them",
+     "confidence": 0.84
+    },
+    {
+     "turnId": 9,
+     "speaker": "A",
+     "text": "I'll bring the pan de muerto for the altar this year. Can you teach me how to put the cempasúchil on the altar?",
+     "startMs": 75962,
+     "endMs": 85592,
+     "source": "you",
+     "confidence": 0.92
+    },
+    {
+     "turnId": 10,
+     "speaker": "B",
+     "text": "Ay, mija, sí. Your great-grandfather would be so proud.",
+     "startMs": 86362,
+     "endMs": 90284,
+     "source": "them",
+     "confidence": 0.87
+    }
+   ],
+   "userLabel": "A",
+   "reflection": "I finally asked about the mole like the app told me weeks ago. Best call in a while.",
+   "signals": {
+    "userQuestions": 5,
+    "userTurns": 5,
+    "otherTurns": 5,
+    "userTalkMs": 34065,
+    "otherTalkMs": 51243,
+    "userTalkShare": 0.4,
+    "otherAvgAnswerWords": 25,
+    "followUps": 4,
+    "reflections": 1,
+    "storiesAfterQuestions": 2,
+    "questions": [
+     {
+      "turnId": 1,
+      "isFollowUp": false,
+      "replyTurnId": 2,
+      "replyWords": 31,
+      "storyShared": false
+     },
+     {
+      "turnId": 3,
+      "isFollowUp": true,
+      "replyTurnId": 4,
+      "replyWords": 25,
+      "storyShared": false
+     },
+     {
+      "turnId": 5,
+      "isFollowUp": true,
+      "replyTurnId": 6,
+      "replyWords": 32,
+      "storyShared": true
+     },
+     {
+      "turnId": 7,
+      "isFollowUp": true,
+      "replyTurnId": 8,
+      "replyWords": 28,
+      "storyShared": true
+     },
+     {
+      "turnId": 9,
+      "isFollowUp": true,
+      "replyTurnId": 10,
+      "replyWords": 9,
+      "storyShared": false
+     }
+    ],
+    "crowd": 0,
+    "source": "muse-spark",
+    "detectorAgreement": {
+     "agree": 4,
+     "of": 5
+    }
+   },
+   "note": {
+    "text": "You asked 5 questions and 4 were follow-ups, and you opened with the mole she told you about weeks ago. She told 2 stories, about the altar and her father in the market.",
+    "suggestion": "When Tía Lupe visits next month, ask them both for one story about the market in Oaxaca, and write down the words you don't know.",
+    "citedTurnIds": [
+     1,
+     5,
+     7
+    ],
+    "status": "shown",
+    "source": "muse-spark"
+   },
+   "hooks": {
+    "topics": [
+     {
+      "term": "Muertos",
+      "turnIds": [
+       4,
+       6
+      ],
+      "weight": 6
+     },
+     {
+      "term": "Oaxaca",
+      "turnIds": [
+       4,
+       8
+      ],
+      "weight": 5
+     },
+     {
+      "term": "whole",
+      "turnIds": [
+       2,
+       8
+      ],
+      "weight": 4
+     },
+     {
+      "term": "Lupe",
+      "turnIds": [
+       4
+      ],
+      "weight": 4
+     },
+     {
+      "term": "father",
+      "turnIds": [
+       6
+      ],
+      "weight": 3
+     }
+    ],
+    "events": [
+     {
+      "text": "She's coming next month, for Día de Muertos.",
+      "when": "next month",
+      "hasNoun": false,
+      "turnId": 4
+     }
+    ],
+    "commitments": [
+     {
+      "text": "I'll bring the pan de muerto for the altar this year.",
+      "turnId": 9
+     }
+    ],
+    "missedBids": [],
+    "highlights": [
+     {
+      "turnId": 6,
+      "words": 32
+     },
+     {
+      "turnId": 2,
+      "words": 31
+     }
+    ],
+    "followUpDetector": [
+     {
+      "turnId": 1,
+      "isFollowUp": false,
+      "overlap": []
+     },
+     {
+      "turnId": 3,
+      "isFollowUp": true,
+      "overlap": [
+       "twenty",
+       "ingredients",
+       "chile"
+      ]
+     },
+     {
+      "turnId": 5,
+      "isFollowUp": true,
+      "overlap": [
+       "lupe",
+       "muertos"
+      ]
+     },
+     {
+      "turnId": 7,
+      "isFollowUp": true,
+      "overlap": [
+       "mezcal",
+       "father"
+      ]
+     },
+     {
+      "turnId": 9,
+      "isFollowUp": false,
+      "overlap": []
+     }
+    ],
+    "awkward": {
+     "flags": [],
+     "score": 0,
+     "seams": [],
+     "worst": null
+    }
+   },
+   "followUp": {
+    "text": "Abuela, I'll bring the pan de muerto for the altar. Can't wait to see you and Tía Lupe next month and learn the cempasúchil.",
+    "hooksUsed": [
+     "Muertos",
+     "Lupe",
+     "next month",
+     "I'll bring the pan de muerto for the…"
+    ],
+    "source": "muse-spark",
+    "status": "sent",
+    "sentAt": "2026-10-19T18:56:30.284Z"
+   },
+   "recording": {
+    "mime": "video/mp4",
+    "ext": "mp4",
+    "bytes": 4710906,
+    "offsetMs": 280,
+    "uploadedAt": "2026-10-19T18:36:19.284Z"
+   },
+   "behavior": {
+    "model": "mediapipe-face-landmarker@0.10.14",
+    "fps": 5,
+    "frameCount": 468,
+    "faceSeenPct": 0.97,
+    "baseline": {
+     "smile": 0.2,
+     "animation": 0.168
+    },
+    "turns": [
+     {
+      "turnId": 1,
+      "speaker": "you",
+      "smile": 0.17,
+      "smilePeak": 0.3,
+      "facingPct": 0.95,
+      "nods": 0,
+      "animation": 0.068,
+      "reaction": {
+       "smileDelta": 0.14,
+       "nods": 0,
+       "facingPct": 0.92
+      },
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 2,
+      "speaker": "them",
+      "smile": 0.21,
+      "smilePeak": 0.42,
+      "facingPct": 0.92,
+      "nods": 1,
+      "animation": 0.241,
+      "reaction": null,
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 3,
+      "speaker": "you",
+      "smile": 0.16,
+      "smilePeak": 0.3,
+      "facingPct": 1,
+      "nods": 0,
+      "animation": 0.073,
+      "reaction": {
+       "smileDelta": 0.13,
+       "nods": 0,
+       "facingPct": 1
+      },
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 4,
+      "speaker": "them",
+      "smile": 0.21,
+      "smilePeak": 0.32,
+      "facingPct": 0.96,
+      "nods": 0,
+      "animation": 0.249,
+      "reaction": null,
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 5,
+      "speaker": "you",
+      "smile": 0.17,
+      "smilePeak": 0.36,
+      "facingPct": 0.97,
+      "nods": 0,
+      "animation": 0.076,
+      "reaction": {
+       "smileDelta": 0.19,
+       "nods": 0,
+       "facingPct": 1
+      },
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 6,
+      "speaker": "them",
+      "smile": 0.22,
+      "smilePeak": 0.38,
+      "facingPct": 0.98,
+      "nods": 2,
+      "animation": 0.242,
+      "reaction": null,
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 7,
+      "speaker": "you",
+      "smile": 0.16,
+      "smilePeak": 0.18,
+      "facingPct": 1,
+      "nods": 0,
+      "animation": 0.066,
+      "reaction": {
+       "smileDelta": 0.19,
+       "nods": 0,
+       "facingPct": 0.92
+      },
+      "textTone": "positive",
+      "congruence": null
+     },
+     {
+      "turnId": 8,
+      "speaker": "them",
+      "smile": 0.22,
+      "smilePeak": 0.41,
+      "facingPct": 0.98,
+      "nods": 3,
+      "animation": 0.244,
+      "reaction": null,
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 9,
+      "speaker": "you",
+      "smile": 0.17,
+      "smilePeak": 0.34,
+      "facingPct": 0.98,
+      "nods": 0,
+      "animation": 0.076,
+      "reaction": {
+       "smileDelta": 0.17,
+       "nods": 0,
+       "facingPct": 0.92
+      },
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 10,
+      "speaker": "them",
+      "smile": 0.25,
+      "smilePeak": 0.47,
+      "facingPct": 0.89,
+      "nods": 1,
+      "animation": 0.231,
+      "reaction": null,
+      "textTone": "positive",
+      "congruence": "match"
+     }
+    ],
+    "stats": {
+     "afterFollowUps": {
+      "n": 4,
+      "smileDelta": 0.17,
+      "nods": 0
+     },
+     "afterOther": {
+      "n": 1,
+      "smileDelta": 0.14,
+      "nods": 0
+     },
+     "missedBidReactions": []
+    }
+   },
+   "insight": {
+    "moments": [
+     {
+      "turnId": 1,
+      "title": "The mole, weeks later",
+      "observation": "After “Hola Abuela! I've been thinking about the mole since you…”, their smile rose 14 points.",
+      "why": "Bringing back something from an earlier call is the strongest follow-up there is."
+     },
+     {
+      "turnId": 5,
+      "title": "Día de Muertos",
+      "observation": "After “Tía Lupe is coming for Día de Muertos? Will you make the…”, their smile rose 19 points.",
+      "why": "Picking up the visit she mentioned in passing led straight to the altar."
+     },
+     {
+      "turnId": 7,
+      "title": "What was he like?",
+      "observation": "After “A cup of mezcal for your father, I love that. What was…”, their smile rose 19 points.",
+      "why": "An open question about a person she loves got the warmest story of the month."
+     }
+    ],
+    "adviceCheck": [
+     {
+      "advice": "When Tía Lupe visits next month, ask them both for one story about the market in Oaxaca, and write down the words you don't know.",
+      "verdict": "partly",
+      "evidenceTurnIds": [
+       3,
+       5,
+       7
+      ],
+      "reason": "Their smile moved 17 points after your 4 follow-ups vs 14 after your other 1 lines."
+     }
+    ],
+    "source": "muse-spark",
+    "rewrites": [],
+    "takeaways": [
+     {
+      "kind": "keep",
+      "turnId": 5,
+      "title": "Día de Muertos",
+      "text": "Picking up the visit she mentioned in passing led straight to the altar.",
+      "said": null,
+      "theySaid": null,
+      "tryInstead": null,
+      "evidence": "Smile +19"
+     },
+     {
+      "kind": "next",
+      "turnId": 4,
+      "title": "Ask about it next time",
+      "text": "They mentioned “She's coming next month, for Día de Muertos.” Ask how it went.",
+      "said": null,
+      "theySaid": null,
+      "tryInstead": null,
+      "evidence": null
+     }
+    ]
+   }
+  },
+  {
+   "id": "616e1a9f-ce07-468b-bf3c-72f06aa305ba",
+   "tag": "networking",
+   "otherName": "Daniel Okafor",
+   "createdAt": "2026-10-21T11:00:00.000Z",
+   "seeded": false,
+   "turns": [
+    {
+     "turnId": 1,
+     "speaker": "A",
+     "text": "Hi Daniel, thanks again for passing my resume along. How have things been on the warehouse team?",
+     "startMs": 0,
+     "endMs": 6993
+    },
+    {
+     "turnId": 2,
+     "speaker": "B",
+     "text": "Busy. We're rolling out the new picking arm to the Dallas warehouse next week, so everyone is living in the test cell right now.",
+     "startMs": 7738,
+     "endMs": 17590
+    },
+    {
+     "turnId": 3,
+     "speaker": "A",
+     "text": "The new arm, is that the one that handles the crushed boxes?",
+     "startMs": 18233,
+     "endMs": 23445
+    },
+    {
+     "turnId": 4,
+     "speaker": "B",
+     "text": "That's the one. It catches about nine out of ten now. The last ten percent is the fun part, it's all the weird stuff like shrink wrap that reflects the depth camera.",
+     "startMs": 23948,
+     "endMs": 37002
+    },
+    {
+     "turnId": 5,
+     "speaker": "A",
+     "text": "Shrink wrap reflects the depth camera? How do you even collect data on that?",
+     "startMs": 37634,
+     "endMs": 43839
+    },
+    {
+     "turnId": 6,
+     "speaker": "B",
+     "text": "We built a little cart we call the junk drawer. It's full of the worst packages we've ever seen and we run it past the arm every night. Honestly it's my favorite part of the job.",
+     "startMs": 44460,
+     "endMs": 58961
+    },
+    {
+     "turnId": 7,
+     "speaker": "A",
+     "text": "The junk drawer is such a good name. Would an intern get to work on that?",
+     "startMs": 59555,
+     "endMs": 66506
+    },
+    {
+     "turnId": 8,
+     "speaker": "B",
+     "text": "Probably, yes. The recruiter told me your first interview is next Thursday, so ask them about the failure lab, they'll be impressed you know about it.",
+     "startMs": 66885,
+     "endMs": 77540
+    },
+    {
+     "turnId": 9,
+     "speaker": "A",
+     "text": "I will. I'll send you a thank you note after the interview and tell you how it went.",
+     "startMs": 78072,
+     "endMs": 85446
+    },
+    {
+     "turnId": 10,
+     "speaker": "B",
+     "text": "Sounds good. And don't over-prepare, just talk about the satellite project like you did at the booth.",
+     "startMs": 85982,
+     "endMs": 93082
+    }
+   ],
+   "userLabel": "A",
+   "reflection": "Way better than the career fair. I asked about his stuff first.",
+   "signals": {
+    "userQuestions": 4,
+    "userTurns": 5,
+    "otherTurns": 5,
+    "userTalkMs": 32735,
+    "otherTalkMs": 55162,
+    "userTalkShare": 0.37,
+    "otherAvgAnswerWords": 29.5,
+    "followUps": 3,
+    "reflections": 0,
+    "storiesAfterQuestions": 1,
+    "questions": [
+     {
+      "turnId": 1,
+      "isFollowUp": false,
+      "replyTurnId": 2,
+      "replyWords": 24,
+      "storyShared": false
+     },
+     {
+      "turnId": 3,
+      "isFollowUp": true,
+      "replyTurnId": 4,
+      "replyWords": 32,
+      "storyShared": false
+     },
+     {
+      "turnId": 5,
+      "isFollowUp": true,
+      "replyTurnId": 6,
+      "replyWords": 36,
+      "storyShared": true
+     },
+     {
+      "turnId": 7,
+      "isFollowUp": true,
+      "replyTurnId": 8,
+      "replyWords": 26,
+      "storyShared": false
+     }
+    ],
+    "crowd": 0,
+    "source": "muse-spark",
+    "detectorAgreement": {
+     "agree": 4,
+     "of": 4
+    }
+   },
+   "note": {
+    "text": "You asked 4 questions and 3 were follow-ups, and you brought back the crushed boxes from the career fair. Daniel told you about the junk drawer cart after one of them.",
+    "suggestion": "In the interview next Thursday, ask about the failure lab before you talk about the satellite project.",
+    "citedTurnIds": [
+     3,
+     5,
+     7
+    ],
+    "status": "shown",
+    "source": "muse-spark"
+   },
+   "hooks": {
+    "topics": [
+     {
+      "term": "Dallas",
+      "turnIds": [
+       2
+      ],
+      "weight": 3
+     },
+     {
+      "term": "part",
+      "turnIds": [
+       4,
+       6
+      ],
+      "weight": 3
+     },
+     {
+      "term": "warehouse",
+      "turnIds": [
+       2
+      ],
+      "weight": 2
+     },
+     {
+      "term": "shrink",
+      "turnIds": [
+       4
+      ],
+      "weight": 2
+     },
+     {
+      "term": "wrap",
+      "turnIds": [
+       4
+      ],
+      "weight": 2
+     }
+    ],
+    "events": [
+     {
+      "text": "We're rolling out the new picking arm to the Dallas warehouse next week,",
+      "when": "next week",
+      "hasNoun": false,
+      "turnId": 2
+     },
+     {
+      "text": "The recruiter told me your first interview is next Thursday,",
+      "when": "next thursday",
+      "hasNoun": true,
+      "turnId": 8
+     }
+    ],
+    "commitments": [
+     {
+      "text": "I'll send you a thank you note after the interview and tell you how it went.",
+      "turnId": 9
+     }
+    ],
+    "missedBids": [],
+    "highlights": [
+     {
+      "turnId": 6,
+      "words": 36
+     },
+     {
+      "turnId": 4,
+      "words": 32
+     }
+    ],
+    "followUpDetector": [
+     {
+      "turnId": 1,
+      "isFollowUp": false,
+      "overlap": []
+     },
+     {
+      "turnId": 3,
+      "isFollowUp": true,
+      "overlap": []
+     },
+     {
+      "turnId": 5,
+      "isFollowUp": true,
+      "overlap": [
+       "shrink",
+       "wrap",
+       "reflects",
+       "depth",
+       "camera"
+      ]
+     },
+     {
+      "turnId": 7,
+      "isFollowUp": true,
+      "overlap": [
+       "junk",
+       "drawer"
+      ]
+     }
+    ],
+    "awkward": {
+     "flags": [],
+     "score": 0,
+     "seams": [],
+     "worst": null
+    }
+   },
+   "followUp": {
+    "text": "Thanks again, Daniel. I'll ask about the failure lab and the junk drawer next Thursday, and I'll send you a note after the interview. Good luck with the Dallas rollout next week!",
+    "hooksUsed": [
+     "Dallas",
+     "next week",
+     "next thursday",
+     "I'll send you a thank you note after…"
+    ],
+    "source": "muse-spark",
+    "status": "draft",
+    "sentAt": null
+   },
+   "recording": {
+    "mime": "video/webm",
+    "ext": "webm",
+    "bytes": 4871488,
+    "offsetMs": 120,
+    "uploadedAt": "2026-10-21T11:06:22.082Z"
+   },
+   "behavior": {
+    "model": "mediapipe-face-landmarker@0.10.14",
+    "fps": 5,
+    "frameCount": 482,
+    "faceSeenPct": 0.97,
+    "baseline": {
+     "smile": 0.22,
+     "animation": 0.186
+    },
+    "turns": [
+     {
+      "turnId": 1,
+      "speaker": "you",
+      "smile": 0.2,
+      "smilePeak": 0.21,
+      "facingPct": 0.97,
+      "nods": 0,
+      "animation": 0.075,
+      "reaction": {
+       "smileDelta": 0.07,
+       "nods": 0,
+       "facingPct": 1
+      },
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 2,
+      "speaker": "them",
+      "smile": 0.22,
+      "smilePeak": 0.29,
+      "facingPct": 0.96,
+      "nods": 0,
+      "animation": 0.255,
+      "reaction": null,
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 3,
+      "speaker": "you",
+      "smile": 0.2,
+      "smilePeak": 0.22,
+      "facingPct": 0.96,
+      "nods": 0,
+      "animation": 0.081,
+      "reaction": {
+       "smileDelta": 0.1,
+       "nods": 0,
+       "facingPct": 1
+      },
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 4,
+      "speaker": "them",
+      "smile": 0.23,
+      "smilePeak": 0.34,
+      "facingPct": 0.95,
+      "nods": 1,
+      "animation": 0.239,
+      "reaction": null,
+      "textTone": "positive",
+      "congruence": null
+     },
+     {
+      "turnId": 5,
+      "speaker": "you",
+      "smile": 0.2,
+      "smilePeak": 0.22,
+      "facingPct": 0.94,
+      "nods": 0,
+      "animation": 0.061,
+      "reaction": {
+       "smileDelta": 0.14,
+       "nods": 0,
+       "facingPct": 1
+      },
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 6,
+      "speaker": "them",
+      "smile": 0.24,
+      "smilePeak": 0.37,
+      "facingPct": 1,
+      "nods": 2,
+      "animation": 0.277,
+      "reaction": null,
+      "textTone": "positive",
+      "congruence": null
+     },
+     {
+      "turnId": 7,
+      "speaker": "you",
+      "smile": 0.2,
+      "smilePeak": 0.22,
+      "facingPct": 1,
+      "nods": 0,
+      "animation": 0.079,
+      "reaction": {
+       "smileDelta": 0.14,
+       "nods": 0,
+       "facingPct": 1
+      },
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 8,
+      "speaker": "them",
+      "smile": 0.24,
+      "smilePeak": 0.37,
+      "facingPct": 0.98,
+      "nods": 1,
+      "animation": 0.267,
+      "reaction": null,
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 9,
+      "speaker": "you",
+      "smile": 0.2,
+      "smilePeak": 0.22,
+      "facingPct": 0.97,
+      "nods": 0,
+      "animation": 0.065,
+      "reaction": {
+       "smileDelta": 0.07,
+       "nods": 0,
+       "facingPct": 1
+      },
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 10,
+      "speaker": "them",
+      "smile": 0.23,
+      "smilePeak": 0.3,
+      "facingPct": 0.97,
+      "nods": 0,
+      "animation": 0.268,
+      "reaction": null,
+      "textTone": "neutral",
+      "congruence": null
+     }
+    ],
+    "stats": {
+     "afterFollowUps": {
+      "n": 3,
+      "smileDelta": 0.13,
+      "nods": 0
+     },
+     "afterOther": {
+      "n": 2,
+      "smileDelta": 0.07,
+      "nods": 0
+     },
+     "missedBidReactions": []
+    }
+   },
+   "insight": {
+    "moments": [
+     {
+      "turnId": 3,
+      "title": "Bringing back the boxes",
+      "observation": "After “The new arm, is that the one that handles the crushed boxes?”, their smile rose 10 points.",
+      "why": "Remembering the crushed boxes from the booth showed him you were listening two weeks ago."
+     },
+     {
+      "turnId": 5,
+      "title": "The junk drawer",
+      "observation": "After “Shrink wrap reflects the depth camera? How do you even…”, their smile rose 14 points.",
+      "why": "A question about the weird cases got you the part of the job he likes most."
+     },
+     {
+      "turnId": 7,
+      "title": "Asking at the right time",
+      "observation": "After “The junk drawer is such a good name. Would an intern get…”, their smile rose 14 points.",
+      "why": "You asked about interning only after three questions about his work."
+     }
+    ],
+    "adviceCheck": [
+     {
+      "advice": "In the interview next Thursday, ask about the failure lab before you talk about the satellite project.",
+      "verdict": "backed",
+      "evidenceTurnIds": [
+       3,
+       5,
+       7
+      ],
+      "reason": "Their smile moved 13 points after your 3 follow-ups vs 7 after your other 2 lines."
+     }
+    ],
+    "source": "muse-spark",
+    "rewrites": [],
+    "takeaways": [
+     {
+      "kind": "keep",
+      "turnId": 5,
+      "title": "The junk drawer",
+      "text": "A question about the weird cases got you the part of the job he likes most.",
+      "said": null,
+      "theySaid": null,
+      "tryInstead": null,
+      "evidence": "Smile +14"
+     },
+     {
+      "kind": "next",
+      "turnId": 2,
+      "title": "Ask about it next time",
+      "text": "They mentioned “We're rolling out the new picking arm to the Dallas warehouse next week,” Ask how it went.",
+      "said": null,
+      "theySaid": null,
+      "tryInstead": null,
+      "evidence": null
+     }
+    ]
+   }
+  },
+  {
+   "id": "d938c810-85cc-4a30-987c-2daadf60f9f8",
+   "tag": "friend",
+   "otherName": "Priya Nair",
+   "createdAt": "2026-10-23T19:30:00.000Z",
+   "seeded": false,
+   "turns": [
+    {
+     "turnId": 1,
+     "speaker": "A",
+     "text": "You finished! How was the race?",
+     "startMs": 0,
+     "endMs": 3105,
+     "source": "you",
+     "confidence": 0.92
+    },
+    {
+     "turnId": 2,
+     "speaker": "B",
+     "text": "Two hours and three minutes. I wanted under two, but my mom watched the livestream from her chemo chair and texted me the whole time, so honestly it was perfect.",
+     "startMs": 3471,
+     "endMs": 15409,
+     "source": "them",
+     "confidence": 0.85
+    },
+    {
+     "turnId": 3,
+     "speaker": "A",
+     "text": "Your mom texted you from the chemo chair? What did she say?",
+     "startMs": 15867,
+     "endMs": 21009,
+     "source": "you",
+     "confidence": 0.97
+    },
+    {
+     "turnId": 4,
+     "speaker": "B",
+     "text": "Mostly 'run faster' in all caps. And at mile ten she sent a picture of the nurses holding up a sign with my name on it.",
+     "startMs": 21489,
+     "endMs": 32014,
+     "source": "them",
+     "confidence": 0.87
+    },
+    {
+     "turnId": 5,
+     "speaker": "A",
+     "text": "The nurses made a sign? I am going to cry. Did you decide about Seattle?",
+     "startMs": 32760,
+     "endMs": 39117,
+     "source": "you",
+     "confidence": 0.92
+    },
+    {
+     "turnId": 6,
+     "speaker": "B",
+     "text": "I'm taking it. But I asked them to let me start in March so I can be in Houston for her last rounds of treatment, and they said yes.",
+     "startMs": 39886,
+     "endMs": 51768,
+     "source": "them",
+     "confidence": 0.81
+    },
+    {
+     "turnId": 7,
+     "speaker": "A",
+     "text": "They said yes to March, that's amazing. How are you feeling about it now?",
+     "startMs": 52155,
+     "endMs": 58171,
+     "source": "you",
+     "confidence": 0.88
+    },
+    {
+     "turnId": 8,
+     "speaker": "B",
+     "text": "Relieved. Scared too. I keep thinking about leaving the running group, they're kind of my people here.",
+     "startMs": 58624,
+     "endMs": 65643,
+     "source": "them",
+     "confidence": 0.8
+    },
+    {
+     "turnId": 9,
+     "speaker": "A",
+     "text": "What if we do one last long run with the running group before you go? I'll find a route and send it to you.",
+     "startMs": 66215,
+     "endMs": 76228,
+     "source": "you",
+     "confidence": 0.95
+    },
+    {
+     "turnId": 10,
+     "speaker": "B",
+     "text": "Yes. Something with tacos at the end.",
+     "startMs": 76731,
+     "endMs": 79966,
+     "source": "them",
+     "confidence": 0.8
+    }
+   ],
+   "userLabel": "A",
+   "reflection": "So happy for her. I want to ask more about the running group next time.",
+   "signals": {
+    "userQuestions": 5,
+    "userTurns": 5,
+    "otherTurns": 5,
+    "userTalkMs": 30633,
+    "otherTalkMs": 44599,
+    "userTalkShare": 0.41,
+    "otherAvgAnswerWords": 21.8,
+    "followUps": 4,
+    "reflections": 1,
+    "storiesAfterQuestions": 1,
+    "questions": [
+     {
+      "turnId": 1,
+      "isFollowUp": false,
+      "replyTurnId": 2,
+      "replyWords": 30,
+      "storyShared": false
+     },
+     {
+      "turnId": 3,
+      "isFollowUp": true,
+      "replyTurnId": 4,
+      "replyWords": 26,
+      "storyShared": true
+     },
+     {
+      "turnId": 5,
+      "isFollowUp": true,
+      "replyTurnId": 6,
+      "replyWords": 29,
+      "storyShared": false
+     },
+     {
+      "turnId": 7,
+      "isFollowUp": true,
+      "replyTurnId": 8,
+      "replyWords": 17,
+      "storyShared": false
+     },
+     {
+      "turnId": 9,
+      "isFollowUp": true,
+      "replyTurnId": 10,
+      "replyWords": 7,
+      "storyShared": false
+     }
+    ],
+    "crowd": 0,
+    "source": "muse-spark",
+    "detectorAgreement": {
+     "agree": 5,
+     "of": 5
+    }
+   },
+   "note": {
+    "text": "You asked 5 questions and 4 were follow-ups. Priya told you about the nurses holding up the sign at mile ten after your question about the texts.",
+    "suggestion": "Next time, ask Priya what would make the move to Seattle feel less scary before suggesting a plan.",
+    "citedTurnIds": [
+     3,
+     7,
+     9
+    ],
+    "status": "shown",
+    "source": "muse-spark"
+   },
+   "hooks": {
+    "topics": [
+     {
+      "term": "Houston",
+      "turnIds": [
+       6
+      ],
+      "weight": 3
+     },
+     {
+      "term": "chemo",
+      "turnIds": [
+       2
+      ],
+      "weight": 2
+     },
+     {
+      "term": "chair",
+      "turnIds": [
+       2
+      ],
+      "weight": 2
+     },
+     {
+      "term": "nurses",
+      "turnIds": [
+       4
+      ],
+      "weight": 2
+     },
+     {
+      "term": "sign",
+      "turnIds": [
+       4
+      ],
+      "weight": 2
+     }
+    ],
+    "events": [],
+    "commitments": [
+     {
+      "text": "I'll find a route and send it to you.",
+      "turnId": 9
+     }
+    ],
+    "missedBids": [],
+    "highlights": [
+     {
+      "turnId": 2,
+      "words": 30
+     },
+     {
+      "turnId": 6,
+      "words": 29
+     }
+    ],
+    "followUpDetector": [
+     {
+      "turnId": 1,
+      "isFollowUp": false,
+      "overlap": []
+     },
+     {
+      "turnId": 3,
+      "isFollowUp": true,
+      "overlap": [
+       "texted",
+       "chemo",
+       "chair"
+      ]
+     },
+     {
+      "turnId": 5,
+      "isFollowUp": true,
+      "overlap": [
+       "nurses",
+       "sign"
+      ]
+     },
+     {
+      "turnId": 7,
+      "isFollowUp": true,
+      "overlap": [
+       "march"
+      ]
+     },
+     {
+      "turnId": 9,
+      "isFollowUp": true,
+      "overlap": [
+       "running",
+       "group"
+      ]
+     }
+    ],
+    "awkward": {
+     "flags": [],
+     "score": 0,
+     "seams": [],
+     "worst": null
+    }
+   },
+   "followUp": {
+    "text": "I'll find a route for one last long run with the running group and send it to you, tacos at the end. So happy the March start worked out.",
+    "hooksUsed": [
+     "I'll find a route and send it to you."
+    ],
+    "source": "muse-spark",
+    "status": "draft",
+    "sentAt": null
+   },
+   "recording": {
+    "mime": "video/mp4",
+    "ext": "mp4",
+    "bytes": 4166576,
+    "offsetMs": 190,
+    "uploadedAt": "2026-10-23T19:36:08.966Z"
+   },
+   "behavior": {
+    "model": "mediapipe-face-landmarker@0.10.14",
+    "fps": 5,
+    "frameCount": 416,
+    "faceSeenPct": 0.96,
+    "baseline": {
+     "smile": 0.21,
+     "animation": 0.175
+    },
+    "turns": [
+     {
+      "turnId": 1,
+      "speaker": "you",
+      "smile": 0.17,
+      "smilePeak": 0.19,
+      "facingPct": 1,
+      "nods": 0,
+      "animation": 0.084,
+      "reaction": {
+       "smileDelta": 0.13,
+       "nods": 0,
+       "facingPct": 1
+      },
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 2,
+      "speaker": "them",
+      "smile": 0.22,
+      "smilePeak": 0.35,
+      "facingPct": 0.98,
+      "nods": 1,
+      "animation": 0.263,
+      "reaction": null,
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 3,
+      "speaker": "you",
+      "smile": 0.17,
+      "smilePeak": 0.19,
+      "facingPct": 0.96,
+      "nods": 0,
+      "animation": 0.058,
+      "reaction": {
+       "smileDelta": 0.21,
+       "nods": 0,
+       "facingPct": 1
+      },
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 4,
+      "speaker": "them",
+      "smile": 0.24,
+      "smilePeak": 0.44,
+      "facingPct": 1,
+      "nods": 2,
+      "animation": 0.262,
+      "reaction": null,
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 5,
+      "speaker": "you",
+      "smile": 0.17,
+      "smilePeak": 0.19,
+      "facingPct": 1,
+      "nods": 0,
+      "animation": 0.068,
+      "reaction": {
+       "smileDelta": 0.19,
+       "nods": 0,
+       "facingPct": 1
+      },
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 6,
+      "speaker": "them",
+      "smile": 0.23,
+      "smilePeak": 0.48,
+      "facingPct": 0.92,
+      "nods": 1,
+      "animation": 0.244,
+      "reaction": null,
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 7,
+      "speaker": "you",
+      "smile": 0.17,
+      "smilePeak": 0.19,
+      "facingPct": 0.93,
+      "nods": 0,
+      "animation": 0.069,
+      "reaction": {
+       "smileDelta": 0.04,
+       "nods": 0,
+       "facingPct": 0.85
+      },
+      "textTone": "positive",
+      "congruence": null
+     },
+     {
+      "turnId": 8,
+      "speaker": "them",
+      "smile": 0.2,
+      "smilePeak": 0.35,
+      "facingPct": 0.54,
+      "nods": 0,
+      "animation": 0.264,
+      "reaction": null,
+      "textTone": "negative",
+      "congruence": "match"
+     },
+     {
+      "turnId": 9,
+      "speaker": "you",
+      "smile": 0.17,
+      "smilePeak": 0.19,
+      "facingPct": 0.94,
+      "nods": 0,
+      "animation": 0.069,
+      "reaction": {
+       "smileDelta": 0.19,
+       "nods": 0,
+       "facingPct": 0.92
+      },
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 10,
+      "speaker": "them",
+      "smile": 0.32,
+      "smilePeak": 0.41,
+      "facingPct": 0.88,
+      "nods": 1,
+      "animation": 0.291,
+      "reaction": null,
+      "textTone": "neutral",
+      "congruence": null
+     }
+    ],
+    "stats": {
+     "afterFollowUps": {
+      "n": 4,
+      "smileDelta": 0.16,
+      "nods": 0
+     },
+     "afterOther": {
+      "n": 1,
+      "smileDelta": 0.13,
+      "nods": 0
+     },
+     "missedBidReactions": []
+    }
+   },
+   "insight": {
+    "moments": [
+     {
+      "turnId": 3,
+      "title": "The chemo chair",
+      "observation": "After “Your mom texted you from the chemo chair? What did she say?”, their smile rose 21 points.",
+      "why": "Asking about the detail she slipped in got the best story of the race."
+     },
+     {
+      "turnId": 7,
+      "title": "How it feels now",
+      "observation": "After “They said yes to March, that's amazing. How are you…”, their smile rose 4 points.",
+      "why": "After good news, asking how it feels opened up the part about leaving."
+     },
+     {
+      "turnId": 9,
+      "title": "One last run",
+      "observation": "After “What if we do one last long run with the running group…”, their smile rose 19 points.",
+      "why": "Next time, ask what she will miss most about the group before planning anything."
+     }
+    ],
+    "adviceCheck": [
+     {
+      "advice": "Next time, ask Priya what would make the move to Seattle feel less scary before suggesting a plan.",
+      "verdict": "partly",
+      "evidenceTurnIds": [
+       3,
+       5,
+       7
+      ],
+      "reason": "Their smile moved 16 points after your 4 follow-ups vs 13 after your other 1 lines."
+     }
+    ],
+    "source": "muse-spark",
+    "rewrites": [],
+    "takeaways": [
+     {
+      "kind": "keep",
+      "turnId": 3,
+      "title": "The chemo chair",
+      "text": "Asking about the detail she slipped in got the best story of the race.",
+      "said": null,
+      "theySaid": null,
+      "tryInstead": null,
+      "evidence": "Smile +21"
+     },
+     {
+      "kind": "next",
+      "turnId": 9,
+      "title": "Follow through",
+      "text": "You said “I'll find a route and send it to you.” Do it before you talk again.",
+      "said": null,
+      "theySaid": null,
+      "tryInstead": null,
+      "evidence": null
+     }
+    ]
+   }
+  }
+ ],
+ "logs": [
+  {
+   "ts": "2026-09-22T19:11:33.584Z",
+   "agent": "transcribe",
+   "level": "info",
+   "message": "12 turns, speakers A/B; audio discarded",
+   "data": null
+  },
+  {
+   "ts": "2026-09-22T19:11:33.584Z",
+   "agent": "lips",
+   "level": "info",
+   "message": "lip lock: 725 cues, 0 background lines, your voice is A (100% of 12 lines agree)",
+   "data": null
+  },
+  {
+   "ts": "2026-09-22T19:12:18.584Z",
+   "agent": "nlp",
+   "level": "info",
+   "message": "hooks extracted",
+   "data": {
+    "topics": [
+     "Oaxaca",
+     "Lupe",
+     "Christmas",
+     "doctor",
+     "hard"
+    ],
+    "events": 2,
+    "commitments": 1,
+    "missedBids": 2
+   }
+  },
+  {
+   "ts": "2026-09-22T19:12:18.584Z",
+   "agent": "followUp",
+   "level": "info",
+   "message": "follow-up drafted",
+   "data": {
+    "hooksUsed": [
+     "Lupe",
+     "doctor",
+     "el jueves",
+     "I'll call you Thursday after the…"
+    ]
+   }
+  },
+  {
+   "ts": "2026-09-22T19:12:18.584Z",
+   "agent": "nlp",
+   "level": "info",
+   "message": "signals classified; detector agrees with Muse Spark on 4 of 4 questions",
+   "data": {
+    "questions": 4,
+    "followUps": 2
+   }
+  },
+  {
+   "ts": "2026-09-22T19:12:18.584Z",
+   "agent": "coach",
+   "level": "info",
+   "message": "note drafted",
+   "data": null
+  },
+  {
+   "ts": "2026-09-22T19:12:18.584Z",
+   "agent": "review",
+   "level": "info",
+   "message": "reviewer: pass",
+   "data": null
+  },
+  {
+   "ts": "2026-09-22T19:16:18.584Z",
+   "agent": "video",
+   "level": "info",
+   "message": "saved 4.7 MB recording for d8067cae (stays on this Mac)",
+   "data": null
+  },
+  {
+   "ts": "2026-09-22T19:18:18.584Z",
+   "agent": "vision",
+   "level": "info",
+   "message": "face cues aligned: 465 frames, face in 97%",
+   "data": {
+    "afterFollowUps": {
+     "n": 2,
+     "smileDelta": 0.2,
+     "nods": 0
+    },
+    "afterOther": {
+     "n": 4,
+     "smileDelta": 0.03,
+     "nods": 0.3
+    },
+    "missedBidReactions": [
+     {
+      "turnId": 2,
+      "smileDelta": -0.08
+     },
+     {
+      "turnId": 10,
+      "smileDelta": 0.1
+     }
+    ]
+   }
+  },
+  {
+   "ts": "2026-09-22T19:18:48.584Z",
+   "agent": "insight",
+   "level": "info",
+   "message": "insight written",
+   "data": null
+  },
+  {
+   "ts": "2026-09-22T19:46:29.584Z",
+   "agent": "followUp",
+   "level": "info",
+   "message": "sent to Abuela",
+   "data": null
+  },
+  {
+   "ts": "2026-09-25T21:36:18.550Z",
+   "agent": "transcribe",
+   "level": "info",
+   "message": "11 turns, speakers A/B; audio discarded",
+   "data": null
+  },
+  {
+   "ts": "2026-09-25T21:36:18.550Z",
+   "agent": "lips",
+   "level": "info",
+   "message": "lip lock: 605 cues, 0 background lines, your voice is A (100% of 11 lines agree)",
+   "data": null
+  },
+  {
+   "ts": "2026-09-25T21:37:03.550Z",
+   "agent": "nlp",
+   "level": "info",
+   "message": "hooks extracted",
+   "data": {
+    "topics": [
+     "Texas",
+     "system",
+     "design",
+     "part",
+     "grid"
+    ],
+    "events": 1,
+    "commitments": 1,
+    "missedBids": 1
+   }
+  },
+  {
+   "ts": "2026-09-25T21:37:03.550Z",
+   "agent": "followUp",
+   "level": "info",
+   "message": "follow-up drafted",
+   "data": {
+    "hooksUsed": [
+     "next friday",
+     "I'll send you the mock questions from…"
+    ]
+   }
+  },
+  {
+   "ts": "2026-09-25T21:37:03.550Z",
+   "agent": "nlp",
+   "level": "info",
+   "message": "signals classified; detector agrees with Muse Spark on 3 of 4 questions",
+   "data": {
+    "questions": 4,
+    "followUps": 3
+   }
+  },
+  {
+   "ts": "2026-09-25T21:37:03.550Z",
+   "agent": "coach",
+   "level": "info",
+   "message": "note drafted",
+   "data": null
+  },
+  {
+   "ts": "2026-09-25T21:37:03.550Z",
+   "agent": "review",
+   "level": "info",
+   "message": "reviewer: pass",
+   "data": null
+  },
+  {
+   "ts": "2026-09-25T21:41:03.550Z",
+   "agent": "video",
+   "level": "info",
+   "message": "saved 3.9 MB recording for 8612266c (stays on this Mac)",
+   "data": null
+  },
+  {
+   "ts": "2026-09-25T21:43:03.550Z",
+   "agent": "vision",
+   "level": "info",
+   "message": "face cues aligned: 389 frames, face in 96%",
+   "data": {
+    "afterFollowUps": {
+     "n": 3,
+     "smileDelta": 0.16,
+     "nods": 0
+    },
+    "afterOther": {
+     "n": 3,
+     "smileDelta": -0.03,
+     "nods": 0
+    },
+    "missedBidReactions": [
+     {
+      "turnId": 6,
+      "smileDelta": -0.1
+     }
+    ]
+   }
+  },
+  {
+   "ts": "2026-09-25T21:43:33.550Z",
+   "agent": "insight",
+   "level": "info",
+   "message": "insight written",
+   "data": null
+  },
+  {
+   "ts": "2026-09-25T22:26:14.550Z",
+   "agent": "followUp",
+   "level": "info",
+   "message": "sent to Jordan Lee",
+   "data": null
+  },
+  {
+   "ts": "2026-09-28T14:22:10.891Z",
+   "agent": "transcribe",
+   "level": "info",
+   "message": "14 turns, speakers A/B/C; audio discarded",
+   "data": null
+  },
+  {
+   "ts": "2026-09-28T14:22:10.891Z",
+   "agent": "lips",
+   "level": "info",
+   "message": "lip lock: 1024 cues, 1 background line, your voice is B (100% of 13 lines agree)",
+   "data": null
+  },
+  {
+   "ts": "2026-09-28T14:22:55.891Z",
+   "agent": "nlp",
+   "level": "info",
+   "message": "hooks extracted",
+   "data": {
+    "topics": [
+     "Robotics",
+     "opens",
+     "failure",
+     "cases",
+     "Halcyon"
+    ],
+    "events": 1,
+    "commitments": 1,
+    "missedBids": 0
+   }
+  },
+  {
+   "ts": "2026-09-28T14:22:55.891Z",
+   "agent": "followUp",
+   "level": "info",
+   "message": "follow-up drafted",
+   "data": {
+    "hooksUsed": [
+     "Halcyon",
+     "I'll email you my resume tonight with…"
+    ]
+   }
+  },
+  {
+   "ts": "2026-09-28T14:22:55.891Z",
+   "agent": "nlp",
+   "level": "info",
+   "message": "signals classified; detector agrees with Muse Spark on 2 of 3 questions",
+   "data": {
+    "questions": 3,
+    "followUps": 2
+   }
+  },
+  {
+   "ts": "2026-09-28T14:22:55.891Z",
+   "agent": "pattern",
+   "level": "info",
+   "message": "Your follow-up questions held steady from 2 to 2 per conversation over your last 3 conversations.",
+   "data": null
+  },
+  {
+   "ts": "2026-09-28T14:22:55.891Z",
+   "agent": "coach",
+   "level": "info",
+   "message": "note drafted",
+   "data": null
+  },
+  {
+   "ts": "2026-09-28T14:22:55.891Z",
+   "agent": "nextStep",
+   "level": "info",
+   "message": "proposed: Ask one follow-up question before sharing your own news, in each conversation this week.",
+   "data": null
+  },
+  {
+   "ts": "2026-09-28T14:22:55.891Z",
+   "agent": "review",
+   "level": "info",
+   "message": "reviewer: pass",
+   "data": null
+  },
+  {
+   "ts": "2026-09-28T14:26:55.891Z",
+   "agent": "video",
+   "level": "info",
+   "message": "saved 6.6 MB recording for 6b89c157 (stays on this Mac)",
+   "data": null
+  },
+  {
+   "ts": "2026-09-28T14:28:55.891Z",
+   "agent": "vision",
+   "level": "info",
+   "message": "face cues aligned: 652 frames, face in 96%",
+   "data": {
+    "afterFollowUps": {
+     "n": 2,
+     "smileDelta": 0.15,
+     "nods": 0
+    },
+    "afterOther": {
+     "n": 4,
+     "smileDelta": 0.01,
+     "nods": 0
+    },
+    "missedBidReactions": []
+   }
+  },
+  {
+   "ts": "2026-09-28T14:29:25.891Z",
+   "agent": "insight",
+   "level": "info",
+   "message": "insight written",
+   "data": null
+  },
+  {
+   "ts": "2026-09-28T19:22:06.891Z",
+   "agent": "followUp",
+   "level": "info",
+   "message": "sent to Daniel Okafor",
+   "data": null
+  },
+  {
+   "ts": "2026-10-01T18:06:25.588Z",
+   "agent": "transcribe",
+   "level": "info",
+   "message": "10 turns, speakers A/B; audio discarded",
+   "data": null
+  },
+  {
+   "ts": "2026-10-01T18:07:10.588Z",
+   "agent": "nlp",
+   "level": "info",
+   "message": "hooks extracted",
+   "data": {
+    "topics": [
+     "Lupe",
+     "seeds",
+     "counts",
+     "paper",
+     "doctor"
+    ],
+    "events": 0,
+    "commitments": 1,
+    "missedBids": 0
+   }
+  },
+  {
+   "ts": "2026-10-01T18:07:10.588Z",
+   "agent": "followUp",
+   "level": "info",
+   "message": "follow-up drafted",
+   "data": {
+    "hooksUsed": [
+     "Lupe",
+     "seeds",
+     "counts",
+     "I'll call you Sunday and you can…"
+    ]
+   }
+  },
+  {
+   "ts": "2026-10-01T18:07:10.588Z",
+   "agent": "nlp",
+   "level": "info",
+   "message": "signals classified; detector agrees with Muse Spark on 4 of 4 questions",
+   "data": {
+    "questions": 4,
+    "followUps": 3
+   }
+  },
+  {
+   "ts": "2026-10-01T18:07:10.588Z",
+   "agent": "pattern",
+   "level": "info",
+   "message": "Your follow-up questions rose from 2 to 3 per conversation over your last 4 conversations.",
+   "data": null
+  },
+  {
+   "ts": "2026-10-01T18:07:10.588Z",
+   "agent": "coach",
+   "level": "info",
+   "message": "note drafted",
+   "data": null
+  },
+  {
+   "ts": "2026-10-01T18:07:10.588Z",
+   "agent": "review",
+   "level": "info",
+   "message": "reviewer: pass",
+   "data": null
+  },
+  {
+   "ts": "2026-10-01T18:07:40.588Z",
+   "agent": "insight",
+   "level": "info",
+   "message": "insight written",
+   "data": null
+  },
+  {
+   "ts": "2026-10-01T18:26:21.588Z",
+   "agent": "followUp",
+   "level": "info",
+   "message": "sent to Abuela",
+   "data": null
+  },
+  {
+   "ts": "2026-10-01T21:26:21.588Z",
+   "agent": "nextStep",
+   "level": "info",
+   "message": "accepted: Ask one follow-up question before sharing your own news, in each conversation this week.",
+   "data": null
+  },
+  {
+   "ts": "2026-10-04T12:41:39.539Z",
+   "agent": "transcribe",
+   "level": "info",
+   "message": "13 turns, speakers A/B/C; audio discarded",
+   "data": null
+  },
+  {
+   "ts": "2026-10-04T12:41:39.539Z",
+   "agent": "lips",
+   "level": "info",
+   "message": "lip lock: 773 cues, 1 background line, your voice is A (100% of 12 lines agree)",
+   "data": null
+  },
+  {
+   "ts": "2026-10-04T12:42:24.539Z",
+   "agent": "nlp",
+   "level": "info",
+   "message": "hooks extracted",
+   "data": {
+    "topics": [
+     "Seattle",
+     "Austin",
+     "Houston",
+     "race",
+     "offer"
+    ],
+    "events": 2,
+    "commitments": 0,
+    "missedBids": 0
+   }
+  },
+  {
+   "ts": "2026-10-04T12:42:24.539Z",
+   "agent": "followUp",
+   "level": "info",
+   "message": "follow-up drafted",
+   "data": {
+    "hooksUsed": [
+     "race",
+     "in three weeks",
+     "next weekend"
+    ]
+   }
+  },
+  {
+   "ts": "2026-10-04T12:42:24.539Z",
+   "agent": "nlp",
+   "level": "info",
+   "message": "signals classified; detector agrees with Muse Spark on 5 of 5 questions",
+   "data": {
+    "questions": 5,
+    "followUps": 4
+   }
+  },
+  {
+   "ts": "2026-10-04T12:42:24.539Z",
+   "agent": "pattern",
+   "level": "info",
+   "message": "Your follow-up questions rose from 2 to 4 per conversation over your last 5 conversations.",
+   "data": null
+  },
+  {
+   "ts": "2026-10-04T12:42:24.539Z",
+   "agent": "coach",
+   "level": "info",
+   "message": "note drafted",
+   "data": null
+  },
+  {
+   "ts": "2026-10-04T12:42:24.539Z",
+   "agent": "review",
+   "level": "info",
+   "message": "reviewer: pass",
+   "data": null
+  },
+  {
+   "ts": "2026-10-04T12:46:24.539Z",
+   "agent": "video",
+   "level": "info",
+   "message": "saved 5.0 MB recording for cd320116 (stays on this Mac)",
+   "data": null
+  },
+  {
+   "ts": "2026-10-04T12:48:24.539Z",
+   "agent": "vision",
+   "level": "info",
+   "message": "face cues aligned: 494 frames, face in 97%",
+   "data": {
+    "afterFollowUps": {
+     "n": 4,
+     "smileDelta": 0.07,
+     "nods": 0
+    },
+    "afterOther": {
+     "n": 2,
+     "smileDelta": 0.11,
+     "nods": 0
+    },
+    "missedBidReactions": []
+   }
+  },
+  {
+   "ts": "2026-10-04T12:48:54.539Z",
+   "agent": "insight",
+   "level": "info",
+   "message": "insight written",
+   "data": null
+  },
+  {
+   "ts": "2026-10-04T14:11:35.539Z",
+   "agent": "followUp",
+   "level": "info",
+   "message": "sent to Priya Nair",
+   "data": null
+  },
+  {
+   "ts": "2026-10-07T22:16:09.039Z",
+   "agent": "transcribe",
+   "level": "info",
+   "message": "10 turns, speakers A/B; audio discarded",
+   "data": null
+  },
+  {
+   "ts": "2026-10-07T22:16:09.039Z",
+   "agent": "lips",
+   "level": "info",
+   "message": "lip lock: 529 cues, 0 background lines, your voice is A (100% of 10 lines agree)",
+   "data": null
+  },
+  {
+   "ts": "2026-10-07T22:16:54.039Z",
+   "agent": "nlp",
+   "level": "info",
+   "message": "hooks extracted",
+   "data": {
+    "topics": [
+     "Thursdays",
+     "class"
+    ],
+    "events": 1,
+    "commitments": 1,
+    "missedBids": 1
+   }
+  },
+  {
+   "ts": "2026-10-07T22:16:54.039Z",
+   "agent": "followUp",
+   "level": "info",
+   "message": "follow-up drafted",
+   "data": {
+    "hooksUsed": [
+     "I'll text you about the game Saturday."
+    ]
+   }
+  },
+  {
+   "ts": "2026-10-07T22:16:54.039Z",
+   "agent": "nlp",
+   "level": "info",
+   "message": "signals classified; detector agrees with Muse Spark on 2 of 3 questions",
+   "data": {
+    "questions": 3,
+    "followUps": 0
+   }
+  },
+  {
+   "ts": "2026-10-07T22:16:54.039Z",
+   "agent": "pattern",
+   "level": "info",
+   "message": "Your follow-up questions fell from 2 to 0 per conversation over your last 6 conversations.",
+   "data": null
+  },
+  {
+   "ts": "2026-10-07T22:16:54.039Z",
+   "agent": "coach",
+   "level": "info",
+   "message": "note drafted",
+   "data": null
+  },
+  {
+   "ts": "2026-10-07T22:16:54.039Z",
+   "agent": "review",
+   "level": "info",
+   "message": "reviewer: pass",
+   "data": null
+  },
+  {
+   "ts": "2026-10-07T22:20:54.039Z",
+   "agent": "video",
+   "level": "info",
+   "message": "saved 3.4 MB recording for aa9cdfd4 (stays on this Mac)",
+   "data": null
+  },
+  {
+   "ts": "2026-10-07T22:22:54.039Z",
+   "agent": "vision",
+   "level": "info",
+   "message": "face cues aligned: 341 frames, face in 93%",
+   "data": {
+    "afterFollowUps": {
+     "n": 0,
+     "smileDelta": null,
+     "nods": null
+    },
+    "afterOther": {
+     "n": 5,
+     "smileDelta": -0.01,
+     "nods": 0
+    },
+    "missedBidReactions": [
+     {
+      "turnId": 6,
+      "smileDelta": -0.1
+     }
+    ]
+   }
+  },
+  {
+   "ts": "2026-10-07T22:23:24.039Z",
+   "agent": "insight",
+   "level": "info",
+   "message": "insight written",
+   "data": null
+  },
+  {
+   "ts": "2026-10-08T10:16:05.039Z",
+   "agent": "followUp",
+   "level": "info",
+   "message": "sent to Marcus Bell",
+   "data": null
+  },
+  {
+   "ts": "2026-10-08T13:16:05.039Z",
+   "agent": "nextStep",
+   "level": "info",
+   "message": "changed: Ask one question about what they just said before changing the subject, and skip stories about people who aren't there.",
+   "data": null
+  },
+  {
+   "ts": "2026-10-10T16:01:55.657Z",
+   "agent": "transcribe",
+   "level": "info",
+   "message": "12 turns, speakers A/B; audio discarded",
+   "data": null
+  },
+  {
+   "ts": "2026-10-10T16:01:55.657Z",
+   "agent": "lips",
+   "level": "info",
+   "message": "lip lock: 902 cues, 0 background lines, your voice is A (100% of 12 lines agree)",
+   "data": null
+  },
+  {
+   "ts": "2026-10-10T16:02:40.657Z",
+   "agent": "nlp",
+   "level": "info",
+   "message": "hooks extracted",
+   "data": {
+    "topics": [
+     "nurse",
+     "Denver",
+     "three",
+     "morning",
+     "data"
+    ],
+    "events": 1,
+    "commitments": 1,
+    "missedBids": 1
+   }
+  },
+  {
+   "ts": "2026-10-10T16:02:40.657Z",
+   "agent": "followUp",
+   "level": "info",
+   "message": "follow-up drafted",
+   "data": {
+    "hooksUsed": [
+     "Denver",
+     "in two weeks",
+     "I'll send you the article about alarm…"
+    ]
+   }
+  },
+  {
+   "ts": "2026-10-10T16:02:40.657Z",
+   "agent": "nlp",
+   "level": "info",
+   "message": "signals classified; detector agrees with Muse Spark on 3 of 4 questions",
+   "data": {
+    "questions": 4,
+    "followUps": 3
+   }
+  },
+  {
+   "ts": "2026-10-10T16:02:40.657Z",
+   "agent": "pattern",
+   "level": "info",
+   "message": "Your follow-up questions rose from 2 to 3 per conversation over your last 7 conversations.",
+   "data": null
+  },
+  {
+   "ts": "2026-10-10T16:02:40.657Z",
+   "agent": "coach",
+   "level": "info",
+   "message": "note drafted",
+   "data": null
+  },
+  {
+   "ts": "2026-10-10T16:02:40.657Z",
+   "agent": "nextStep",
+   "level": "info",
+   "message": "proposed: Ask two clear questions about their work before you mention yours, in each networking chat this week.",
+   "data": null
+  },
+  {
+   "ts": "2026-10-10T16:02:40.657Z",
+   "agent": "review",
+   "level": "info",
+   "message": "reviewer: pass",
+   "data": null
+  },
+  {
+   "ts": "2026-10-10T16:06:40.657Z",
+   "agent": "video",
+   "level": "info",
+   "message": "saved 5.8 MB recording for 876fb39e (stays on this Mac)",
+   "data": null
+  },
+  {
+   "ts": "2026-10-10T16:08:40.657Z",
+   "agent": "vision",
+   "level": "info",
+   "message": "face cues aligned: 575 frames, face in 97%",
+   "data": {
+    "afterFollowUps": {
+     "n": 3,
+     "smileDelta": 0.15,
+     "nods": 0
+    },
+    "afterOther": {
+     "n": 3,
+     "smileDelta": 0.02,
+     "nods": 0
+    },
+    "missedBidReactions": [
+     {
+      "turnId": 2,
+      "smileDelta": -0.09
+     }
+    ]
+   }
+  },
+  {
+   "ts": "2026-10-10T16:09:10.657Z",
+   "agent": "insight",
+   "level": "info",
+   "message": "insight written",
+   "data": null
+  },
+  {
+   "ts": "2026-10-10T18:21:51.657Z",
+   "agent": "followUp",
+   "level": "info",
+   "message": "sent to Elena Ruiz",
+   "data": null
+  },
+  {
+   "ts": "2026-10-13T20:46:28.561Z",
+   "agent": "transcribe",
+   "level": "info",
+   "message": "12 turns, speakers A/B; audio discarded",
+   "data": null
+  },
+  {
+   "ts": "2026-10-13T20:47:13.561Z",
+   "agent": "nlp",
+   "level": "info",
+   "message": "hooks extracted",
+   "data": {
+    "topics": [
+     "manejar",
+     "cirugía",
+     "papá",
+     "dice",
+     "tiempo"
+    ],
+    "events": 1,
+    "commitments": 1,
+    "missedBids": 1
+   }
+  },
+  {
+   "ts": "2026-10-13T20:47:13.561Z",
+   "agent": "followUp",
+   "level": "info",
+   "message": "follow-up drafted",
+   "data": {
+    "hooksUsed": [
+     "cirugía",
+     "papá",
+     "el próximo martes",
+     "Te llamo el martes después de la…"
+    ]
+   }
+  },
+  {
+   "ts": "2026-10-13T20:47:13.561Z",
+   "agent": "nlp",
+   "level": "info",
+   "message": "signals classified; detector agrees with Muse Spark on 4 of 4 questions",
+   "data": {
+    "questions": 4,
+    "followUps": 3
+   }
+  },
+  {
+   "ts": "2026-10-13T20:47:13.561Z",
+   "agent": "pattern",
+   "level": "info",
+   "message": "Your follow-up questions rose from 2 to 3 per conversation over your last 8 conversations.",
+   "data": null
+  },
+  {
+   "ts": "2026-10-13T20:47:13.561Z",
+   "agent": "coach",
+   "level": "info",
+   "message": "note drafted",
+   "data": null
+  },
+  {
+   "ts": "2026-10-13T20:47:13.561Z",
+   "agent": "review",
+   "level": "info",
+   "message": "reviewer: pass",
+   "data": null
+  },
+  {
+   "ts": "2026-10-13T20:47:43.561Z",
+   "agent": "insight",
+   "level": "info",
+   "message": "insight written",
+   "data": null
+  },
+  {
+   "ts": "2026-10-13T21:01:24.561Z",
+   "agent": "followUp",
+   "level": "info",
+   "message": "sent to Mamá",
+   "data": null
+  },
+  {
+   "ts": "2026-10-16T22:06:24.012Z",
+   "agent": "transcribe",
+   "level": "info",
+   "message": "10 turns, speakers A/B; audio discarded",
+   "data": null
+  },
+  {
+   "ts": "2026-10-16T22:06:24.012Z",
+   "agent": "lips",
+   "level": "info",
+   "message": "lip lock: 649 cues, 0 background lines, your voice is A (100% of 10 lines agree)",
+   "data": null
+  },
+  {
+   "ts": "2026-10-16T22:07:09.012Z",
+   "agent": "nlp",
+   "level": "info",
+   "message": "hooks extracted",
+   "data": {
+    "topics": [
+     "team",
+     "whiteboard",
+     "Austin",
+     "freeze",
+     "once"
+    ],
+    "events": 1,
+    "commitments": 1,
+    "missedBids": 0
+   }
+  },
+  {
+   "ts": "2026-10-16T22:07:09.012Z",
+   "agent": "followUp",
+   "level": "info",
+   "message": "follow-up drafted",
+   "data": {
+    "hooksUsed": [
+     "whiteboard",
+     "freeze",
+     "once",
+     "tomorrow",
+     "I'll grab you a coffee tomorrow…"
+    ]
+   }
+  },
+  {
+   "ts": "2026-10-16T22:07:09.012Z",
+   "agent": "nlp",
+   "level": "info",
+   "message": "signals classified; detector agrees with Muse Spark on 4 of 4 questions",
+   "data": {
+    "questions": 4,
+    "followUps": 3
+   }
+  },
+  {
+   "ts": "2026-10-16T22:07:09.012Z",
+   "agent": "pattern",
+   "level": "info",
+   "message": "Your follow-up questions rose from 2 to 3 per conversation over your last 9 conversations.",
+   "data": null
+  },
+  {
+   "ts": "2026-10-16T22:07:09.012Z",
+   "agent": "coach",
+   "level": "info",
+   "message": "note drafted",
+   "data": null
+  },
+  {
+   "ts": "2026-10-16T22:07:09.012Z",
+   "agent": "review",
+   "level": "info",
+   "message": "reviewer: pass",
+   "data": null
+  },
+  {
+   "ts": "2026-10-16T22:11:09.012Z",
+   "agent": "video",
+   "level": "info",
+   "message": "saved 4.2 MB recording for 0ccc2679 (stays on this Mac)",
+   "data": null
+  },
+  {
+   "ts": "2026-10-16T22:13:09.012Z",
+   "agent": "vision",
+   "level": "info",
+   "message": "face cues aligned: 417 frames, face in 97%",
+   "data": {
+    "afterFollowUps": {
+     "n": 3,
+     "smileDelta": 0.16,
+     "nods": 0
+    },
+    "afterOther": {
+     "n": 2,
+     "smileDelta": 0.13,
+     "nods": 0
+    },
+    "missedBidReactions": []
+   }
+  },
+  {
+   "ts": "2026-10-16T22:13:39.012Z",
+   "agent": "insight",
+   "level": "info",
+   "message": "insight written",
+   "data": null
+  },
+  {
+   "ts": "2026-10-16T22:16:20.012Z",
+   "agent": "followUp",
+   "level": "info",
+   "message": "sent to Jordan Lee",
+   "data": null
+  },
+  {
+   "ts": "2026-10-17T01:16:20.012Z",
+   "agent": "nextStep",
+   "level": "info",
+   "message": "dismissed: Ask two clear questions about their work before you mention yours, in each networking chat this week.",
+   "data": null
+  },
+  {
+   "ts": "2026-10-19T18:31:34.284Z",
+   "agent": "transcribe",
+   "level": "info",
+   "message": "10 turns, speakers A/B; audio discarded",
+   "data": null
+  },
+  {
+   "ts": "2026-10-19T18:31:34.284Z",
+   "agent": "lips",
+   "level": "info",
+   "message": "lip lock: 731 cues, 0 background lines, your voice is A (100% of 10 lines agree)",
+   "data": null
+  },
+  {
+   "ts": "2026-10-19T18:32:19.284Z",
+   "agent": "nlp",
+   "level": "info",
+   "message": "hooks extracted",
+   "data": {
+    "topics": [
+     "Muertos",
+     "Oaxaca",
+     "whole",
+     "Lupe",
+     "father"
+    ],
+    "events": 1,
+    "commitments": 1,
+    "missedBids": 0
+   }
+  },
+  {
+   "ts": "2026-10-19T18:32:19.284Z",
+   "agent": "followUp",
+   "level": "info",
+   "message": "follow-up drafted",
+   "data": {
+    "hooksUsed": [
+     "Muertos",
+     "Lupe",
+     "next month",
+     "I'll bring the pan de muerto for the…"
+    ]
+   }
+  },
+  {
+   "ts": "2026-10-19T18:32:19.284Z",
+   "agent": "nlp",
+   "level": "info",
+   "message": "signals classified; detector agrees with Muse Spark on 4 of 5 questions",
+   "data": {
+    "questions": 5,
+    "followUps": 4
+   }
+  },
+  {
+   "ts": "2026-10-19T18:32:19.284Z",
+   "agent": "pattern",
+   "level": "info",
+   "message": "Your follow-up questions rose from 2 to 4 per conversation over your last 10 conversations.",
+   "data": null
+  },
+  {
+   "ts": "2026-10-19T18:32:19.284Z",
+   "agent": "coach",
+   "level": "info",
+   "message": "note drafted",
+   "data": null
+  },
+  {
+   "ts": "2026-10-19T18:32:19.284Z",
+   "agent": "nextStep",
+   "level": "info",
+   "message": "proposed: Ask at least 4 follow-up questions in each conversation this week, starting with something they told you last time.",
+   "data": null
+  },
+  {
+   "ts": "2026-10-19T18:32:19.284Z",
+   "agent": "review",
+   "level": "info",
+   "message": "reviewer: pass",
+   "data": null
+  },
+  {
+   "ts": "2026-10-19T18:36:19.284Z",
+   "agent": "video",
+   "level": "info",
+   "message": "saved 4.7 MB recording for 63b0e81b (stays on this Mac)",
+   "data": null
+  },
+  {
+   "ts": "2026-10-19T18:38:19.284Z",
+   "agent": "vision",
+   "level": "info",
+   "message": "face cues aligned: 468 frames, face in 97%",
+   "data": {
+    "afterFollowUps": {
+     "n": 4,
+     "smileDelta": 0.17,
+     "nods": 0
+    },
+    "afterOther": {
+     "n": 1,
+     "smileDelta": 0.14,
+     "nods": 0
+    },
+    "missedBidReactions": []
+   }
+  },
+  {
+   "ts": "2026-10-19T18:38:49.284Z",
+   "agent": "insight",
+   "level": "info",
+   "message": "insight written",
+   "data": null
+  },
+  {
+   "ts": "2026-10-19T18:56:30.284Z",
+   "agent": "followUp",
+   "level": "info",
+   "message": "sent to Abuela",
+   "data": null
+  },
+  {
+   "ts": "2026-10-19T21:56:30.284Z",
+   "agent": "nextStep",
+   "level": "info",
+   "message": "accepted: Ask at least 4 follow-up questions in each conversation this week, starting with something they told you last time.",
+   "data": null
+  },
+  {
+   "ts": "2026-10-21T11:01:37.082Z",
+   "agent": "transcribe",
+   "level": "info",
+   "message": "10 turns, speakers A/B; audio discarded",
+   "data": null
+  },
+  {
+   "ts": "2026-10-21T11:02:22.082Z",
+   "agent": "nlp",
+   "level": "info",
+   "message": "hooks extracted",
+   "data": {
+    "topics": [
+     "Dallas",
+     "part",
+     "warehouse",
+     "shrink",
+     "wrap"
+    ],
+    "events": 2,
+    "commitments": 1,
+    "missedBids": 0
+   }
+  },
+  {
+   "ts": "2026-10-21T11:02:22.082Z",
+   "agent": "followUp",
+   "level": "info",
+   "message": "follow-up drafted",
+   "data": {
+    "hooksUsed": [
+     "Dallas",
+     "next week",
+     "next thursday",
+     "I'll send you a thank you note after…"
+    ]
+   }
+  },
+  {
+   "ts": "2026-10-21T11:02:22.082Z",
+   "agent": "nlp",
+   "level": "info",
+   "message": "signals classified; detector agrees with Muse Spark on 4 of 4 questions",
+   "data": {
+    "questions": 4,
+    "followUps": 3
+   }
+  },
+  {
+   "ts": "2026-10-21T11:02:22.082Z",
+   "agent": "pattern",
+   "level": "info",
+   "message": "Your follow-up questions rose from 2 to 3 per conversation over your last 11 conversations.",
+   "data": null
+  },
+  {
+   "ts": "2026-10-21T11:02:22.082Z",
+   "agent": "coach",
+   "level": "info",
+   "message": "note drafted",
+   "data": null
+  },
+  {
+   "ts": "2026-10-21T11:02:22.082Z",
+   "agent": "review",
+   "level": "info",
+   "message": "reviewer: pass",
+   "data": null
+  },
+  {
+   "ts": "2026-10-21T11:06:22.082Z",
+   "agent": "video",
+   "level": "info",
+   "message": "saved 4.9 MB recording for 616e1a9f (stays on this Mac)",
+   "data": null
+  },
+  {
+   "ts": "2026-10-21T11:08:22.082Z",
+   "agent": "vision",
+   "level": "info",
+   "message": "face cues aligned: 482 frames, face in 97%",
+   "data": {
+    "afterFollowUps": {
+     "n": 3,
+     "smileDelta": 0.13,
+     "nods": 0
+    },
+    "afterOther": {
+     "n": 2,
+     "smileDelta": 0.07,
+     "nods": 0
+    },
+    "missedBidReactions": []
+   }
+  },
+  {
+   "ts": "2026-10-21T11:08:52.082Z",
+   "agent": "insight",
+   "level": "info",
+   "message": "insight written",
+   "data": null
+  },
+  {
+   "ts": "2026-10-23T19:31:23.966Z",
+   "agent": "transcribe",
+   "level": "info",
+   "message": "10 turns, speakers A/B; audio discarded",
+   "data": null
+  },
+  {
+   "ts": "2026-10-23T19:31:23.966Z",
+   "agent": "lips",
+   "level": "info",
+   "message": "lip lock: 648 cues, 0 background lines, your voice is A (100% of 10 lines agree)",
+   "data": null
+  },
+  {
+   "ts": "2026-10-23T19:32:08.966Z",
+   "agent": "nlp",
+   "level": "info",
+   "message": "hooks extracted",
+   "data": {
+    "topics": [
+     "Houston",
+     "chemo",
+     "chair",
+     "nurses",
+     "sign"
+    ],
+    "events": 0,
+    "commitments": 1,
+    "missedBids": 0
+   }
+  },
+  {
+   "ts": "2026-10-23T19:32:08.966Z",
+   "agent": "followUp",
+   "level": "info",
+   "message": "follow-up drafted",
+   "data": {
+    "hooksUsed": [
+     "I'll find a route and send it to you."
+    ]
+   }
+  },
+  {
+   "ts": "2026-10-23T19:32:08.966Z",
+   "agent": "nlp",
+   "level": "info",
+   "message": "signals classified; detector agrees with Muse Spark on 5 of 5 questions",
+   "data": {
+    "questions": 5,
+    "followUps": 4
+   }
+  },
+  {
+   "ts": "2026-10-23T19:32:08.966Z",
+   "agent": "pattern",
+   "level": "info",
+   "message": "Your follow-up questions rose from 2 to 4 per conversation over your last 12 conversations.",
+   "data": null
+  },
+  {
+   "ts": "2026-10-23T19:32:08.966Z",
+   "agent": "coach",
+   "level": "info",
+   "message": "note drafted",
+   "data": null
+  },
+  {
+   "ts": "2026-10-23T19:32:08.966Z",
+   "agent": "review",
+   "level": "info",
+   "message": "reviewer: pass",
+   "data": null
+  },
+  {
+   "ts": "2026-10-23T19:36:08.966Z",
+   "agent": "video",
+   "level": "info",
+   "message": "saved 4.2 MB recording for d938c810 (stays on this Mac)",
+   "data": null
+  },
+  {
+   "ts": "2026-10-23T19:38:08.966Z",
+   "agent": "vision",
+   "level": "info",
+   "message": "face cues aligned: 416 frames, face in 96%",
+   "data": {
+    "afterFollowUps": {
+     "n": 4,
+     "smileDelta": 0.16,
+     "nods": 0
+    },
+    "afterOther": {
+     "n": 1,
+     "smileDelta": 0.13,
+     "nods": 0
+    },
+    "missedBidReactions": []
+   }
+  },
+  {
+   "ts": "2026-10-23T19:38:38.966Z",
+   "agent": "insight",
+   "level": "info",
+   "message": "insight written",
+   "data": null
+  },
+  {
+   "ts": "2026-10-25T20:30:00.000Z",
+   "agent": "pattern",
+   "level": "info",
+   "message": "Your follow-up questions rose from 2 to 4 per conversation over your last 12 conversations.",
+   "data": null
+  }
+ ]
+}

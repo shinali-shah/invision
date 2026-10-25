@@ -22,7 +22,8 @@ export function createServer({ config: cfg = config, quiet = false, mockSpeed = 
   const store = openStore(cfg.dbPath === ':memory:' ? ':memory:' : resolve(root, cfg.dbPath));
   const log = createLogger(store, { quiet });
   const llm = createLlm({ apiKey: cfg.apiKey, mock: cfg.mock, model: cfg.sparkModel });
-  seedDemo(store);
+  // A synthetic account (npm run synthetic) brings its own history; the two sample calls would only muddle it.
+  if (store.getKv('dataset')?.name !== 'synthetic') seedDemo(store);
   refreshHooks(store);
 
   const stage = createStageHub({ mock: cfg.mock });
