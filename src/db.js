@@ -21,6 +21,8 @@ const COLUMNS = {
   reflection: ['reflection', false],
   signals: ['signals', true],
   note: ['note', true],
+  hooks: ['hooks', true],
+  followUp: ['follow_up', true],
   createdAt: ['created_at', false],
 };
 
@@ -39,6 +41,8 @@ function toConversation(row) {
     reflection: row.reflection,
     signals: parse(row.signals),
     note: parse(row.note),
+    hooks: parse(row.hooks),
+    followUp: parse(row.follow_up),
   };
 }
 
@@ -48,6 +52,9 @@ export function openStore(path = ':memory:') {
   if (path !== ':memory:') mkdirSync(dirname(path), { recursive: true });
   const db = new DatabaseSync(path);
   db.exec(SCHEMA);
+  // Databases from before hooks/follow-ups existed just get the new columns.
+  const have = new Set(db.prepare('PRAGMA table_info(conversations)').all().map(c => c.name));
+  for (const col of ['hooks', 'follow_up']) if (!have.has(col)) db.exec(`ALTER TABLE conversations ADD COLUMN ${col} TEXT`);
 
   const getConversation = id => toConversation(db.prepare('SELECT * FROM conversations WHERE id = ?').get(id));
   const getStep = id => toStep(db.prepare('SELECT * FROM next_steps WHERE id = ?').get(id));

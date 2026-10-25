@@ -1,6 +1,6 @@
 // Plain counting over the transcript. No model involved, so this is also the fallback.
 
-const QUESTION = /[?¿]/;
+import { isQuestion } from '../nlp/text.js';
 
 export function wordCount(text) {
   return String(text ?? '').trim().split(/\s+/).filter(Boolean).length;
@@ -22,7 +22,7 @@ export function computeRuleSignals(turns, userLabel) {
     }
     userTurns++;
     userTalkMs += duration(turn);
-    if (!QUESTION.test(turn.text)) return;
+    if (!isQuestion(turn.text)) return;
 
     // Only the very next turn counts as the answer.
     const next = turns[i + 1];

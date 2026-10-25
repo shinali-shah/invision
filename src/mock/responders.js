@@ -2,6 +2,8 @@
 // the real model gets and derive something plausible from it, so mock mode still
 // reacts to what was actually said instead of returning canned text.
 
+import { eventLine } from '../agents/followUp.js';
+
 const STOPWORDS = new Set([
   // English
   'about', 'also', 'been', 'from', 'good', 'have', 'just', 'like', 'really', 'that', 'than', 'then',
@@ -157,4 +159,15 @@ function nextStep({ pattern: p, tag } = {}) {
   return { goal: `Ask at least one follow-up question ${tail}` };
 }
 
-export default { classify, coach, review, pattern, nextStep };
+function followUp({ otherName, hooks, tag } = {}) {
+  const name = otherName ? `${otherName.split(/\s+/)[0]}` : '';
+  const topic = hooks?.topics?.[0]?.term;
+  const event = hooks?.events?.[0];
+  const promise = hooks?.commitments?.[0];
+  const parts = [`${tag === 'family' ? 'Hola' : 'Hey'}${name ? ` ${name}` : ''}! ${topic ? `Loved hearing about ${topic}.` : 'Really enjoyed talking today.'}`];
+  if (event) parts.push(eventLine(event));
+  if (promise) parts.push(`And like I said, ${promise.text.replace(/[.!?]*$/, '.')}`);
+  return { text: parts.join(' '), hooksUsed: [topic, event?.when, promise?.text].filter(Boolean) };
+}
+
+export default { classify, coach, review, pattern, nextStep, followUp };

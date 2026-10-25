@@ -4,6 +4,8 @@ import { generateNote } from './agents/coach.js';
 import { reviewNote } from './agents/reviewer.js';
 import { findPattern } from './agents/patternFinder.js';
 import { proposeNextStep } from './agents/nextStep.js';
+import { draftFollowUp } from './agents/followUp.js';
+import { extractHooks } from './nlp/hooks.js';
 
 const TOO_SHORT = Object.freeze({
   text: null, suggestion: null, citedTurnIds: [], status: 'dropped', reason: 'too_short', source: 'fallback',
@@ -16,6 +18,12 @@ export async function processConversation({ store, llm, log, id, reflection }) {
   const userLabel = convo.userLabel ?? turns[0]?.speaker ?? 'A';
 
   const ruleSignals = computeRuleSignals(turns, userLabel);
+  const hooks = extractHooks(turns, userLabel, { otherName: convo.otherName });
+  store.updateConversation(id, { hooks });
+  log('nlp', 'info', 'hooks extracted', {
+    topics: hooks.topics.map(t => t.term), events: hooks.events.length,
+    commitments: hooks.commitments.length, missedBids: hooks.missedBids.length,
+  });
 
   if (turns.length < 2) {
     log('pipeline', 'info', `conversation ${id.slice(0, 8)} too short to coach (${turns.length} turns)`);
@@ -24,17 +32,48 @@ export async function processConversation({ store, llm, log, id, reflection }) {
     return convo;
   }
 
-  const signals = await classifySignals({ llm, turns, userLabel, tag: convo.tag, ruleSignals });
-  log('nlp', signals.source === 'rules-only' ? 'warn' : 'info',
-    signals.source === 'rules-only' ? 'Muse Spark analysis failed, using rule counts only' : 'signals classified',
-    { questions: signals.userQuestions, followUps: signals.followUps });
+  const signals = withDetector(
+    await classifySignals({ llm, turns, userLabel, tag: convo.tag, ruleSignals }),
+    hooks.followUpDetector,
+    log,
+  );
 
   store.updateConversation(id, { signals });
-  const note = await coachAndReview({ store, llm, log, convo: { ...convo, signals, userLabel } });
+  const note = await coachAndReview({ store, llm, log, convo: { ...convo, signals, userLabel, hooks } });
   convo = store.updateConversation(id, { note });
 
-  await refreshMemory({ store, llm, log });
-  return convo;
+  // A message they already sent or rewrote by hand is theirs; reprocessing doesn't touch it.
+  const keep = convo.followUp && (convo.followUp.status === 'sent' || convo.followUp.source === 'edited');
+  const [followUp] = await Promise.all([
+    keep ? convo.followUp : writeFollowUp({ llm, log, convo: { ...convo, hooks } }),
+    refreshMemory({ store, llm, log }),
+  ]);
+  return store.updateConversation(id, { followUp });
+}
+
+// The lexical detector is the fallback when Muse Spark is down, and a cross-check when it isn't.
+export function withDetector(signals, detector, log) {
+  const byTurn = new Map((detector ?? []).map(d => [d.turnId, d]));
+  if (signals.source === 'rules-only') {
+    const questions = signals.questions.map(q => ({ ...q, isFollowUp: byTurn.get(q.turnId)?.isFollowUp ?? null }));
+    log('nlp', 'warn', 'Muse Spark analysis failed, follow-ups from the lexical detector');
+    return { ...signals, questions, followUps: questions.filter(q => q.isFollowUp === true).length, source: 'rules-only' };
+  }
+  const judged = signals.questions.filter(q => q.isFollowUp !== null && byTurn.has(q.turnId));
+  const agree = judged.filter(q => byTurn.get(q.turnId).isFollowUp === q.isFollowUp).length;
+  log('nlp', 'info', `signals classified; detector agrees with Muse Spark on ${agree} of ${judged.length} questions`,
+    { questions: signals.userQuestions, followUps: signals.followUps });
+  return { ...signals, detectorAgreement: { agree, of: judged.length } };
+}
+
+export async function writeFollowUp({ llm, log, convo }) {
+  const draft = await draftFollowUp({
+    llm, tag: convo.tag, otherName: convo.otherName, hooks: convo.hooks, turns: convo.turns, userLabel: convo.userLabel,
+  });
+  log('followUp', draft.source === 'template' ? 'warn' : 'info',
+    draft.source === 'template' ? 'follow-up from template (Muse draft missing or not grounded)' : 'follow-up drafted',
+    { hooksUsed: draft.hooksUsed });
+  return { ...draft, status: 'draft', sentAt: null };
 }
 
 // Demo moment 1:45: same signals, different relationship, new note.
@@ -54,6 +93,7 @@ async function coachAndReview({ store, llm, log, convo }) {
     turns: convo.turns,
     userLabel: convo.userLabel,
     reflection: convo.reflection ?? '',
+    hooks: convo.hooks,
     lastNotes: store.recentNotes(3, convo.id),
   });
   if (draft.status === 'dropped') log('coach', 'warn', 'coaching agent failed, showing raw counts');

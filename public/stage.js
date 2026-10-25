@@ -11,6 +11,9 @@ const METRIC_LABELS = {
 };
 const STEP_STATUS = { proposed: 'Suggested', accepted: 'Accepted', changed: 'Your version' };
 const PROCESSING_GIVE_UP_MS = 30000;
+const BRIEF_LABELS = { commitment: 'Follow through', event: 'Ask how it went', topic: 'Bring up', suggestion: 'Try' };
+// These two get the big numbers; the rest of the comparison sits underneath.
+const HERO_METRICS = ['followUps', 'missedBids'];
 
 const $ = (id) => document.getElementById(id);
 
@@ -27,6 +30,8 @@ const state = {
   pendingTagId: null,    // a conversation created but not recorded yet
   shownNote: new Map(),  // id -> { tag, key } of what's on screen, for the retag swap
   rendered: new Set(),   // `${list}:${turnId}` already drawn, so only new lines animate
+  compare: new Map(),    // id -> { key, data } so we only refetch when the note or counts change
+  brief: { name: null, data: null, seq: 0 },
 };
 
 // ---------- helpers ----------
@@ -152,6 +157,7 @@ function render() {
     showSection('v-start');
     const pending = state.pendingTagId && state.convos.get(state.pendingTagId);
     tagPill($('start-tag'), pending ? pending.tag : null);
+    renderBrief();
     status.textContent = '';
   } else if (view === 'recording' || view === 'label') {
     showSection('v-script');
@@ -288,6 +294,8 @@ function renderCoaching(convo) {
     el('span', { class: 'st-signal-num', text: showBusy && !(convo && convo.signals) ? '—' : value }),
   )));
 
+  renderExtras(convo, showBusy);
+
   const cited = !showBusy && !dropped ? note.citedTurnIds || [] : [];
   renderLines('coach-lines', turnsFor(id), convo, { cited, emptyText: 'No transcript for this one.' });
   requestAnimationFrame(() => {
@@ -295,6 +303,201 @@ function renderCoaching(convo) {
     const first = $('coach-lines').querySelector('.cited');
     box.scrollTop = first ? Math.max(0, first.offsetTop - box.clientHeight * 0.2) : 0;
   });
+}
+
+// Comparison, follow-up and hooks. Split out so a late /compare can redraw
+// just these without replaying the note animation or the transcript scroll.
+function renderExtras(convo, busy) {
+  const cmp = busy ? null : ensureCompare(convo);
+  const hasCmp = renderCompare(convo, cmp);
+  $('v-coach').classList.toggle('has-compare', hasCmp);
+  $('signals').hidden = hasCmp;
+  renderFollow(busy ? null : convo);
+  renderHooks(busy ? null : convo);
+}
+
+function compareKey(convo) {
+  const n = convo.note || {};
+  return `${convo.tag}|${n.text || n.reason || ''}|${JSON.stringify(convo.signals)}`;
+}
+
+function ensureCompare(convo) {
+  if (!convo || !convo.signals) return null;
+  const id = convo.id;
+  const key = compareKey(convo);
+  const hit = state.compare.get(id);
+  if (hit && hit.key === key) return hit.data;
+  // Keep showing the old numbers while a retag refetches.
+  const entry = { key, data: hit ? hit.data : null };
+  state.compare.set(id, entry);
+  getJson(`/api/conversations/${encodeURIComponent(id)}/compare`)
+    .then((data) => { entry.data = data; })
+    .catch(() => { entry.data = null; })
+    .finally(() => {
+      if (state.compare.get(id) !== entry) return;
+      const c = state.convos.get(id);
+      if (state.convoId === id && state.view === 'coaching' && c && !state.processing.has(id)) renderExtras(c, false);
+    });
+  return entry.data;
+}
+
+const fmtMetric = (key, v) => (key === 'userTalkShare' ? fmtNum(pct(v), '%') : fmtNum(v));
+const betterCls = (b) => (b === true ? 'better' : b === false ? 'worse' : 'same');
+function arrow(m) {
+  if (m.before == null || m.after == null || m.before === m.after) return '=';
+  return m.after > m.before ? '↑' : '↓';
+}
+
+function renderCompare(convo, cmp) {
+  const box = $('compare');
+  const metrics = cmp && Array.isArray(cmp.metrics) ? cmp.metrics : [];
+  if (!convo || !cmp || !cmp.previousId || (!metrics.length && !cmp.suggestion)) {
+    box.hidden = true;
+    box.replaceChildren();
+    return false;
+  }
+  const same = cmp.samePerson ?? cmp.sameperson;
+  const head = ['Compared with last time',
+    cmp.previousAt ? `vs. ${fmtDate(cmp.previousAt)}` : null,
+    same && convo.otherName ? `with ${convo.otherName}` : null,
+  ].filter(Boolean).join(' · ');
+
+  let hero = metrics.filter((m) => HERO_METRICS.includes(m.key));
+  if (!hero.length) hero = metrics.slice(0, 2);
+  const rest = metrics.filter((m) => !hero.includes(m));
+
+  const s = cmp.suggestion;
+  box.replaceChildren(
+    el('p', { class: 'st-cmp-head', text: head }),
+    hero.length ? el('div', { class: 'st-cmp-hero' }, ...hero.map((m) => el('div', { class: `st-cmp-big ${betterCls(m.better)}` },
+      el('span', { class: 'st-cmp-label', text: m.label || m.key }),
+      el('span', { class: 'st-cmp-nums' },
+        el('span', { class: 'st-cmp-before', text: fmtMetric(m.key, m.before) }),
+        el('span', { class: 'st-cmp-to', 'aria-hidden': 'true', text: '→' }),
+        el('span', { class: 'st-cmp-after', text: fmtMetric(m.key, m.after) }),
+        el('span', { class: 'st-cmp-arrow', 'aria-hidden': 'true', text: arrow(m) }),
+      ),
+    ))) : null,
+    rest.length ? el('ul', { class: 'st-cmp-small' }, ...rest.map((m) => el('li', { class: betterCls(m.better) },
+      el('span', { class: 'st-cmp-label', text: m.label || m.key }),
+      el('span', { class: 'st-cmp-nums', text: `${fmtMetric(m.key, m.before)} → ${fmtMetric(m.key, m.after)} ${arrow(m)}` }),
+    ))) : null,
+    s && s.text ? el('p', { class: 'st-cmp-sugg' },
+      el('span', { class: s.followed ? 'st-did yes' : 'st-did', text: s.followed ? '✓ You did it' : 'Not yet' }),
+      el('span', { class: 'st-cmp-sugg-text', text: `Last note: ${s.text}` }),
+    ) : null,
+  );
+  box.hidden = false;
+  return true;
+}
+
+function renderFollow(convo) {
+  const box = $('follow');
+  const fu = convo && convo.followUp;
+  if (!fu || !fu.text) {
+    box.hidden = true;
+    box.replaceChildren();
+    delete box.dataset.status;
+    return;
+  }
+  const sent = fu.status === 'sent';
+  const statusKey = `${convo.id}:${fu.status}`;
+  const justSent = sent && box.dataset.status && box.dataset.status !== statusKey;
+  box.dataset.status = statusKey;
+  const used = Array.isArray(fu.hooksUsed) && fu.hooksUsed.length ? `uses: ${fu.hooksUsed.join(' · ')}` : '';
+  box.replaceChildren(
+    el('p', { class: 'st-follow-head' },
+      el('span', { text: 'Follow-up message' }),
+      el('span', { class: `st-follow-status${sent ? ' sent' : ''}`, text: sent ? 'Sent ✓' : 'Draft' }),
+    ),
+    el('blockquote', { class: 'st-follow-text', text: fu.text }),
+    used ? el('p', { class: 'st-follow-used', text: used }) : null,
+  );
+  box.classList.toggle('long', fu.text.length > 220);
+  if (justSent) {
+    box.classList.remove('pop');
+    void box.offsetWidth;
+    box.classList.add('pop');
+  }
+  box.hidden = false;
+}
+
+function renderHooks(convo) {
+  const box = $('hooks');
+  const h = convo && convo.hooks;
+  if (!h) { box.hidden = true; box.replaceChildren(); return; }
+  const list = (k) => (Array.isArray(h[k]) ? h[k] : []);
+  const groups = [
+    ['Topics', list('topics').map((t) => t.term), ''],
+    ['Coming up', list('events').map((e) => e.text), ''],
+    ['You promised', list('commitments').map((c) => c.text), ''],
+    ['Missed moments', list('missedBids').map((b) => b.cue), 'missed'],
+  ].filter(([, items]) => items.filter(Boolean).length);
+  const qs = list('followUpDetector');
+  if (!groups.length && !qs.length) { box.hidden = true; box.replaceChildren(); return; }
+  box.replaceChildren(
+    el('p', { class: 'st-hooks-head' },
+      el('span', { text: 'What we picked up' }),
+      el('span', { class: 'st-hooks-note', text: 'measured from the transcript, no AI' }),
+    ),
+    ...groups.map(([label, items, cls]) => el('div', { class: 'st-hook-group' },
+      el('span', { class: 'st-hook-label', text: label }),
+      el('span', { class: 'st-hook-chips' },
+        ...items.filter(Boolean).map((t) => el('span', { class: `st-hook-chip ${cls}`.trim(), text: t }))),
+    )),
+    qs.length ? el('p', { class: 'st-hook-detector' },
+      el('span', { class: 'st-hook-label', text: 'Follow-up detector' }),
+      el('span', { text: `${qs.filter((q) => q.isFollowUp).length} of ${qs.length} questions built on what they said` }),
+    ) : null,
+  );
+  box.hidden = false;
+}
+
+// ---------- brief (start view) ----------
+
+function setBriefName(name) {
+  const n = typeof name === 'string' && name.trim().length >= 2 ? name.trim() : null;
+  if (state.brief.name === n) return;
+  const seq = state.brief.seq + 1;
+  // Keep the old brief up until the new one lands, so it doesn't blink between keystrokes.
+  state.brief = { name: n, data: n ? state.brief.data : null, seq };
+  if (!n) return;
+  getJson(`/api/brief?name=${encodeURIComponent(n)}`)
+    .then((d) => {
+      if (state.brief.seq !== seq) return;
+      state.brief.data = (d && d.brief) || null;
+      if (state.view === 'start') render();
+    })
+    .catch(() => {});
+}
+
+function renderBrief() {
+  const box = $('start-brief');
+  const b = state.brief.data;
+  const items = b && Array.isArray(b.items) ? b.items : [];
+  const on = items.length > 0;
+  $('v-start').classList.toggle('has-brief', on);
+  if (!on) { box.hidden = true; box.replaceChildren(); return; }
+  const meta = [
+    b.lastMetAt ? `Last talked ${fmtDate(b.lastMetAt)}` : null,
+    b.conversations ? `${b.conversations} conversation${b.conversations === 1 ? '' : 's'} so far` : null,
+  ].filter(Boolean).join(' · ');
+  box.replaceChildren(
+    el('h1', { class: 'st-brief-title', text: `Before you talk to ${b.otherName || state.brief.name}` }),
+    meta ? el('p', { class: 'st-brief-meta', text: meta }) : null,
+    el('ol', { class: 'st-brief-items' }, ...items.map((it) => {
+      const label = BRIEF_LABELS[it.kind] || it.kind;
+      // Drop a repeated "Follow through:" if the server already wrote one.
+      const t = String(it.text || '');
+      const rest = t.toLowerCase().startsWith(`${label.toLowerCase()}:`) ? t.slice(label.length + 1).trim() : t;
+      const text = rest.charAt(0).toUpperCase() + rest.slice(1);
+      return el('li', { class: `st-brief-item kind-${it.kind}` },
+        el('span', { class: 'st-brief-label', text: label }),
+        el('span', { class: 'st-brief-text', text }),
+      );
+    })),
+  );
+  box.hidden = false;
 }
 
 function fillNote(card, note) {
@@ -431,8 +634,9 @@ async function fetchConvo(id) {
   } catch { /* deleted or server away; the WS will tell us */ }
 }
 
-function setFocus(view, conversationId) {
+function setFocus(view, conversationId, otherName) {
   if (!VIEWS.includes(view)) return;
+  setBriefName(view === 'start' ? otherName : null);
   const prevView = state.view;
   state.view = view;
   state.convoId = conversationId || null;
@@ -462,11 +666,11 @@ function handle(msg) {
       state.mock = !!msg.mock;
       $('mock-badge').hidden = !state.mock;
       refreshMemory();
-      if (msg.focus) setFocus(msg.focus.view, msg.focus.conversationId);
+      if (msg.focus) setFocus(msg.focus.view, msg.focus.conversationId, msg.focus.otherName);
       else render();
       break;
     case 'focus':
-      setFocus(msg.view, id);
+      setFocus(msg.view, id, msg.otherName);
       break;
     case 'conversation': {
       const c = msg.conversation;
@@ -475,6 +679,8 @@ function handle(msg) {
       // Keep the transcript if this update didn't carry one.
       if (prev && !c.turns && prev.turns) c.turns = prev.turns;
       state.convos.set(c.id, c);
+      // Another conversation's note is some other comparison's "last note said".
+      for (const key of [...state.compare.keys()]) if (key !== c.id) state.compare.delete(key);
       if (!c.turns && !c.signals && !c.note) state.pendingTagId = c.id;
       if (c.note || c.signals) settleProcessing(c.id);
       if (c.id === state.convoId || state.view === 'start') render();
@@ -527,6 +733,8 @@ function handle(msg) {
       state.convos.delete(id);
       state.live.delete(id);
       state.doneTurns.delete(id);
+      // Anything compared against the deleted one is stale now.
+      state.compare.clear();
       settleProcessing(id);
       if (state.memory) {
         state.memory.conversations = (state.memory.conversations || []).filter((c) => c.id !== id);

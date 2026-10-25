@@ -20,8 +20,8 @@ export function createStageHub({ mock }) {
     publish(msg) {
       for (const ws of clients) sendTo(ws, msg);
     },
-    focus({ view, conversationId = null }) {
-      lastFocus = { view, conversationId };
+    focus({ view, conversationId = null, otherName = null }) {
+      lastFocus = { view, conversationId, otherName };
       this.publish({ type: 'focus', ...lastFocus });
     },
     close() {

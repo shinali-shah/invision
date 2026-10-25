@@ -62,6 +62,23 @@ The stage follows the phone: live transcript while recording, the note + counts 
 | Coach → review | `src/agents/coach.js` → `reviewer.js` | same |
 | Remember | `src/agents/patternFinder.js`, `nextStep.js`, `src/pipeline.js` | same |
 
+| Hooks + follow-up detector | `src/nlp/` (no model) | – |
+| Follow-up message | `src/agents/followUp.js` (grounded in hooks, checked) | same |
+| Before / after | `src/nlp/compare.js`, `GET /api/conversations/:id/compare` | – |
+| Pre-meeting brief | `src/nlp/brief.js`, `GET /api/brief?name=` | – |
+
+### What's measured vs. what's generated
+
+The numbers and evidence come from deterministic NLP in `src/nlp/` and `src/analysis/rules.js`; Muse Spark is used where language judgment is actually needed, and every output is checked against what the NLP layer found.
+
+| Deterministic (explainable, works offline) | Muse Spark (grounded + validated) |
+|---|---|
+| Questions, talk share, answer length | Is this question a follow-up? (cross-checked against the lexical detector, agreement logged) |
+| Lexical follow-up detector (EN/ES stems, back-references) | Coaching note (reviewer + regex guard; numbers must exist in signals) |
+| Topics, upcoming events, your promises, missed bids | Follow-up message (rejected unless it names a real hook; template fallback) |
+| Before/after deltas, "did you follow last note's suggestion" | Pattern + weekly goal |
+| Pre-meeting brief | – |
+
 Every agent has the spec's fallback (rule counts only / raw counts / signal table / fixed goals / drop the note), so the demo never dead-ends. Logs for each step are in the app's Logs drawer.
 
 ## Demo script (2:00)

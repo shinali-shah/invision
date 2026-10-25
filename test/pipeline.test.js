@@ -58,6 +58,20 @@ test('every Muse call failing still finishes with rule counts and a dropped note
   assert.equal(c.signals.userQuestions, 4);
   assert.equal(c.note.status, 'dropped');
   assert.ok(deps.store.listLogs().some(l => l.level === 'warn'));
+  // No model, but the lexical detector still counts follow-ups and the template still drafts a message
+  assert.ok(Number.isInteger(c.signals.followUps) && c.signals.followUps >= 2);
+  assert.ok(c.hooks.topics.length > 0);
+  assert.equal(c.followUp.source, 'template');
+});
+
+test('with Muse up, the detector cross-checks it and the agreement is logged', async () => {
+  const deps = setup();
+  const id = liveConversation(deps.store);
+  const c = await processConversation({ ...deps, id, reflection: '' });
+  assert.equal(c.signals.detectorAgreement.of, 4);
+  assert.ok(deps.store.listLogs().some(l => /detector agrees with Muse Spark on \d of 4/.test(l.message)));
+  assert.equal(c.followUp.source, 'muse-spark');
+  assert.equal(c.followUp.status, 'draft');
 });
 
 test('a one-turn recording is too short to coach (Review Focus 3)', async () => {

@@ -35,14 +35,21 @@ export const api = {
   nextStep: (id, action, text) =>
     request('POST', `/api/next-step/${enc(id)}`, text === undefined ? { action } : { action, text }),
   logs: () => request('GET', '/api/logs'),
+  getCompare: (id) => request('GET', `/api/conversations/${enc(id)}/compare`),
+  // {} drafts one if there isn't one, { regenerate: true } rewrites, { text } saves an edit.
+  followUp: (id, body = {}) => request('POST', `/api/conversations/${enc(id)}/follow-up`, body),
+  markFollowUpSent: (id, text) => request('POST', `/api/conversations/${enc(id)}/follow-up/sent`, text ? { text } : {}),
+  getBrief: (name) => request('GET', `/api/brief?name=${enc(name)}`),
   // Tells the projector page which screen the phone is on. Fire and forget:
   // the stage is a nice-to-have, so it never gets to break the phone flow.
-  stageFocus: (view, conversationId) => {
+  stageFocus: (view, conversationId, otherName) => {
     try {
+      const body = { view, conversationId: conversationId ?? null };
+      if (otherName) body.otherName = otherName;
       fetch('/api/stage/focus', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ view, conversationId: conversationId ?? null }),
+        body: JSON.stringify(body),
         keepalive: true,
       }).catch(() => {});
     } catch { /* never mind */ }

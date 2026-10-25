@@ -28,6 +28,7 @@ function systemPrompt(tag) {
     `- This is a ${tag} conversation. Focus on: ${TAG_FOCUS[tag]}.`,
     '- If `lastNotes` is not empty, do not repeat their observations or suggestions; find something new.',
     '- If the user wrote a `reflection`, take it into account.',
+    '- `hooks` was measured from the transcript without a model: topics they brought up, things coming up for them, promises you made, and missedBids (turns where they shared something and your next line moved on). A missed bid is often the most useful thing to point out; quote what they said.',
     '- `citedTurnIds` lists the turnIds your note refers to.',
     '',
     'In `turns`, speaker "you" is the user and "them" is the other person.',
@@ -38,11 +39,12 @@ function systemPrompt(tag) {
 
 const failed = () => ({ text: null, suggestion: null, citedTurnIds: [], status: 'dropped', reason: 'coach_failed', source: 'fallback' });
 
-export async function generateNote({ llm, tag, signals, turns, userLabel, reflection, lastNotes = [] }) {
+export async function generateNote({ llm, tag, signals, turns, userLabel, reflection, hooks = null, lastNotes = [] }) {
   const user = {
     tag,
     signals,
     reflection: reflection || null,
+    hooks: hooks && { topics: hooks.topics, events: hooks.events, commitments: hooks.commitments, missedBids: hooks.missedBids },
     // older callers hand us whole Note objects, newer ones just the text
     lastNotes: (lastNotes ?? []).map(n => (typeof n === 'string' ? n : [n?.text, n?.suggestion].filter(Boolean).join(' '))).filter(Boolean),
     turns: turns.map(t => ({ turnId: t.turnId, speaker: t.speaker === userLabel ? 'you' : 'them', text: t.text })),

@@ -28,6 +28,7 @@
     <section class="st-view st-start" id="v-start" aria-labelledby="start-line">
       <p class="st-start-name">Playback</p>
       <h1 class="st-start-line" id="start-line">Most tools only look at what you said. Playback looks at how the other person responded.</h1>
+      <div class="st-brief" id="start-brief" hidden></div>
       <div class="st-start-foot">
         <span class="st-tag" id="start-tag" hidden></span>
         <span class="st-wait"><span class="st-breath" aria-hidden="true"></span>Waiting for the conversation…</span>
@@ -63,9 +64,12 @@
           <p class="st-note-sugg" id="note-sugg"></p>
         </article>
         <p class="st-dropped" id="note-dropped" hidden></p>
+        <section class="st-compare" id="compare" hidden aria-label="Compared with last time"></section>
         <ul class="st-signals" id="signals" aria-label="Your counts"></ul>
       </div>
       <div class="st-coach-side">
+        <section class="st-follow" id="follow" hidden aria-label="Follow-up message"></section>
+        <section class="st-hooks" id="hooks" hidden aria-label="What we picked up"></section>
         <div class="st-scroll" id="coach-scroll">
           <ol class="st-lines st-lines-compact" id="coach-lines"></ol>
         </div>

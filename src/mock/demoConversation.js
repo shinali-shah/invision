@@ -94,7 +94,7 @@ const secondTurns = toTurns([
   ['B', 'Los grandes, the ones from the seeds my sister sent me from home. She saves them every year in little paper envelopes with the date written on them.', 6800],
   ['A', 'Your sister still saves the seeds? Since when?', 2500],
   ['B', 'Since we were girls. Our father taught her, and she never stopped. When I moved here, the first thing she gave me was a jar of seeds wrapped in a dish towel.', 7400],
-  ['A', 'Seeds in a dish towel, that makes me want to call her.', 2600],
+  ["A", "Seeds in a dish towel, that makes me want to call her. I'll call you Sunday to hear more about her.", 3600],
   ['B', 'Llámala, she would love that.', 1600],
 ]);
 
@@ -128,8 +128,8 @@ export const SEED_CONVERSATIONS = Object.freeze([
     reflection: 'Better. I want to ask more about where she grew up.',
     signals: seedSignals(secondTurns, { followUpIds: [3, 5], storyIds: [3, 5], reflections: 1 }),
     note: {
-      text: 'You asked 3 questions and 2 were follow-ups. You heard 2 stories after your follow-ups. Next call, try asking about the home her sister sends the seeds from.',
-      suggestion: 'Next call, try asking about the home her sister sends the seeds from.',
+      text: 'You asked 3 questions and 2 were follow-ups. You heard 2 stories after your follow-ups. Next call, try asking about Oaxaca, the home her sister sends the seeds from.',
+      suggestion: 'Next call, try asking about Oaxaca, the home her sister sends the seeds from.',
       citedTurnIds: [3, 5],
       status: 'shown',
       source: 'muse-spark',

@@ -326,6 +326,156 @@ body.stage-body {
   color: var(--ink);
 }
 
+/* ---- compared with last time: the proof it made a difference ---- */
+.st-compare { margin-top: auto; border-top: 3px solid var(--line); padding-top: calc(var(--u) * 1.3); }
+.st-compare[hidden], .st-signals[hidden] { display: none; }
+.st-coach.has-compare .st-note-text { font-size: max(36px, calc(var(--u) * 2.25)); }
+.st-coach.has-compare .st-note.long .st-note-text { font-size: max(32px, calc(var(--u) * 1.95)); }
+.st-coach.has-compare .st-note-sugg { font-size: max(26px, calc(var(--u) * 1.6)); }
+.st-cmp-head {
+  margin: 0 0 calc(var(--u) * 1);
+  font: 600 max(17px, calc(var(--u) * 1.1)) / 1.2 var(--sans);
+  color: var(--muted);
+}
+.st-cmp-hero { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: calc(var(--u) * 2); }
+.st-cmp-big { display: flex; flex-direction: column; gap: .2em; }
+.st-cmp-label { font: 500 max(17px, calc(var(--u) * 1.05)) / 1.25 var(--sans); color: var(--muted); }
+.st-cmp-big .st-cmp-nums {
+  display: flex; align-items: baseline; gap: .3em;
+  font: 600 max(56px, calc(var(--u) * 4.4)) / 1 var(--serif);
+  font-variant-numeric: tabular-nums lining-nums;
+}
+.st-cmp-before { color: var(--muted); font-weight: 400; }
+.st-cmp-to { color: var(--muted); font-size: .6em; font-weight: 400; }
+.st-cmp-arrow { font: 700 .55em/1 var(--sans); color: var(--muted); margin-left: .15em; }
+.st-cmp-big.better .st-cmp-after, .st-cmp-big.better .st-cmp-arrow { color: var(--them); }
+.st-cmp-big.worse .st-cmp-arrow { color: var(--you); }
+.st-cmp-small {
+  list-style: none; margin: calc(var(--u) * 1.2) 0 0; padding: 0;
+  display: flex; flex-wrap: wrap; gap: calc(var(--u) * .6) calc(var(--u) * 2.4);
+}
+.st-cmp-small li { display: flex; align-items: baseline; gap: .6em; }
+.st-cmp-small .st-cmp-nums {
+  font: 600 max(22px, calc(var(--u) * 1.45)) / 1.1 var(--sans);
+  font-variant-numeric: tabular-nums;
+}
+.st-cmp-small li.better .st-cmp-nums { color: var(--them); }
+.st-cmp-sugg {
+  margin: calc(var(--u) * 1.2) 0 0;
+  display: flex; align-items: baseline; gap: .8em;
+  font: italic 400 max(22px, calc(var(--u) * 1.4)) / 1.3 var(--serif);
+  color: var(--muted);
+}
+.st-cmp-sugg-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.st-did {
+  flex: none;
+  font: 700 max(17px, calc(var(--u) * 1.05)) / 1 var(--sans); font-style: normal;
+  padding: .4em .9em; border-radius: 999px;
+  background: var(--surface-2); color: var(--muted);
+}
+.st-did.yes { background: var(--them); color: var(--surface); }
+
+/* ---- side column: follow-up message + hooks above the transcript ---- */
+.st-coach-side { gap: calc(var(--u) * 1.6); }
+.st-follow, .st-hooks { flex: none; }
+.st-follow[hidden], .st-hooks[hidden] { display: none; }
+.st-follow {
+  background: var(--surface);
+  border-left: calc(var(--u) * .4) solid var(--them);
+  border-radius: 0 calc(var(--u) * 1.6) calc(var(--u) * 1.6) 0;
+  padding: calc(var(--u) * 1.4) calc(var(--u) * 1.8);
+}
+.st-follow.pop { animation: stepPop .7s ease-out; }
+.st-follow-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 1em;
+  margin: 0 0 calc(var(--u) * .7);
+  font: 600 max(17px, calc(var(--u) * 1.05)) / 1.2 var(--sans);
+  color: var(--muted);
+}
+.st-follow-status {
+  font-size: .9em; font-weight: 700;
+  padding: .3em .85em; border-radius: 999px;
+  background: var(--surface-2); color: var(--ink);
+}
+.st-follow-status.sent { background: var(--them); color: var(--surface); }
+.st-follow-text {
+  margin: 0;
+  font: italic 400 max(26px, calc(var(--u) * 1.7)) / 1.35 var(--serif);
+  text-wrap: pretty;
+  display: -webkit-box; -webkit-line-clamp: 6; -webkit-box-orient: vertical; overflow: hidden;
+}
+.st-follow-text::before { content: "“"; }
+.st-follow-text::after { content: "”"; }
+.st-follow.long .st-follow-text { font-size: max(22px, calc(var(--u) * 1.4)); }
+.st-follow-used {
+  margin: calc(var(--u) * .7) 0 0;
+  font: 600 max(15px, calc(var(--u) * .95)) / 1.2 var(--sans);
+  color: var(--them);
+}
+
+.st-hooks { display: grid; gap: calc(var(--u) * .7); }
+.st-hooks-head {
+  margin: 0; display: flex; align-items: baseline; gap: .8em; flex-wrap: wrap;
+  font: 600 max(17px, calc(var(--u) * 1.05)) / 1.2 var(--sans);
+}
+.st-hooks-note { font-weight: 500; color: var(--muted); font-size: .9em; }
+.st-hook-group, .st-hook-detector {
+  margin: 0;
+  display: grid; grid-template-columns: calc(var(--u) * 9) minmax(0, 1fr); align-items: baseline;
+  gap: calc(var(--u) * .45);
+  font: 500 max(18px, calc(var(--u) * 1.1)) / 1.2 var(--sans);
+}
+.st-hook-label {
+  font: 700 max(15px, calc(var(--u) * .9)) / 1.2 var(--sans);
+  color: var(--muted);
+}
+.st-hook-chips { display: flex; flex-wrap: wrap; gap: calc(var(--u) * .45); min-width: 0; }
+.st-hook-chip {
+  padding: .3em .8em; border-radius: 999px;
+  background: var(--surface-2);
+  max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.st-hook-chip.missed { background: none; box-shadow: inset 0 0 0 2px var(--you); }
+
+/* ---- start: pre-meeting brief replaces the tagline ---- */
+.st-brief[hidden] { display: none; }
+.st-start.has-brief .st-start-line, .st-start.has-brief .st-start-name { display: none; }
+.st-brief-title {
+  margin: 0;
+  font: 400 calc(var(--u) * 4.2) / 1.1 var(--serif);
+  letter-spacing: -0.02em;
+}
+.st-brief-meta {
+  margin: calc(var(--u) * 1) 0 0;
+  font: 600 max(20px, calc(var(--u) * 1.3)) / 1.2 var(--sans);
+  color: var(--muted);
+}
+.st-brief-items {
+  list-style: none; margin: calc(var(--u) * 3) 0 0; padding: 0;
+  display: grid; gap: calc(var(--u) * 1.6);
+  max-width: 60em;
+}
+.st-brief-item {
+  display: grid; grid-template-columns: calc(var(--u) * 14) minmax(0, 1fr); align-items: baseline;
+  gap: calc(var(--u) * 1.6);
+  animation: lineIn .45s ease-out both;
+}
+.st-brief-item:nth-child(2) { animation-delay: .08s; }
+.st-brief-item:nth-child(3) { animation-delay: .16s; }
+.st-brief-item:nth-child(4) { animation-delay: .24s; }
+.st-brief-label {
+  text-align: right;
+  font: 700 max(18px, calc(var(--u) * 1.15)) / 1.2 var(--sans);
+  color: var(--them);
+}
+.st-brief-item.kind-commitment .st-brief-label { color: var(--you); }
+.st-brief-text {
+  padding-left: calc(var(--u) * 1.4);
+  border-left: 4px solid var(--line);
+  font: 400 max(32px, calc(var(--u) * 2.3)) / 1.25 var(--serif);
+  text-wrap: pretty;
+}
+
 /* retag: the old note slides off, the new one settles in */
 .st-note.swap-out { animation: noteOut .28s ease-in forwards; }
 .st-note.swap-in { animation: noteIn .6s cubic-bezier(.2,.8,.2,1); }

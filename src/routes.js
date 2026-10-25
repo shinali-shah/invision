@@ -1,11 +1,22 @@
 import express from 'express';
 import { TAGS } from './agents/context.js';
-import { processConversation, recoach, refreshMemory } from './pipeline.js';
+import { processConversation, recoach, refreshMemory, writeFollowUp } from './pipeline.js';
+import { compareConversations } from './nlp/compare.js';
+import { buildBrief } from './nlp/brief.js';
+import { groundedIn } from './agents/followUp.js';
+import { samePerson, coachable } from './names.js';
 import { STAGE_VIEWS } from './stage.js';
 
 const STEP_ACTIONS = { accept: 'accepted', change: 'changed', dismiss: 'dismissed' };
 
 const noStage = { publish() {}, focus() {} };
+
+// The conversation this one gets measured against: last time with the same person, else just last time.
+function previousFor(store, convo) {
+  const all = store.listConversations();
+  const earlier = all.slice(0, all.findIndex(c => c.id === convo.id)).filter(coachable);
+  return earlier.filter(c => samePerson(c.otherName, convo.otherName)).at(-1) ?? earlier.at(-1) ?? null;
+}
 
 export function createApp({ store, llm, log, config, publicDir = 'public', stage = noStage }) {
   const app = express();
@@ -89,6 +100,57 @@ export function createApp({ store, llm, log, config, publicDir = 'public', stage
     } catch (err) { next(err); }
   });
 
+  app.get('/api/conversations/:id/compare', (req, res) => {
+    const convo = findConvo(req, res);
+    if (!convo) return;
+    if (!coachable(convo)) return res.json(compareConversations(null, convo));
+    const previous = previousFor(store, convo);
+    res.json({ ...compareConversations(previous, convo), samePerson: !!previous && samePerson(previous.otherName, convo.otherName) });
+  });
+
+  app.post('/api/conversations/:id/follow-up', async (req, res, next) => {
+    try {
+      const convo = findConvo(req, res);
+      if (!convo) return;
+      const { text, regenerate } = req.body ?? {};
+      let followUp;
+      if (typeof text === 'string') {
+        if (!text.trim()) return fail(res, 400, 'Message is empty');
+        const edited = text.trim().slice(0, 1000);
+        followUp = { ...(convo.followUp ?? { status: 'draft', sentAt: null }), text: edited, hooksUsed: groundedIn(edited, convo.hooks), source: 'edited' };
+        if (convo.followUp?.text !== edited) followUp = { ...followUp, status: 'draft', sentAt: null };
+      } else if (convo.followUp && !regenerate) {
+        return res.json(convo.followUp);
+      } else {
+        if (!convo.hooks) return fail(res, 400, 'Get coaching first');
+        followUp = await writeFollowUp({ llm, log, convo });
+      }
+      const updated = store.updateConversation(convo.id, { followUp });
+      stage.publish({ type: 'conversation', conversation: updated });
+      res.json(updated.followUp);
+    } catch (err) { next(err); }
+  });
+
+  app.post('/api/conversations/:id/follow-up/sent', (req, res) => {
+    const convo = findConvo(req, res);
+    if (!convo) return;
+    if (!convo.followUp) return fail(res, 400, 'No follow-up to send');
+    // Whatever the phone actually shared wins over the last saved draft.
+    const shared = typeof req.body?.text === 'string' && req.body.text.trim() ? req.body.text.trim().slice(0, 1000) : convo.followUp.text;
+    const updated = store.updateConversation(convo.id, { followUp: { ...convo.followUp, text: shared, status: 'sent', sentAt: new Date().toISOString() } });
+    log('followUp', 'info', `sent to ${convo.otherName}`);
+    stage.publish({ type: 'conversation', conversation: updated });
+    res.json(updated.followUp);
+  });
+
+  app.get('/api/brief', (req, res) => {
+    const name = typeof req.query.name === 'string' ? req.query.name.trim().slice(0, 80) : '';
+    if (!name) return fail(res, 400, 'name is required');
+    const conversations = store.listConversations().filter(c => coachable(c) && samePerson(c.otherName, name));
+    // Show the name the way they typed it when they met, not however it was typed just now.
+    res.json({ brief: buildBrief({ otherName: conversations.at(-1)?.otherName ?? name, conversations }) });
+  });
+
   app.get('/api/memory', (req, res) => {
     const conversations = store.listConversations();
     const signalTable = conversations.filter(c => c.signals).map(c => ({
@@ -117,9 +179,13 @@ export function createApp({ store, llm, log, config, publicDir = 'public', stage
   });
 
   app.post('/api/stage/focus', (req, res) => {
-    const { view, conversationId } = req.body ?? {};
+    const { view, conversationId, otherName } = req.body ?? {};
     if (!STAGE_VIEWS.includes(view)) return fail(res, 400, `view must be one of ${STAGE_VIEWS.join(', ')}`);
-    stage.focus({ view, conversationId: typeof conversationId === 'string' ? conversationId : null });
+    stage.focus({
+      view,
+      conversationId: typeof conversationId === 'string' ? conversationId : null,
+      otherName: typeof otherName === 'string' && otherName.trim() ? otherName.trim().slice(0, 80) : null,
+    });
     res.status(204).end();
   });
 

@@ -9,6 +9,15 @@ const TAG_FOCUS = {
 };
 const TAG_NAMES = { family: 'Family', friend: 'Friend', networking: 'Networking' };
 
+// Kind -> [glyph, label] for the pre-meeting brief, in the order the server sorts them.
+const BRIEF_KINDS = {
+  commitment: ['↩', 'Follow through'],
+  event: ['◷', 'Ask how it went'],
+  topic: ['#', 'Bring up'],
+  suggestion: ['→', 'Try'],
+};
+const BRIEF_DEBOUNCE_MS = 400;
+
 const FRAME_SAMPLES = 1920; // 80 ms at 24 kHz = 3840 bytes
 const DONE_TIMEOUT_MS = 20000;
 
@@ -143,12 +152,73 @@ function updateRecordEnabled() {
 
 function resetStart() {
   $('other-name').value = '';
+  clearTimeout(briefTimer);
+  briefSeq += 1;
+  renderBrief(null);
   $('consent').checked = false;
   setCheckedTag('tag-start', 'family');
   updateFocus();
   updateRecordEnabled();
   showError('start-error', null);
   showView('start');
+}
+
+// ---------- pre-meeting brief ----------
+
+let briefTimer = null;
+let briefSeq = 0;
+
+function onNameInput() {
+  clearTimeout(briefTimer);
+  briefTimer = setTimeout(loadBrief, BRIEF_DEBOUNCE_MS);
+}
+
+async function loadBrief() {
+  const name = $('other-name').value.trim();
+  const seq = ++briefSeq;
+  const asked = name.length >= 2 ? name : null;
+  if ($('view-start').hidden) return;
+  api.stageFocus('start', null, asked);
+  if (!asked) { renderBrief(null); return; }
+  let brief = null;
+  try {
+    const data = await api.getBrief(asked);
+    brief = data && data.brief;
+  } catch { /* no brief is fine; it's a bonus */ }
+  // Typed more since, or already recording.
+  if (seq !== briefSeq || $('view-start').hidden) return;
+  renderBrief(brief);
+}
+
+// Server text sometimes starts with the same words as our label ("Follow through: …").
+function stripLead(text, label) {
+  const t = String(text || '');
+  if (!t.toLowerCase().startsWith(`${label.toLowerCase()}:`)) return t;
+  const rest = t.slice(label.length + 1).trim();
+  return rest.charAt(0).toUpperCase() + rest.slice(1);
+}
+
+function renderBrief(brief) {
+  const card = $('brief-card');
+  const items = brief && Array.isArray(brief.items) ? brief.items : [];
+  if (!items.length) { card.hidden = true; card.replaceChildren(); return; }
+  const meta = [
+    brief.lastMetAt ? `Last talked ${fmtDate(brief.lastMetAt)}` : null,
+    brief.conversations ? `${brief.conversations} conversation${brief.conversations === 1 ? '' : 's'}` : null,
+  ].filter(Boolean).join(' · ');
+  card.replaceChildren(
+    el('h2', { class: 'subtitle', id: 'brief-title', text: `Before you talk to ${brief.otherName || 'them'}` }),
+    meta ? el('p', { class: 'card-meta', text: meta }) : null,
+    el('ul', { class: 'brief-items' }, ...items.map((it) => {
+      const [glyph, label] = BRIEF_KINDS[it.kind] || ['•', 'Note'];
+      return el('li', { class: `brief-item kind-${it.kind}` },
+        el('span', { class: 'brief-glyph', 'aria-hidden': 'true', text: glyph }),
+        el('span', { class: 'brief-label', text: label }),
+        el('span', { class: 'brief-text', text: stripLead(it.text, label) }),
+      );
+    })),
+  );
+  card.hidden = false;
 }
 
 // ---------- recording ----------
@@ -522,9 +592,288 @@ function showCoaching(convo) {
   $('coach-transcript').dataset.empty = 'No transcript for this one.';
   renderTranscript('coach-transcript', convo.turns || [], convo, { cited });
 
+  renderHooks(convo);
+  renderFollowUp(convo);
+  loadCompare(convo);
+
   setCheckedTag('tag-retag', convo.tag);
   showView('coaching');
   $('coach-title').focus({ preventScroll: true });
+}
+
+// Scrolls the coaching transcript to a turn and flashes it.
+function pointAtTurn(turnId, also) {
+  const list = $('coach-transcript');
+  const line = list.querySelector(`[data-turn="${turnId}"]`);
+  if (!line) return;
+  for (const old of list.querySelectorAll('.flagged')) old.classList.remove('flagged');
+  for (const id of [turnId, also]) {
+    const node = id == null ? null : list.querySelector(`[data-turn="${id}"]`);
+    if (node) { void node.offsetWidth; node.classList.add('flagged'); }
+  }
+  line.scrollIntoView({ block: 'center', behavior: 'smooth' });
+}
+
+function turnText(convo, turnId) {
+  const t = (convo.turns || []).find((x) => x.turnId === turnId);
+  return t ? t.text : null;
+}
+
+// ---- compared with last time ----
+
+let compareSeq = 0;
+
+async function loadCompare(convo) {
+  const card = $('compare-card');
+  const seq = ++compareSeq;
+  // Keep the old numbers up during a retag of the same conversation; wipe them otherwise.
+  if (card.dataset.id !== convo.id) { card.hidden = true; card.replaceChildren(); }
+  if (!convo.signals) { card.hidden = true; return; }
+  let cmp = null;
+  try { cmp = await api.getCompare(convo.id); } catch { /* endpoint missing or failed: just no card */ }
+  if (seq !== compareSeq || !stillOn('coaching', convo.id)) return;
+  renderCompare(state.convo, cmp);
+}
+
+function fmtMetric(key, v) {
+  if (key === 'userTalkShare') return fmtNum(talkSharePct(v), '%');
+  return fmtNum(v);
+}
+
+function compareArrow(m) {
+  if (m.before == null || m.after == null || m.after === m.before) return '=';
+  return m.after > m.before ? '↑' : '↓';
+}
+
+function betterClass(b) {
+  return b === true ? 'better' : b === false ? 'worse' : 'same';
+}
+
+function renderCompare(convo, cmp) {
+  const card = $('compare-card');
+  card.dataset.id = convo.id;
+  const metrics = cmp && Array.isArray(cmp.metrics) ? cmp.metrics : [];
+  if (!cmp || !cmp.previousId || (!metrics.length && !cmp.suggestion)) {
+    card.hidden = true; card.replaceChildren(); return;
+  }
+  const same = cmp.samePerson ?? cmp.sameperson;
+  const sub = [
+    cmp.previousAt ? `vs. ${fmtDate(cmp.previousAt)}` : 'vs. your last one',
+    same && convo.otherName ? `with ${convo.otherName}` : null,
+  ].filter(Boolean).join(' ');
+
+  const rows = metrics.map((m) => el('li', { class: `cmp-row ${betterClass(m.better)}` },
+    el('span', { class: 'cmp-label', text: m.label || m.key }),
+    el('span', { class: 'cmp-vals' },
+      el('span', { class: 'cmp-before', text: fmtMetric(m.key, m.before) }),
+      el('span', { class: 'cmp-to', 'aria-hidden': 'true', text: '→' }),
+      el('span', { class: 'cmp-after', text: fmtMetric(m.key, m.after) }),
+    ),
+    el('span', { class: 'cmp-arrow', 'aria-hidden': 'true', text: compareArrow(m) }),
+  ));
+
+  let sugg = null;
+  if (cmp.suggestion && cmp.suggestion.text) {
+    const s = cmp.suggestion;
+    const evidence = s.followed && s.evidenceTurnId != null ? turnText(convo, s.evidenceTurnId) : null;
+    sugg = el('div', { class: 'cmp-sugg' },
+      el('p', { class: 'cmp-sugg-text' },
+        el('span', { class: 'cmp-sugg-lead', text: 'Last note said: ' }),
+        document.createTextNode(s.text)),
+      el('span', { class: s.followed ? 'badge did' : 'badge', text: s.followed ? '✓ You did it' : 'Not yet' }),
+      evidence ? el('button', {
+        type: 'button', class: 'evidence',
+        onclick: () => pointAtTurn(s.evidenceTurnId),
+      }, el('span', { class: 'evidence-q', text: `“${evidence}”` })) : null,
+    );
+  }
+
+  card.replaceChildren(
+    el('div', { class: 'card-head' },
+      el('h2', { class: 'subtitle', id: 'compare-title', text: 'Compared with last time' }),
+      el('span', { class: 'card-meta', text: sub })),
+    rows.length ? el('ul', { class: 'cmp-rows' }, ...rows) : null,
+    sugg,
+  );
+  card.hidden = false;
+}
+
+// ---- what we picked up ----
+
+function chipList(items, toChip) {
+  return el('ul', { class: 'hook-chips' }, ...items.map((it) => el('li', {}, toChip(it))));
+}
+
+function renderHooks(convo) {
+  const card = $('hooks-card');
+  const h = convo.hooks;
+  if (!h) { card.hidden = true; card.replaceChildren(); return; }
+  const list = (k) => (Array.isArray(h[k]) ? h[k] : []);
+  const groups = [];
+  const group = (label, items, toChip) => {
+    if (items.length) groups.push(el('div', { class: 'hook-group' }, el('h3', { class: 'hook-label', text: label }), chipList(items, toChip)));
+  };
+  const plain = (text) => el('span', { class: 'hook-chip', text });
+
+  group('Topics', list('topics'), (t) => plain(t.term));
+  group('Coming up', list('events'), (e) => plain(e.when && !String(e.text).includes(e.when) ? `${e.text} (${e.when})` : e.text));
+  group('You promised', list('commitments'), (c) => plain(c.text));
+  group('Missed moments', list('missedBids'), (b) => {
+    const said = turnText(convo, b.turnId);
+    // Only a button when there's a transcript line to jump to.
+    return said != null
+      ? el('button', { type: 'button', class: 'hook-chip missed', onclick: () => pointAtTurn(b.turnId, b.replyTurnId) }, b.cue || said)
+      : el('span', { class: 'hook-chip missed', text: b.cue || 'A moment you moved past' });
+  });
+
+  const qs = list('followUpDetector');
+  const detector = qs.length ? el('p', { class: 'hook-detector' },
+    el('span', { class: 'hook-label', text: 'Follow-up detector: ' }),
+    document.createTextNode(`${qs.filter((q) => q.isFollowUp).length} of ${qs.length} question${qs.length === 1 ? '' : 's'} built on what they said`),
+  ) : null;
+
+  if (!groups.length && !detector) { card.hidden = true; card.replaceChildren(); return; }
+  card.replaceChildren(
+    el('div', { class: 'card-head' },
+      el('h2', { class: 'subtitle', id: 'hooks-title', text: 'What we picked up' }),
+      el('span', { class: 'card-meta', text: 'Measured from the transcript. No AI.' })),
+    ...groups,
+    detector,
+  );
+  card.hidden = false;
+}
+
+// ---- follow-up message ----
+
+function renderFollowUp(convo) {
+  const card = $('follow-card');
+  const note = convo.note;
+  const hasNote = note && note.status !== 'dropped' && note.text;
+  const fu = convo.followUp;
+  const id = convo.id;
+  const err = el('p', { class: 'error', role: 'alert', hidden: true });
+  const fail = (e) => { err.textContent = e.message; err.hidden = false; };
+  const head = el('h2', { class: 'subtitle', id: 'follow-title', text: 'Follow-up message' });
+
+  // One request at a time; the rest of the card sits still until it lands.
+  const run = async (busyText, call, controls) => {
+    err.hidden = true;
+    card.setAttribute('aria-busy', 'true');
+    controls.forEach((c) => { c.disabled = true; });
+    const status = card.querySelector('.follow-status');
+    if (status) status.textContent = busyText;
+    try {
+      const updated = await call();
+      if (!stillOn('coaching', id)) return;
+      state.convo = { ...state.convo, followUp: updated };
+      renderFollowUp(state.convo);
+    } catch (e) {
+      if (!stillOn('coaching', id)) return;
+      card.removeAttribute('aria-busy');
+      controls.forEach((c) => { c.disabled = false; });
+      if (status) status.textContent = '';
+      fail(e);
+    }
+  };
+
+  if (!fu || !fu.text) {
+    if (!hasNote) { card.hidden = true; card.replaceChildren(); return; }
+    const draft = el('button', { type: 'button', class: 'primary', text: 'Draft a follow-up' });
+    const status = el('p', { class: 'follow-status hint' });
+    draft.addEventListener('click', () => {
+      draft.textContent = 'Drafting… this can take a few seconds';
+      run('', () => api.followUp(id, {}), [draft]).finally(() => {
+        if (draft.isConnected) draft.textContent = 'Draft a follow-up';
+      });
+    });
+    card.removeAttribute('aria-busy');
+    card.replaceChildren(head, el('p', { class: 'hint', text: 'A short message built from what they told you.' }), draft, status, err);
+    card.hidden = false;
+    return;
+  }
+
+  const sent = fu.status === 'sent';
+  const ta = el('textarea', { class: 'follow-text', rows: 5, maxlength: 1000, 'aria-label': 'Follow-up message' });
+  ta.value = fu.text;
+  const used = Array.isArray(fu.hooksUsed) && fu.hooksUsed.length
+    ? el('p', { class: 'follow-used', text: `uses: ${fu.hooksUsed.join(' · ')}` }) : null;
+  const status = el('p', { class: 'follow-status', text: sent ? `Sent ✓${fu.sentAt ? ` ${fmtDate(fu.sentAt)}` : ''}` : '' });
+  const send = el('button', { type: 'button', class: 'accept', text: sent ? 'Send again' : 'Send' });
+  const rewrite = el('button', { type: 'button', text: 'Rewrite' });
+  const controls = [send, rewrite, ta];
+
+  let lastSaved = fu.text;
+  let saving = null;
+  const save = () => {
+    const text = ta.value.trim();
+    if (!text || text === lastSaved) return saving || Promise.resolve();
+    lastSaved = text;
+    status.textContent = 'Saving…';
+    saving = api.followUp(id, { text })
+      .then((updated) => {
+        if (!stillOn('coaching', id)) return;
+        state.convo = { ...state.convo, followUp: updated };
+        status.textContent = 'Saved';
+      })
+      .catch((e) => { lastSaved = null; status.textContent = ''; fail(e); throw e; })
+      .finally(() => { saving = null; });
+    return saving;
+  };
+  // iOS doesn't always blur on a tap elsewhere, so save as they type too.
+  let typing = null;
+  ta.addEventListener('input', () => { clearTimeout(typing); typing = setTimeout(() => save().catch(() => {}), 700); });
+  ta.addEventListener('blur', () => { clearTimeout(typing); save().catch(() => {}); });
+
+  send.addEventListener('click', async () => {
+    const text = ta.value.trim();
+    if (!text) { fail(new Error('Write something first, or tap Rewrite.')); return; }
+    err.hidden = true;
+    send.disabled = true; // a double tap would open two share sheets
+    clearTimeout(typing);
+    // share() has to be called straight from the tap or iOS refuses it, so nothing is awaited
+    // first. The text goes along with "sent", so the server keeps what was actually shared
+    // even if the edit save didn't make it.
+    let how;
+    try {
+      how = await shareOrCopy(text, ta);
+    } catch (e) {
+      send.disabled = false;
+      if (e && e.name === 'AbortError') return; // closed the share sheet
+      fail(new Error('Couldn’t share or copy that. Select the text and copy it by hand.'));
+      return;
+    }
+    if (!stillOn('coaching', id)) return;
+    run(how === 'copied' ? 'Copied — paste it into your message' : 'Marking sent…', () => api.markFollowUpSent(id, text), controls);
+  });
+
+  rewrite.addEventListener('click', () => {
+    rewrite.textContent = 'Rewriting…';
+    run('Writing a new one… this can take a few seconds', () => api.followUp(id, { regenerate: true }), controls)
+      .finally(() => { if (rewrite.isConnected) rewrite.textContent = 'Rewrite'; });
+  });
+
+  card.removeAttribute('aria-busy');
+  card.replaceChildren(head, ta, used, el('div', { class: 'follow-actions' }, send, rewrite), status, err);
+  card.hidden = false;
+}
+
+async function shareOrCopy(text, ta) {
+  if (navigator.share) {
+    try {
+      await navigator.share({ text });
+      return 'shared';
+    } catch (e) {
+      if (e && e.name === 'AbortError') throw e;
+      // NotAllowedError and friends: fall through to copying
+    }
+  }
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    try { await navigator.clipboard.writeText(text); return 'copied'; } catch { /* old-school below */ }
+  }
+  ta.focus();
+  ta.select();
+  if (!document.execCommand('copy')) throw new Error('copy failed');
+  return 'copied';
 }
 
 async function retag(tag) {
@@ -774,6 +1123,7 @@ function init() {
     input.addEventListener('change', () => input.checked && retag(input.value));
   }
   $('consent').addEventListener('change', updateRecordEnabled);
+  $('other-name').addEventListener('input', onNameInput);
   $('record-btn').addEventListener('click', startRecording);
   $('stop-btn').addEventListener('click', stopRecording);
   $('coach-btn').addEventListener('click', getCoaching);

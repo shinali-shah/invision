@@ -58,7 +58,7 @@ test('hub sends hello with the last focus and fans out to every subscriber', () 
   hub.publish({ type: 'memory' });
 
   assert.deepEqual(sent[0][0], { type: 'hello', mock: true, focus: null });
-  assert.deepEqual(sent[1][0], { type: 'hello', mock: true, focus: { view: 'recording', conversationId: 'c1' } });
+  assert.deepEqual(sent[1][0], { type: 'hello', mock: true, focus: { view: 'recording', conversationId: 'c1', otherName: null } });
   assert.deepEqual(sent[0].at(-1), { type: 'memory' });
   assert.deepEqual(sent[1].at(-1), { type: 'memory' });
 });
@@ -69,7 +69,7 @@ test('focus endpoint validates the view and broadcasts it', async () => {
   assert.equal((await post('/api/stage/focus', { view: 'nope' })).status, 400);
   assert.equal((await post('/api/stage/focus', { view: 'memory', conversationId: null })).status, 204);
   const focus = await stage.waitFor(m => m.type === 'focus');
-  assert.deepEqual(focus, { type: 'focus', view: 'memory', conversationId: null });
+  assert.deepEqual(focus, { type: 'focus', view: 'memory', conversationId: null, otherName: null });
   stage.ws.close();
 });
 

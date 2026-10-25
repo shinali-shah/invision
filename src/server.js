@@ -6,7 +6,7 @@ import { openStore } from './db.js';
 import { createLogger } from './log.js';
 import { createLlm } from './llm.js';
 import { createApp } from './routes.js';
-import { seedDemo } from './seed.js';
+import { seedDemo, refreshHooks } from './seed.js';
 import { attachTranscribeSocket } from './transcribe/wsRoute.js';
 import { openMuseStream } from './transcribe/realtime.js';
 import { openMockStream } from './transcribe/mockStream.js';
@@ -21,6 +21,7 @@ export function createServer({ config: cfg = config, quiet = false, mockSpeed = 
   const log = createLogger(store, { quiet });
   const llm = createLlm({ apiKey: cfg.apiKey, mock: cfg.mock, model: cfg.sparkModel });
   seedDemo(store);
+  refreshHooks(store);
 
   const stage = createStageHub({ mock: cfg.mock });
   const app = createApp({ store, llm, log, config: cfg, publicDir: join(root, 'public'), stage });
