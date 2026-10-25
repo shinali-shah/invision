@@ -142,3 +142,46 @@ test('mergeSessions drops the suffix when nobody can say which side a letter is'
   const plain = [{ turnId: 1, speaker: 'A', source: 'you' }];
   assert.equal(mergeSessions(plain), plain); // nothing to merge: same array back
 });
+
+test('mergeSessions does not fold a later "you" letter into the first session\'s "them" letter', async () => {
+  const { mergeSessions } = await import('../src/transcribe/crowd.js');
+  // Session 1 only ever heard them (as B); after the reconnect the user spoke and the diarizer
+  // happened to call them B as well. B#2 is the user, so it must not become B.
+  const turns = [
+    { turnId: 1, speaker: 'B', source: 'them' }, { turnId: 2, speaker: 'B', source: 'them' },
+    { turnId: 3, speaker: 'B#2', source: 'you' }, { turnId: 4, speaker: 'A#2', source: 'them' }, { turnId: 5, speaker: 'B#2', source: 'you' },
+  ];
+  const out = mergeSessions(turns).map(t => t.speaker);
+  assert.deepEqual(out.slice(0, 2), ['B', 'B']);
+  assert.equal(out[3], 'B', 'the later them-letter joins the first session\'s them-letter');
+  assert.notEqual(out[2], 'B');
+  assert.equal(out[2], out[4], 'one letter per later voice');
+  assert.ok(/^[A-Z]$/.test(out[2]), `got ${out[2]}`);
+});
+
+test('mergeSessions keeps two later voices apart across three sessions with no first-session evidence', async () => {
+  const { mergeSessions } = await import('../src/transcribe/crowd.js');
+  const turns = [
+    { turnId: 1, speaker: 'A', source: 'unknown' },
+    { turnId: 2, speaker: 'A#2', source: 'you' }, { turnId: 3, speaker: 'A#2', source: 'you' },
+    { turnId: 4, speaker: 'A#3', source: 'them' }, { turnId: 5, speaker: 'A#3', source: 'them' },
+    { turnId: 6, speaker: 'B#3', source: 'you' },
+  ];
+  const out = mergeSessions(turns).map(t => t.speaker);
+  assert.equal(out[0], 'A');
+  assert.equal(out[1], out[2]);
+  assert.equal(out[3], out[4]);
+  assert.notEqual(out[1], out[3], 'you and them from later sessions stay different letters');
+  assert.equal(out[5], out[1], 'a third-session letter leaning you joins the second-session you letter');
+  assert.ok(out.every(s => /^[A-Z]$/.test(s)), JSON.stringify(out));
+});
+
+test('mergeSessions leaves unknown and odd labels alone', async () => {
+  const { mergeSessions } = await import('../src/transcribe/crowd.js');
+  const turns = [
+    { turnId: 1, speaker: 'SPEAKER_1', source: 'you' }, { turnId: 2, speaker: 'unknown', source: 'them' },
+    { turnId: 3, speaker: 'SPEAKER_1#2', source: 'you' }, { turnId: 4, speaker: 'SPEAKER_2#2', source: 'them' }, { turnId: 5, speaker: null, source: 'unknown' },
+  ];
+  const out = mergeSessions(turns).map(t => t.speaker);
+  assert.deepEqual(out, ['SPEAKER_1', 'unknown', 'SPEAKER_1', 'SPEAKER_2', null]);
+});

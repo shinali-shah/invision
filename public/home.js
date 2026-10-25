@@ -142,7 +142,6 @@ const state = {
   modal: null,           // the convo whose follow-up is open
   rec: { active: false, id: null, name: null, startedAt: null, lastElapsed: 0, lines: new Map() },
   doneId: null,          // last conversation the hub said `done` for; its late turns don't restart the card
-  who: '',               // "Before: who are you about to talk to?"
   extras: new Map(),     // conversation id -> { heat, compare } once fetched for the transcript page
   confirming: false,     // the delete confirm row on the transcript page
 };
@@ -225,6 +224,8 @@ function buildMonth(year, month, states) {
 function streak(states) {
   let n = 0;
   const d = today();
+  // Nothing logged yet today doesn't break the run; it only breaks once today has gone by.
+  if (!stateFor(dayKey(d), states)) d.setDate(d.getDate() - 1);
   for (let i = 0; i < 400; i++) {
     if (!stateFor(dayKey(d), states)) break;
     n++;
@@ -286,7 +287,10 @@ function parseHash() {
   if (!m[1]) return 0;
   const byId = state.convos.findIndex((c) => c.id === m[1]);
   if (byId >= 0) return byId;
-  const n = /^\d+$/.test(m[1]) ? Number(m[1]) : 0;
+  // An id we don't have (deleted from the phone, or not loaded yet) must not fall through to
+  // somebody else's transcript; past the end, the page says it's gone (or still loading).
+  if (!/^\d+$/.test(m[1])) return state.convos.length;
+  const n = Number(m[1]);
   return state.convos.length && n >= state.convos.length ? 0 : n;
 }
 
@@ -318,7 +322,11 @@ function fitHeroLine() {
 }
 let fitTimer = null;
 window.addEventListener('resize', () => { clearTimeout(fitTimer); fitTimer = setTimeout(fitHeroLine, 120); });
-if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitHeroLine);
+// Measured in the fallback face until Big Shoulders arrives, so fit again whenever a font lands.
+if (document.fonts) {
+  if (document.fonts.ready) document.fonts.ready.then(fitHeroLine);
+  document.fonts.addEventListener('loadingdone', fitHeroLine);
+}
 
 // ---------- home ----------
 
@@ -463,23 +471,20 @@ function briefFor(name) {
   };
 }
 
-// Idle: whoever was typed into the card. Recording: whoever the phone heard, once there is history.
+// Nobody types a name any more, so the brief only shows while recording, once the phone has heard
+// who it is and there is history with them. Idle, and first conversations, show nothing.
 function renderBrief() {
   if (!refs.brief) return;
-  const r = state.rec;
-  const who = r.active ? (recName() || '') : state.who;
-  const name = who.trim() ? firstName(who) : 'them';
-  let b = briefFor(who);
-  if (r.active && b && !b.known) b = null;
-  refs.brief.hidden = !b;
-  if (!b) { refs.brief.replaceChildren(); return; }
-  refs.brief.setAttribute('aria-label', `Brief for ${name}`);
+  const who = state.rec.active ? (recName() || '') : '';
+  const b = who ? briefFor(who) : null;
+  const show = !!(b && b.known);
+  refs.brief.hidden = !show;
+  if (!show) { refs.brief.replaceChildren(); return; }
+  refs.brief.setAttribute('aria-label', `Brief for ${firstName(who)}`);
   fill(refs.brief,
-    ...(b.known ? [
-      el('div', {}, el('h4', { text: 'Promises you made' }), el('p', { text: b.promises })),
-      el('div', {}, el('h4', { text: 'Coming up for them' }), el('p', { text: b.upcoming })),
-      el('div', {}, el('h4', { text: 'Last time' }), el('p', { text: b.lit })),
-    ] : [el('p', { class: 'brief-empty', text: `No history with ${name} yet. This will be your first conversation, so the brief fills in afterwards.` })]),
+    el('div', {}, el('h4', { text: 'Promises you made' }), el('p', { text: b.promises })),
+    el('div', {}, el('h4', { text: 'Coming up for them' }), el('p', { text: b.upcoming })),
+    el('div', {}, el('h4', { text: 'Last time' }), el('p', { text: b.lit })),
   );
 }
 
@@ -762,7 +767,7 @@ function takeawayArticle(c, t, i, an) {
   return el('article', { class: 'takeaway ask' },
     el('span', { class: 'label', text: `${n}Ask about it next time` }),
     el('p', { class: 'tk-note big', text: t.text || '' }),
-    el('button', { class: 'play', onclick: () => draftFollowUp(c) }, el('span', { 'aria-hidden': 'true', text: '✉' }), ' Use in follow-up'),
+    el('button', { class: 'play', onclick: (e) => draftFollowUp(c, e.currentTarget) }, el('span', { 'aria-hidden': 'true', text: '✉' }), ' Use in follow-up'),
   );
 }
 
@@ -1024,6 +1029,9 @@ function handle(msg) {
       if (!id) break;
       state.doneId = id;
       if (state.rec.id === id) stopRec();
+      // The turns were just saved and nothing else announces them: without this the card shows
+      // "No reflection yet" instead of "tap which voice is yours" until the phone does something.
+      refreshMemory();
       break;
     case 'conversation':
       if (msg.conversation && state.rec.active && msg.conversation.id === state.rec.id && msg.conversation.otherName) startRec(state.rec.id, msg.conversation.otherName);
@@ -1096,7 +1104,7 @@ async function loadMe() {
     if (!me || typeof me.name !== 'string' || !me.name.trim()) return;
     USER.name = me.name.trim();
     USER.initials = initialsOf(USER.name) || USER.initials;
-    if (refs.heroH1) refs.heroH1.textContent = `${greeting()}, ${USER.name}`;
+    if (refs.heroH1) { refs.heroH1.textContent = `${greeting()}, ${USER.name}`; fitHeroLine(); }
     const avatar = document.querySelector('.avatar');
     if (avatar) avatar.textContent = USER.initials;
   } catch { /* the fallback name stays */ }

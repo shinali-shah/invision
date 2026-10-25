@@ -239,14 +239,15 @@ export function createFaceOverlay({ video, canvas, box, detect, enabled, onFrame
     clearCanvas();
   }
 
-  // After HOLD_MS without a face, fade the held mesh out over FADE_MS.
+  // After HOLD_MS without a face, fade the held mesh out over FADE_MS. The hold has to keep its
+  // own clock going too: on a paused or ended video there is no next frame to call this again,
+  // and the mesh used to stay up over a face-less frame until the next seek.
   function fadeOut(now) {
     const gone = now - lastFaceAt;
-    if (gone < HOLD_MS) { paint(1); return; }
-    const a = 1 - (gone - HOLD_MS) / FADE_MS;
+    const a = gone < HOLD_MS ? 1 : 1 - (gone - HOLD_MS) / FADE_MS;
     if (a <= 0) { drawn = null; smoother.reset(); clearCanvas(); return; }
     paint(a);
-    if (!fading) fading = requestAnimationFrame((t) => { fading = 0; if (!drawn || !enabled()) return; if (performance.now() - lastFaceAt >= HOLD_MS) fadeOut(t); });
+    if (!fading) fading = requestAnimationFrame((t) => { fading = 0; if (drawn && enabled()) fadeOut(t); });
   }
 
   // One frame: run the model (unless decimated), filter, draw.

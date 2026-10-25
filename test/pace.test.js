@@ -102,3 +102,23 @@ test('idle resolves when the queue empties, or on its timeout', async () => {
   await Promise.resolve();
   assert.equal(fast, true);
 });
+
+test('a sink that pulls itself mid-drain leaves the rest of the queue waiting instead of throwing', () => {
+  const c = clock();
+  const out = [];
+  let p;
+  // The real sink is Muse's sendAudio; with a scripted session the first frame can trigger
+  // onClose, which hands the pacer setSink(null) while drain() is still walking the queue.
+  const sink = b => { out.push(b.length); p.setSink(null); };
+  p = createPacer({ ...c });
+  p.push(frame(80));
+  p.push(frame(80));
+  p.push(frame(80));
+  assert.doesNotThrow(() => p.setSink(sink));
+  assert.equal(out.length, 1);
+  assert.equal(p.queuedMs(), 160); // nothing lost; the next session gets it
+  assert.equal(p.positionMs(), 80);
+  let idle = false;
+  p.idle(1000).then(() => { idle = true; });
+  return Promise.resolve().then(() => assert.equal(idle, false, 'idle must not settle while frames are still queued'));
+});

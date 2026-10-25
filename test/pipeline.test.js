@@ -177,3 +177,13 @@ test('crowd turns are excluded from signals, hooks and the coach prompt, and cou
   assert.ok(!seen.coach.turns.some(t => t.turnId === 99), 'coach never sees the bystander');
   assert.ok(!seen.classify.turns.some(t => t.turnId === 99), 'classify never sees the bystander');
 });
+
+test('recoaching a recording that was all bystanders keeps the too_short note', async () => {
+  const deps = setup();
+  const id = liveConversation(deps.store, demoTurns().map(t => ({ ...t, source: 'crowd' })));
+  const c = await processConversation({ ...deps, id, reflection: '' });
+  assert.equal(c.note.reason, 'too_short');
+  const again = await recoach({ ...deps, id, tag: 'networking' });
+  assert.equal(again.tag, 'networking');
+  assert.equal(again.note.reason, 'too_short'); // eight raw turns, none of them a conversation
+});

@@ -79,6 +79,8 @@ h1, h2, h3 {
   color: var(--marigold); background: transparent;
   border: 1.5px dashed var(--marigold); border-radius: 99px;
 }
+/* inline-flex above beats the browser's [hidden] rule, so say it again or the badge never goes away */
+.mock-badge[hidden] { display: none; }
 /* Memory and Logs are Figma .log-today links: caps, underlined, no chrome. Three pills don't fit a phone header. */
 .link-btn {
   display: inline-flex; align-items: center; justify-content: center;
@@ -297,6 +299,7 @@ main {
 .recording-meta { display: flex; align-items: baseline; justify-content: space-between; gap: 8px 16px; flex-wrap: wrap; padding: 18px 0 20px; color: var(--bone-2); font-size: 12px; }
 .elapsed { display: inline-flex; align-items: baseline; gap: 10px; }
 .rec-timer { font: 800 56px/1 var(--font-display); letter-spacing: 0; color: var(--bone); }
+.rec-timer .colon { font-variant-numeric: normal; }
 .elapsed small { margin: 0; color: var(--bone-2); }
 .private-note { margin-left: auto; }
 .ticket .error { margin: 0 0 16px; background: rgba(226, 65, 43, .16); border-color: rgba(226, 65, 43, .6); color: #ffc2b8; }

@@ -91,7 +91,7 @@
       </span>
       <label class="status-pill sd-follow"><input type="checkbox" id="auto"> Open Replay when a video is ready</label>
       <span class="status-pill sd-phone" id="phone" data-state="waiting" role="status"><span class="status-dot"></span>Waiting for your phone</span>
-      <button class="avatar" aria-label="Open your profile">PS</button>
+      <button class="avatar" id="avatar" aria-label="Open your profile">PS</button>
     </div>
   </header>
   <div class="sd-panes">
@@ -251,6 +251,13 @@
     }
 
     listen();
+
+    // Same initials Home shows (USER_NAME on the server); "PS" is only the placeholder until it answers.
+    fetch('/api/me').then(r => r.json()).then(me => {
+      const words = typeof me?.name === 'string' ? me.name.trim().split(/\s+/).filter(Boolean) : [];
+      const initials = words.slice(0, 2).map(w => Array.from(w)[0].toUpperCase()).join('');
+      if (initials) $('avatar').textContent = initials;
+    }).catch(() => {});
 
     const [name, id] = location.hash.slice(1).split('=');
     if (name === 'replay') openReplay(id || null);

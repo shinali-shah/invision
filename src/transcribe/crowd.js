@@ -87,8 +87,10 @@ export function inferLabels(turns, { minTurns = 3, minAgreement = 0.7 } = {}) {
 // A Muse session that had to be reopened mid-recording hands out fresh letters, so its labels
 // arrive suffixed (A#2). Each later letter leans the way the camera said its lines went and is
 // mapped onto the first session's letter for that side; with no camera evidence the suffix is
-// just dropped and we trust the diarizer to have kept the same order.
+// just dropped and we trust the diarizer to have kept the same order. The one thing we never
+// do is hand a voice the camera put on one side a letter already settled on the other side.
 const SESSION = /#\d+$/;
+const suffixed = s => SESSION.test(s ?? '');
 
 function lean(turns) {
   const tally = new Map();
@@ -105,17 +107,33 @@ function lean(turns) {
 
 export function mergeSessions(turns) {
   const xs = Array.isArray(turns) ? turns : [];
-  if (!xs.some(t => SESSION.test(t.speaker ?? ''))) return xs;
-  const first = lean(xs.filter(t => !SESSION.test(t.speaker ?? '')));
-  const letterFor = want => [...first].find(([, s]) => s === want)?.[0] ?? null;
-  const home = { you: letterFor('you'), them: letterFor('them') };
-  const later = lean(xs.filter(t => SESSION.test(t.speaker ?? '')));
-  return xs.map(t => {
-    if (!SESSION.test(t.speaker ?? '')) return t;
-    const side = later.get(t.speaker);
-    const target = side ? home[side] : null;
-    return { ...t, speaker: target ?? t.speaker.replace(SESSION, '') };
-  });
+  if (!xs.some(t => suffixed(t.speaker))) return xs;
+  const later = lean(xs.filter(t => suffixed(t.speaker)));
+  // Letters on the finished timeline and which side each is known to be (null: no idea).
+  // Starts as the first session's; later letters that settle on a new letter are added so
+  // a third session leaning the same way lands on the same letter.
+  const settled = lean(xs.filter(t => !suffixed(t.speaker)));
+  const home = side => [...settled].find(([, s]) => s === side)?.[0] ?? null;
+  const fresh = () => {
+    for (let i = 0; i < 26; i++) { const l = String.fromCharCode(65 + i); if (!settled.has(l)) return l; }
+    return null;
+  };
+  const target = new Map(); // suffixed label -> letter it ends up as
+  for (const { speaker } of xs) {
+    if (!suffixed(speaker) || target.has(speaker)) continue;
+    const side = later.get(speaker) ?? null;
+    let to = side ? home(side) : null;
+    if (!to) {
+      const bare = speaker.replace(SESSION, '');
+      const taken = settled.get(bare);
+      // The bare letter is fine unless it is settled on the opposite side of the table.
+      const clash = !!side && !!taken && taken !== side;
+      to = (clash && fresh()) || (clash ? speaker : bare);
+      if (!settled.has(to) || (settled.get(to) === null && side)) settled.set(to, side);
+    }
+    target.set(speaker, to);
+  }
+  return xs.map(t => (suffixed(t.speaker) ? { ...t, speaker: target.get(t.speaker) } : t));
 }
 
 // The lines worth analysing: everything that isn't background.

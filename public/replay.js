@@ -76,7 +76,7 @@ const state = {
   overlay: null,        // the live mesh (overlay.js), once init has the elements
   videoSrc: null,
   compare: { id: null, data: null }, // /compare, for the "Last time" numbers
-  draftFor: null,       // conversation whose follow-up draft is in the modal's textarea
+  draftFor: null,       // { id, text }: whose draft is in the modal's textarea, and what we put there
 };
 
 // ---------- helpers ----------
@@ -388,7 +388,8 @@ function refPitch(pts, i) {
 
 function frameAt(t) {
   const fs = state.frames;
-  if (!fs) return null;
+  // during analysis this is the run's own array, empty until the first frame lands
+  if (!fs || !fs.length) return null;
   let lo = 0;
   let hi = fs.length - 1;
   while (lo < hi) {
@@ -625,6 +626,9 @@ async function analyse() {
   $('word-status').textContent = 'Loading the face model…';
   setProgress(0, 1);
   document.body.classList.add('is-analysing');
+  // Drop the live mesh now: overlay.js repaints what it last drew on resize and loadedmetadata,
+  // which would land on top of the frames painted below.
+  clearOverlay();
 
   const frames = [];
   state.frames = frames;
@@ -1037,10 +1041,13 @@ function drawLanes() {
 // Figma .tl-track: one segment per turn, yours in --you, theirs in ink-3.
 function renderSegments(D) {
   const bts = behaviorTurns();
-  put($('segs'), ...turnsOf(state.convo).map((t) => {
+  // A negative offset means the camera started after the mic: lines from before the video began
+  // would otherwise hang off the left edge, over the labels.
+  const clamp = (ms) => Math.max(0, Math.min(D, ms));
+  put($('segs'), ...turnsOf(state.convo).filter((t) => toVideoMs(t.endMs || t.startMs) > 0).map((t) => {
     const side = sideOf(t, bts.get(t.turnId));
-    const s = toVideoMs(t.startMs);
-    const e = Math.max(toVideoMs(t.endMs || t.startMs), s + 400);
+    const s = clamp(toVideoMs(t.startMs));
+    const e = clamp(Math.max(toVideoMs(t.endMs || t.startMs), s + 400));
     return el('i', {
       class: `seg ${side === 'you' ? 'me' : side === 'them' ? 'them' : 'unk'}`,
       style: `left:${(s / D) * 100}%;width:${((e - s) / D) * 100}%`,
@@ -1806,10 +1813,13 @@ function openDraft() {
   $('modal-label').textContent = `Draft for ${first}`;
   $('modal-note').textContent = `Based on your conversation on ${fmtWhen(c.createdAt) || fmtDate(c.createdAt)}. Edit it before you send.`;
   const ta = $('followup-text');
-  // keep the person's edits while the modal is closed and reopened on the same conversation
-  if (state.draftFor !== c.id) {
+  // Keep the person's edits while the modal is closed and reopened on the same conversation. If
+  // they haven't touched it, take the newest draft: opening this before the draft existed used to
+  // leave the box empty for good.
+  const d = state.draftFor;
+  if (!d || d.id !== c.id || ta.value === d.text) {
     ta.value = fu && fu.text ? fu.text : '';
-    state.draftFor = c.id;
+    state.draftFor = { id: c.id, text: ta.value };
   }
   $('modal-copy').textContent = 'Copy message';
   $('modal').hidden = false;
@@ -1975,9 +1985,10 @@ async function pickVoice(label) {
     if (c && c.id === id) state.convo = { ...state.convo, ...c };
     if (!state.convo.userLabel) state.convo.userLabel = label;
     state.labelNeeded = false;
-    // The old cues were lined up against the wrong voice (or not at all): send them again.
+    // The old cues were lined up against the wrong voice (or not at all): send them again. While
+    // a run is still going, state.frames is its half-filled array; that run posts when it finishes.
     const rec = state.convo.recording;
-    const frames = state.pendingUpload || (state.frames && state.frames.length ? state.frames : null);
+    const frames = state.pendingUpload || (!state.analysing && state.frames && state.frames.length ? state.frames : null);
     state.picking = null;
     state.heat.key = null;
     if (rec && frames) {

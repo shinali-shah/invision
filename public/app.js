@@ -99,10 +99,16 @@ function talkSharePct(share) {
   return share === null || share === undefined ? null : Math.round(share * 100);
 }
 
-// Distinct real speaker labels in first-seen order.
+// A line the lip lock put down to the crowd: greyed, tagged, kept.
+const isCrowd = (t) => t.source === 'crowd';
+const crowdTag = () => el('span', { class: 'bg-tag', text: 'Background' });
+
+// Distinct real speaker labels in first-seen order. Crowd lines carry Muse letters too, but
+// those aren't voices in the conversation: one would cost the other person their name and
+// pad out "N voices heard".
 function speakerLabels(turns) {
   const seen = [];
-  for (const t of turns) if (t.speaker !== 'unknown' && !seen.includes(t.speaker)) seen.push(t.speaker);
+  for (const t of turns) if (t.speaker !== 'unknown' && !isCrowd(t) && !seen.includes(t.speaker)) seen.push(t.speaker);
   return seen;
 }
 
@@ -126,17 +132,15 @@ function lineClass(speaker, convo, labels) {
   return idx === 0 || idx === 1 ? `line spk-${idx}` : 'line';
 }
 
-// A line the lip lock put down to the crowd: greyed, tagged, kept.
-const isCrowd = (t) => t.source === 'crowd';
-const crowdTag = () => el('span', { class: 'bg-tag', text: 'Background' });
-
 function renderTranscript(listId, turns, convo, { pickable = false, cited = [], onPick } = {}) {
   const list = $(listId);
   list.replaceChildren();
   const labels = speakerLabels(turns);
   for (const t of turns) {
     const cls = lineClass(t.speaker, convo, labels) + (cited.includes(t.turnId) ? ' cited' : '') + (isCrowd(t) ? ' is-crowd' : '');
-    const who = el('span', { class: 'who', text: speakerName(t.speaker, convo, labels) });
+    // A crowd line stays "Speaker X": it isn't you, and the Background tag already says it isn't them.
+    const whoText = isCrowd(t) && t.speaker && t.speaker !== 'unknown' ? `Speaker ${t.speaker}` : speakerName(t.speaker, convo, labels);
+    const who = el('span', { class: 'who', text: whoText });
     const said = el('span', { class: 'said', text: t.text }, isCrowd(t) ? crowdTag() : null);
     if (pickable) {
       const btn = el('button', {
@@ -680,7 +684,9 @@ function startLips(rec) {
     video: $('rec-preview'),
     timeBase: () => rec.firstAudioAt,
     send: (samples) => {
-      if (rec.ws.readyState === WebSocket.OPEN) rec.ws.send(JSON.stringify({ type: 'cues', samples }));
+      if (rec.ws.readyState !== WebSocket.OPEN) return;
+      rec.cuesSent = true; // fallback for the label step's copy when the server doesn't say where the label came from
+      rec.ws.send(JSON.stringify({ type: 'cues', samples }));
     },
     onState: renderLipState,
   });
@@ -722,12 +728,17 @@ function renderLipState({ status, box }) {
 function endVideo(rec, keep) {
   stopLips(rec);
   hidePreview();
+  // Walking out after Stop: the recorder was already told to stop and its flush is still on its
+  // way. Without this it would upload the video to a conversation we've just deleted and keep
+  // the blob around for good.
+  if (!keep) rec.discard = true;
   const recorder = rec.recorder;
   if (!recorder) return;
   rec.recorder = null;
   const id = state.convo && state.convo.id;
   if (keep && id) {
     const flush = () => {
+      if (rec.discard) { rec.chunks = []; return; }
       const blob = new Blob(rec.chunks, { type: recorder.mimeType || rec.chunks[0]?.type || 'video/mp4' });
       rec.chunks = [];
       if (!blob.size) return;
@@ -881,6 +892,7 @@ function handleSocketMessage(rec, msg) {
       if (typeof msg.otherName === 'string' && msg.otherName !== 'them' && !isNamed(state.convo)) state.convo = { ...state.convo, otherName: msg.otherName };
       finishRecording(rec, Array.isArray(msg.turns) ? msg.turns : rec.turns, {
         userLabel: typeof msg.userLabel === 'string' ? msg.userLabel : null,
+        labelSource: msg.labelSource, // 'camera' | 'name' | null; undefined from a server that predates it
         crowdTurns: Number(msg.crowdTurns) || 0,
       });
       break;
@@ -931,7 +943,7 @@ function stopRecording() {
   }, DONE_TIMEOUT_MS);
 }
 
-function finishRecording(rec, turns, { keepError = false, userLabel = null, crowdTurns = 0 } = {}) {
+function finishRecording(rec, turns, { keepError = false, userLabel = null, labelSource, crowdTurns = 0 } = {}) {
   if (rec.finished) return;
   rec.finished = true;
   clearInterval(rec.timer);
@@ -946,8 +958,12 @@ function finishRecording(rec, turns, { keepError = false, userLabel = null, crow
   }
   try { if (rec.ws.readyState <= WebSocket.OPEN) rec.ws.close(1000); } catch { /* ignore */ }
   state.rec = null;
-  // The lip lock may already know which voice is yours; the label step then just confirms it.
-  state.convo = { ...state.convo, turns, userLabel, autoLabel: !!userLabel, crowdTurns };
+  // The lip lock (or an "I'm Parth" in the transcript) may already know which voice is yours;
+  // the label step then just confirms it. The server says which; an older one doesn't, and then
+  // cues having gone out is the best guess.
+  if (labelSource === undefined) labelSource = userLabel ? (rec.cuesSent ? 'camera' : 'name') : null;
+  if (!userLabel) labelSource = null;
+  state.convo = { ...state.convo, turns, userLabel, autoLabel: !!labelSource, labelSource, crowdTurns };
   showLabelView(keepError);
 }
 
@@ -958,12 +974,21 @@ function showLabelView(keepError = false) {
   const turns = convo.turns || [];
   if (!keepError) showError('label-error', null);
   showError('coach-error', null);
-  $('reflection').value = convo.reflection || '';
+  // This view re-renders after a tap or a rename; the half-typed reflection has to survive that.
+  // Only a different conversation starts the box over.
+  const reflection = $('reflection');
+  if (reflection.dataset.convo !== convo.id) {
+    reflection.dataset.convo = convo.id;
+    reflection.value = convo.reflection || '';
+  }
 
   const voices = speakerLabels(turns).length;
   const hasVoices = voices > 0;
   const matched = hasVoices && !!convo.userLabel && !!convo.autoLabel;
-  $('label-title').textContent = !hasVoices ? 'Nothing to label' : matched ? 'We matched your voice to the camera' : 'Which voice is yours?';
+  // Without the camera the only way we could know is that you said your own name.
+  const matchedTitle = convo.labelSource === 'camera' ? 'We matched your voice to the camera'
+    : convo.labelSource === 'name' ? 'We heard which voice is yours' : 'Which voice is yours?';
+  $('label-title').textContent = !hasVoices ? 'Nothing to label' : matched ? matchedTitle : 'Which voice is yours?';
   $('label-hint').textContent = hasVoices
     ? (matched ? 'Not you? Tap your line.' : convo.userLabel ? 'Got it. Tap a different line if that was wrong.' : 'Tap one of your lines. Coaching only starts after this.')
     : 'No speech came through. You can still finish up.';

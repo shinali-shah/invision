@@ -313,3 +313,81 @@ test('a name heard in the mock stream is on the conversation when the stream end
   assert.equal((await api('GET', `/api/conversations/${convo.id}`)).body.otherName, 'Abuela');
   await api('DELETE', `/api/conversations/${convo.id}`);
 });
+
+test('"Them" in any case is nobody, so the stream can still fill the name in', async () => {
+  const made = await api('POST', '/api/conversations', { tag: 'friend', otherName: '  THEM ', consentConfirmed: true });
+  assert.equal(made.body.otherName, 'them');
+  assert.equal((await api('PATCH', `/api/conversations/${made.body.id}`, { otherName: 'Them' })).body.otherName, 'them');
+  assert.equal((await api('PATCH', `/api/conversations/${made.body.id}`, { otherName: 'Thembi' })).body.otherName, 'Thembi');
+  await api('DELETE', `/api/conversations/${made.body.id}`);
+});
+
+test('one voice only: no screen asks for a tap, and insight does not 409 where process succeeds', async () => {
+  const { body: convo } = await api('POST', '/api/conversations', { tag: 'friend', otherName: 'Sam', consentConfirmed: true });
+  await streamMockConversation(convo.id);
+  const turns = srv.store.getConversation(convo.id).turns.map(t => ({ ...t, speaker: 'A' }));
+  srv.store.updateConversation(convo.id, { turns });
+  assert.equal((await api('GET', '/api/conversations')).body.find(c => c.id === convo.id).needsLabel, false);
+  assert.equal((await api('POST', `/api/conversations/${convo.id}/insight`, {})).status, 200);
+  assert.equal((await api('POST', `/api/conversations/${convo.id}/process`, { reflection: '' })).status, 200);
+  await api('DELETE', `/api/conversations/${convo.id}`);
+});
+
+// ---- every route that coaches shares the one run ----
+
+test('behavior, process, insight and a tag change landing together pay Muse once', async () => {
+  const { mkdtempSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const { join } = await import('node:path');
+  const { createApp } = await import('../src/routes.js');
+  const { openStore } = await import('../src/db.js');
+  const { createLogger } = await import('../src/log.js');
+  const { createLlm } = await import('../src/llm.js');
+  const { createTurnAssembler } = await import('../src/transcribe/assemble.js');
+  const { DEMO_EVENTS } = await import('../src/mock/demoConversation.js');
+  const http = await import('node:http');
+
+  const calls = [];
+  const quick = createLlm({ mock: true });
+  // Slow enough that the second request arrives mid-run, the way the Mac's replay page does
+  // while the phone is still on "get coaching".
+  const slow = { mock: true, json: async args => { calls.push(args.name); await new Promise(r => setTimeout(r, 30)); return quick.json(args); } };
+  const store = openStore();
+  const app = createApp({ store, llm: slow, log: createLogger(store, { quiet: true }), config, recordingsDir: mkdtempSync(join(tmpdir(), 'playback-race-')) });
+  const server = http.createServer(app);
+  await new Promise(r => server.listen(0, r));
+  const url = p => `http://localhost:${server.address().port}${p}`;
+  const call = async (method, path, body) => {
+    const res = await fetch(url(path), { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    return { status: res.status, body: await res.json() };
+  };
+  const asm = createTurnAssembler();
+  for (const e of DEMO_EVENTS) asm.push(e);
+  const turns = asm.flush();
+  const frames = [];
+  for (let t = 0; t <= 32500; t += 200) frames.push({ t, face: true, smile: 0.3, jawOpen: t % 400 ? 0.5 : 0.1, browUp: 0, yaw: 0, pitch: 0 });
+  const later = ms => new Promise(r => setTimeout(r, ms));
+
+  try {
+    const convo = store.createConversation({ tag: 'friend', otherName: 'Sam' });
+    store.updateConversation(convo.id, { turns, userLabel: 'A' });
+    const behavior = call('POST', `/api/conversations/${convo.id}/behavior`, { frames, fps: 5 });
+    await later(10);
+    const process = call('POST', `/api/conversations/${convo.id}/process`, { reflection: '' });
+    await later(10);
+    const insight = call('POST', `/api/conversations/${convo.id}/insight`, {});
+    const retag = call('PATCH', `/api/conversations/${convo.id}`, { tag: 'networking' });
+    const [b, p, i, r] = await Promise.all([behavior, process, insight, retag]);
+    assert.equal(b.status, 200);
+    assert.equal(p.status, 200);
+    assert.equal(i.status, 200);
+    assert.equal(r.status, 409, 'the tag waits for coaching to finish, whichever screen started it');
+    assert.equal(calls.filter(n => n === 'coach').length, 1);
+    assert.equal(calls.filter(n => n === 'classify').length, 1);
+    assert.ok(p.body.note?.text, 'the joined process call still gets the finished note');
+    assert.ok(i.body.adviceCheck?.length, 'the insight waited for the note it checks');
+    assert.equal(store.getConversation(convo.id).insight?.source, i.body.source);
+  } finally {
+    server.close();
+  }
+});

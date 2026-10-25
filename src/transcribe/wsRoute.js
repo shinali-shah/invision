@@ -24,7 +24,7 @@ function cleanCues(samples) {
 }
 
 // Browser <-> Muse bridge. Audio only passes through memory here and is never written anywhere.
-export function attachTranscribeSocket({ server, store, log, config, openStream, stage = { publish() {} }, recordingsDir = null }) {
+export function attachTranscribeSocket({ server, store, log, config, openStream, stage = { publish() {} }, recordingsDir = null, pace = {} }) {
   const wss = new WebSocketServer({ noServer: true });
 
   server.on('upgrade', (req, socket, head) => {
@@ -48,8 +48,10 @@ export function attachTranscribeSocket({ server, store, log, config, openStream,
     let ending = false; // the phone said "end"; a Muse close from here on is the normal one
     let connecting = null; // promise of the Muse session being opened right now
     let session = 0; // Muse sessions opened for this recording; past 1 we reconnected mid-stream
-    let maxTurnId = 0;
+    let maxTurnId = 0; // highest turn id on the recording's timeline, Muse's or one the assembler made up
+    let labelSource = null; // how this recording learnt which voice is the user's: 'camera', 'name', or not at all
     const pacer = createPacer({
+      ...pace,
       onDrop: ms => log('transcribe', 'warn', `${(ms / 1000).toFixed(1)}s of audio dropped: the transcriber is too far behind`),
     });
 
@@ -74,6 +76,7 @@ export function attachTranscribeSocket({ server, store, log, config, openStream,
       if (!convo) return;
       const { patch, person } = peoplePatch(assembler.turns(), convo);
       if (!Object.keys(patch).length) return;
+      if (patch.userLabel) labelSource = 'name';
       const updated = store.updateConversation(conversationId, patch);
       if (person) send(person);
       stage.publish({ type: 'conversation', conversation: updated });
@@ -94,8 +97,11 @@ export function attachTranscribeSocket({ server, store, log, config, openStream,
       // The camera and the mic agree on whose voice is whose: no need to ask.
       const picked = cues.length ? inferLabels(turns) : null;
       const { patch, person } = peoplePatch(turns, convo, picked?.userLabel ?? convo.userLabel ?? null);
-      if (picked) patch.userLabel = picked.userLabel;
+      if (picked) { patch.userLabel = picked.userLabel; labelSource = 'camera'; } else if (patch.userLabel) labelSource = 'name';
       const updated = store.updateConversation(conversationId, { turns, ...patch });
+      // The turns just landed on the record. Anyone following the conversation itself (rather
+      // than this stream's `done`) hears about it the same way they hear about a name or a tag.
+      stage.publish({ type: 'conversation', conversation: updated });
       if (person) send(person);
       if (cues.length && recordingsDir) {
         try {
@@ -108,7 +114,9 @@ export function attachTranscribeSocket({ server, store, log, config, openStream,
         log('lips', 'info', `lip lock: ${cues.length} cues, ${crowdTurns} background line${crowdTurns === 1 ? '' : 's'}${picked ? `, your voice is ${picked.userLabel} (${Math.round(picked.agreement * 100)}% of ${picked.n} lines agree)` : ', could not pick your voice'}`);
       }
       const userLabel = picked?.userLabel ?? patch.userLabel ?? convo.userLabel ?? null;
-      const done = { type: 'done', turns, userLabel, crowdTurns, otherName: patch.otherName ?? convo.otherName ?? null };
+      // labelSource says where userLabel came from this time; null means it was already on the
+      // conversation (typed earlier) or there isn't one, so the phone should still ask.
+      const done = { type: 'done', turns, userLabel, labelSource, crowdTurns, otherName: patch.otherName ?? convo.otherName ?? null };
       send(done);
       stage.publish({ ...done, conversationId });
       ws.close(1000);
@@ -117,6 +125,9 @@ export function attachTranscribeSocket({ server, store, log, config, openStream,
     const onEvent = event => {
       if (Number.isFinite(event?.turnId)) maxTurnId = Math.max(maxTurnId, event.turnId);
       const out = assembler.push(event);
+      // A transcript with no speechStart gets a made-up id; the next session shifts past it too
+      const id = out?.turnId ?? out?.turn?.turnId;
+      if (Number.isFinite(id)) maxTurnId = Math.max(maxTurnId, id);
       if (browserGone) return; // nobody is on this conversation any more; just finish assembling
       if (out?.kind === 'partial') {
         const msg = { type: 'partial', turnId: out.turnId, text: out.text, speaker: out.speaker };
@@ -131,20 +142,24 @@ export function attachTranscribeSocket({ server, store, log, config, openStream,
 
     // Every Muse session starts its clock and its turn numbers from zero and hands out its own
     // speaker letters. Shift them onto the recording's timeline; letters from a reopened
-    // session stay marked (A#2) until finish() works out who they were.
-    const shifted = (n, msOffset, turnOffset) => event => {
+    // session stay marked (A#2) until finish() works out who they were. The clock offset is
+    // read through `at()` because it is only known once the session gets its first byte:
+    // audio can be shed from the queue while the handshake is still in flight.
+    const shifted = (n, at, turnOffset) => event => {
       const e = { ...event };
-      if (Number.isFinite(e.audioProcessedMs)) e.audioProcessedMs += msOffset;
+      if (Number.isFinite(e.audioProcessedMs)) e.audioProcessedMs += at();
       if (Number.isFinite(e.turnId)) e.turnId += turnOffset;
       if (n > 1 && typeof e.label === 'string' && e.label) e.label = `${e.label}#${n}`;
       onEvent(e);
     };
 
     // Muse hanging up early used to end the recording. Now, while the phone is still talking
-    // to us, we open a fresh session where the audio left off and keep going.
+    // to us, we open a fresh session where the audio left off and keep going. The code doesn't
+    // matter: every close we asked for has `ending` or `browserGone` set by then, so even a
+    // tidy 1000 that arrives without either is Muse's idea, not ours.
     const onClose = async (code, n) => {
       if (n !== session || finished) return; // an old session closing late
-      if (code === 1000 || ending || browserGone) return finish();
+      if (ending || browserGone) return finish();
       pacer.setSink(null);
       if (session >= MAX_SESSIONS) {
         log('transcribe', 'warn', `Muse stream closed with ${code} again; giving up after ${session} sessions`);
@@ -167,15 +182,17 @@ export function attachTranscribeSocket({ server, store, log, config, openStream,
     // and the Muse session would be opened after we'd already given up on it.
     const connect = () => {
       const n = ++session;
+      let startMs = null; // where this session's clock zero sits on the recording
       connecting = openStream({
         apiKey: config.apiKey,
         model: config.asrModel,
         languages: config.languages,
-        onEvent: shifted(n, pacer.positionMs(), maxTurnId),
+        onEvent: shifted(n, () => startMs ?? pacer.positionMs(), maxTurnId),
         onError: err => log('transcribe', 'error', err.message), // Muse follows a fatal one with a close; that is where we act
         onClose: code => onClose(code, n),
       }).then(s => {
         if (finished || browserGone) { s.end().catch(() => {}); return s; }
+        startMs = pacer.positionMs(); // the next byte out is this session's first
         pacer.setSink(chunk => s.sendAudio(chunk));
         return s;
       });
@@ -206,6 +223,10 @@ export function attachTranscribeSocket({ server, store, log, config, openStream,
         finish();
       }
     });
+
+    // A bad frame from the phone is reported here and then as a close. Without a listener it is
+    // an uncaught exception, and one flaky tunnel would take the whole server down with it.
+    ws.on('error', err => log('transcribe', 'warn', `phone socket: ${err.message}`));
 
     ws.on('close', () => {
       pacer.clear();

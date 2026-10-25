@@ -96,7 +96,8 @@ export async function writeFollowUp({ llm, log, convo }) {
 // Demo moment 1:45: same signals, different relationship, new note.
 export async function recoach({ store, llm, log, id, tag }) {
   const convo = store.updateConversation(id, { tag });
-  if (!convo.signals || (convo.turns ?? []).length < 2) return convo;
+  // Same bar as processConversation: a recording that was all bystanders stays "too short".
+  if (!convo.signals || speechTurns(convo.turns).length < 2) return convo;
   log('pipeline', 'info', `re-coaching ${id.slice(0, 8)} as ${tag}`);
   const note = await coachAndReview({ store, llm, log, convo });
   return store.updateConversation(id, { note });

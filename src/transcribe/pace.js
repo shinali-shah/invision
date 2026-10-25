@@ -37,7 +37,9 @@ export function createPacer({
     if (timer) { cancel(timer); timer = null; }
     if (!sink) return;
     refill();
-    while (queue.length) {
+    // The sink can take itself away mid-loop: a scripted session answers a frame by closing,
+    // and the bridge hands us setSink(null) from inside that call. Check it every pass.
+    while (queue.length && sink) {
       const head = queue[0];
       const need = Math.min(head.length, capacity); // a chunk bigger than the bucket still has to go
       if (need > tokens) {
@@ -51,7 +53,7 @@ export function createPacer({
       sent += head.length;
       sink(head);
     }
-    for (const w of waiters.splice(0)) w();
+    if (!queue.length) for (const w of waiters.splice(0)) w();
   }
 
   return {
