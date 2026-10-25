@@ -25,6 +25,10 @@ const state = {
 function showView(name) {
   for (const v of document.querySelectorAll('.view')) v.hidden = v.id !== `view-${name}`;
   window.scrollTo(0, 0);
+  // Start and memory aren't about one conversation, even if state.convo still
+  // holds the last one we looked at.
+  const convoId = name === 'start' || name === 'memory' ? null : state.convo?.id ?? null;
+  api.stageFocus(name, convoId);
 }
 
 // True while this conversation is still the one on screen in that view, so a
@@ -784,6 +788,7 @@ function init() {
 
   updateFocus();
   updateRecordEnabled();
+  api.stageFocus('start', null); // a reload lands on start, so tell the projector
 
   api.health()
     .then((h) => { $('mock-badge').hidden = !(h && h.mock); })

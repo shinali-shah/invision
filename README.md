@@ -42,6 +42,16 @@ ngrok http 3000
 
 Open the `https://…ngrok…` link on the phone. Plug the Saramonic mic in, then tap Record.
 
+### Stage view (the Mac on the projector)
+
+The phone records (the mic is plugged into it); the Mac shows what's happening, live and big.
+
+1. On the Mac: `npm start`, then `ngrok http 3000`.
+2. Mac browser: `http://localhost:3000/stage.html` → full screen (`?theme=dark` for dark rooms).
+3. iPhone: open the ngrok `https://` link and record as usual.
+
+The stage follows the phone: live transcript while recording, the note + counts + highlighted lines after coaching, the trend and next step when the phone opens Memory. Changing the tag on the phone swaps the note on stage.
+
 ## How it fits together
 
 | Step | Code | Muse API |

@@ -35,6 +35,18 @@ export const api = {
   nextStep: (id, action, text) =>
     request('POST', `/api/next-step/${enc(id)}`, text === undefined ? { action } : { action, text }),
   logs: () => request('GET', '/api/logs'),
+  // Tells the projector page which screen the phone is on. Fire and forget:
+  // the stage is a nice-to-have, so it never gets to break the phone flow.
+  stageFocus: (view, conversationId) => {
+    try {
+      fetch('/api/stage/focus', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ view, conversationId: conversationId ?? null }),
+        keepalive: true,
+      }).catch(() => {});
+    } catch { /* never mind */ }
+  },
 };
 
 export function transcribeSocketUrl(conversationId) {
