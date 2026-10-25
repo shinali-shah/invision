@@ -84,6 +84,9 @@ const readJson = (key, fallback) => { try { return JSON.parse(kv.get(key)) ?? fa
 const firstChar = (s) => (s ? Array.from(s)[0] : '');
 const cap = (s) => (s ? firstChar(s).toUpperCase() + s.slice(firstChar(s).length) : '');
 const cleanName = (name) => (name || '').trim() || 'them';
+// The server writes 'them' until a name is typed or heard. It's a placeholder, not somebody, so
+// it must never become "Session with Them" or match another unnamed conversation's brief.
+const realName = (name) => { const n = (name || '').trim(); return n && n.toLowerCase() !== 'them' ? n : null; };
 const firstName = (name) => cap(cleanName(name).split(/\s+/)[0]);
 const initialsOf = (name) => cleanName(name).split(/\s+/).slice(0, 2).map((w) => firstChar(w).toUpperCase()).join('');
 const pad2 = (n) => String(n).padStart(2, '0');
@@ -158,12 +161,13 @@ function convoView(c) {
   const note = c.note && c.note.text ? c.note : null;
   const last = turns[turns.length - 1];
   const awkward = c.hooks && c.hooks.awkward ? c.hooks.awkward : null;
+  const who = realName(c.otherName);
   return {
     id: c.id,
     raw: c,
-    name: cap(c.otherName || 'them'),
-    first: firstName(c.otherName),
-    initials: initialsOf(c.otherName),
+    name: who ? cap(who) : 'Someone',
+    first: who ? firstName(who) : 'them',
+    initials: who ? initialsOf(who) : '?',
     createdAt: c.createdAt,
     when: fmtWhen(c.createdAt),
     duration: last ? fmtClock(last.endMs || 0, { padMinutes: true }) : '00:00',
@@ -309,7 +313,10 @@ function renderPage() {
 function fitHeroLine() {
   const h1 = refs.heroH1;
   if (!h1 || !h1.isConnected) return;
-  const box = h1.parentElement.clientWidth;
+  // Measure against the hero band, not .hero-copy: that's a flex item, and a flex item is never
+  // narrower than its own nowrap line, so against it the text never looked too wide and a long
+  // name ran off under the clip-path at 121px.
+  const box = (h1.closest('.hero-intro') || h1.parentElement).clientWidth;
   if (!box) return;
   h1.style.fontSize = '';
   h1.style.whiteSpace = 'nowrap';
@@ -449,13 +456,13 @@ function recName() {
   const r = state.rec;
   if (r.name) return firstName(r.name);
   const known = state.convos.find((c) => c.id === r.id);
-  return known ? known.first : null;
+  return known && realName(known.raw.otherName) ? known.first : null;
 }
 
 // The pre-call brief: what memory holds on whoever they're about to talk to, by first name.
 function briefFor(name) {
   const key = name.trim().toLowerCase();
-  if (!key) return null;
+  if (!key || key === 'them') return null;
   // The one being recorded right now is the newest with this name and has nothing in it yet.
   const past = state.convos.filter((c) => c.first.toLowerCase() === key && c.id !== state.rec.id);
   if (!past.length) return { known: false };
@@ -553,14 +560,18 @@ function renderLive() {
     let line = box.querySelector(`[data-turn="${turnId}"]`);
     const who = userLabel ? (t.speaker === userLabel ? 'me' : 'them') : 'them';
     const whoText = userLabel ? (who === 'me' ? 'You' : name) : (t.speaker && t.speaker !== 'unknown' ? t.speaker : '');
+    // A finished turn knows its own transcript time. Our clock only stands in for partials, and
+    // after a reload it starts late, so the time is written again on every pass rather than once.
+    const when = Number.isFinite(t.startMs) ? t.startMs : t.at - r.startedAt;
     if (!line) {
       line = el('div', { class: `line ${who}`, 'data-turn': String(turnId) },
-        el('span', { class: 'line-time', text: fmtClock(t.at - r.startedAt) }),
+        el('span', { class: 'line-time' }),
         el('span', { class: 'line-who', text: whoText }),
         el('p', {}, el('span', { class: 'said' }), el('span', { class: 'caret' })));
       box.append(line);
     }
     line.className = `line ${who}`;
+    line.querySelector('.line-time').textContent = fmtClock(when);
     line.querySelector('.line-who').textContent = whoText;
     line.querySelector('.said').textContent = t.text || '';
     line.querySelector('.caret').hidden = !t.partial;
@@ -572,6 +583,7 @@ function renderLive() {
 
 function startRec(id, name) {
   const r = state.rec;
+  name = realName(name); // a focus or conversation message carries the 'them' placeholder until a name is heard
   if (r.active && r.id === id) {
     if (name && r.name !== name) { r.name = name; renderRecording(); }
     return;
@@ -850,7 +862,7 @@ function transcriptPage(index) {
     c.turns.length > 0 && !c.needsLabel && el('section', { class: 'timeline', 'aria-label': 'Timeline' },
       el('div', { class: 'tl-head' },
         el('span', { class: 'label', text: 'Timeline' }),
-        el('span', { class: 'tl-key' }, el('i', { class: 'you' }), 'You', el('i', { class: 'them' }), c.first, el('i', { class: 'fu' }), 'Follow-up', el('i', { class: 'ms' }), 'Missed moment')),
+        el('span', { class: 'tl-key' }, el('i', { class: 'you' }), 'You', el('i', { class: 'them' }), c.first === 'them' ? 'Them' : c.first, el('i', { class: 'fu' }), 'Follow-up', el('i', { class: 'ms' }), 'Missed moment')),
       el('div', { class: 'tl-track' },
         ...c.turns.map((t, i) => {
           const start = times[i];
@@ -903,13 +915,14 @@ function closeFollowUp() {
 // Opens the draft, writing one first if the agent hasn't yet.
 async function draftFollowUp(c, btn) {
   if (c.followUp && c.followUp.text) { openFollowUp(c); return; }
-  const label = btn ? btn.textContent : null;
+  // The button holds an icon beside its words; put the same nodes back, not their text.
+  const kids = btn ? [...btn.childNodes] : [];
   if (btn) { btn.disabled = true; btn.textContent = 'Drafting…'; }
   try {
     const res = await fetch(`/api/conversations/${encodeURIComponent(c.id)}/follow-up`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
     if (!res.ok) throw new Error(String(res.status));
     c.followUp = await res.json();
-    if (btn) { btn.disabled = false; btn.textContent = label; }
+    if (btn) { btn.disabled = false; btn.replaceChildren(...kids); }
     openFollowUp(c);
   } catch {
     if (btn) { btn.disabled = false; btn.textContent = 'No draft yet. Get coaching first'; }
@@ -1019,7 +1032,7 @@ function handle(msg) {
         lines.set(msg.turnId, { speaker: msg.speaker || (prev && prev.speaker) || null, text: msg.text || '', partial: true, at: prev ? prev.at : Date.now() });
       } else if (msg.turn) {
         const prev = lines.get(msg.turn.turnId);
-        lines.set(msg.turn.turnId, { speaker: msg.turn.speaker, text: msg.turn.text, partial: false, at: prev ? prev.at : Date.now() });
+        lines.set(msg.turn.turnId, { speaker: msg.turn.speaker, text: msg.turn.text, partial: false, at: prev ? prev.at : Date.now(), startMs: msg.turn.startMs });
         syncStart(msg.turn);
       }
       renderLive();

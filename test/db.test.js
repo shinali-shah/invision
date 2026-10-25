@@ -78,6 +78,40 @@ test('the other person can be renamed after the fact', () => {
   store.close();
 });
 
+test('every older table shape opens, and a fresh database opens again without complaint', () => {
+  const { DatabaseSync } = require('node:sqlite');
+  const { mkdtempSync } = require('node:fs');
+  const { join } = require('node:path');
+  const dir = mkdtempSync(join(require('node:os').tmpdir(), 'playback-shapes-'));
+  const base = 'id TEXT PRIMARY KEY, tag TEXT NOT NULL, created_at TEXT NOT NULL, seeded INTEGER NOT NULL DEFAULT 0, turns TEXT, user_label TEXT, reflection TEXT, signals TEXT, note TEXT';
+  const shapes = {
+    original: base,
+    hooksNoName: `${base}, hooks TEXT, follow_up TEXT`, // hooks landed before the other person had a name
+    nameNoVideo: `${base}, other_name TEXT NOT NULL, hooks TEXT, follow_up TEXT`,
+    nameNoBehavior: `${base}, other_name TEXT NOT NULL, hooks TEXT, follow_up TEXT, recording TEXT`,
+  };
+  for (const [name, cols] of Object.entries(shapes)) {
+    const path = join(dir, `${name}.db`);
+    const raw = new DatabaseSync(path);
+    raw.exec(`CREATE TABLE conversations (${cols})`);
+    raw.exec(`INSERT INTO conversations (id, tag, created_at${cols.includes('other_name') ? ', other_name' : ''}) VALUES ('c', 'family', '2026-10-01T00:00:00.000Z'${cols.includes('other_name') ? ", 'Abuela'" : ''})`);
+    raw.close();
+    const store = openStore(path);
+    const c = store.getConversation('c');
+    assert.equal(c.otherName, cols.includes('other_name') ? 'Abuela' : 'them', name);
+    assert.deepEqual(
+      store.updateConversation('c', { hooks: { topics: [] }, followUp: null, recording: { ext: 'mp4' }, behavior: { frameCount: 2 }, insight: { source: 'x' } }).insight,
+      { source: 'x' }, name,
+    );
+    store.close();
+    assert.doesNotThrow(() => openStore(path).close(), `${name}: second open re-adds a column`);
+  }
+  // brand new: the schema already has every column, so the migration must add nothing
+  const fresh = join(dir, 'fresh.db');
+  openStore(fresh).close();
+  assert.doesNotThrow(() => openStore(fresh).close());
+});
+
 test('a database from before names, hooks and video opens and takes the new fields', () => {
   const { DatabaseSync } = require('node:sqlite');
   const { mkdtempSync } = require('node:fs');

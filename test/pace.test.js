@@ -103,6 +103,29 @@ test('idle resolves when the queue empties, or on its timeout', async () => {
   assert.equal(fast, true);
 });
 
+test('idle with nowhere to send still gives up on its timeout, and clear() releases it early', async () => {
+  const c = clock();
+  const p = createPacer({ ...c });
+  p.push(frame(80));
+  // no sink: the queue can't empty on its own
+  let settled = false;
+  p.idle(500).then(() => { settled = true; });
+  c.tick(499);
+  await Promise.resolve();
+  assert.equal(settled, false);
+  c.tick(1);
+  await Promise.resolve();
+  assert.equal(settled, true, '"end" must not hang on audio that has no session to go to');
+  // the browser closing clears the queue and lets an "end" that was waiting move on
+  p.push(frame(80));
+  let released = false;
+  p.idle(5000).then(() => { released = true; });
+  p.clear();
+  await Promise.resolve();
+  assert.equal(released, true);
+  assert.equal(p.queuedMs(), 0);
+});
+
 test('a sink that pulls itself mid-drain leaves the rest of the queue waiting instead of throwing', () => {
   const c = clock();
   const out = [];

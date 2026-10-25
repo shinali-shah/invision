@@ -176,6 +176,73 @@ test('mergeSessions keeps two later voices apart across three sessions with no f
   assert.ok(out.every(s => /^[A-Z]$/.test(s)), JSON.stringify(out));
 });
 
+// Random recordings across 1-4 Muse sessions, each letter leaning the way the camera said (or
+// not at all). Whatever the draw, the merge must never fold a "you" voice into a "them" voice,
+// must leave no session marks behind, must not touch the order, and must be done after one pass.
+test('mergeSessions, on random recordings: opposite sides stay apart, no marks remain, order kept, idempotent', async () => {
+  const { mergeSessions } = await import('../src/transcribe/crowd.js');
+  // a small deterministic PRNG so a failure can be replayed by seed
+  const rng = seed => () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 2 ** 32; };
+  const pick = (r, xs) => xs[Math.floor(r() * xs.length)];
+  const side = s => s === 'you' || s === 'them' ? s : null;
+
+  // what each label leaned before the merge
+  const leanOf = turns => {
+    const tally = new Map();
+    for (const t of turns) {
+      if (!t.speaker || t.speaker === 'unknown' || !side(t.source)) continue;
+      const row = tally.get(t.speaker) ?? { you: 0, them: 0 };
+      row[t.source]++;
+      tally.set(t.speaker, row);
+    }
+    const out = new Map();
+    for (const [l, row] of tally) out.set(l, row.you > row.them ? 'you' : row.them > row.you ? 'them' : null);
+    return out;
+  };
+
+  for (let seed = 1; seed <= 400; seed++) {
+    const r = rng(seed);
+    const sessions = 1 + Math.floor(r() * 4);
+    const turns = [];
+    let turnId = 0;
+    for (let n = 1; n <= sessions; n++) {
+      const letters = ['A', 'B', 'C'].slice(0, 1 + Math.floor(r() * 3));
+      // each letter in this session mostly says one thing to the camera, with some noise
+      const bias = Object.fromEntries(letters.map(l => [l, pick(r, ['you', 'them', 'unknown', 'crowd'])]));
+      const lines = 1 + Math.floor(r() * 6);
+      for (let i = 0; i < lines; i++) {
+        const letter = r() < 0.1 ? 'unknown' : pick(r, letters);
+        const speaker = letter === 'unknown' || n === 1 ? letter : `${letter}#${n}`;
+        const source = letter !== 'unknown' && r() < 0.8 ? bias[letter] : pick(r, ['you', 'them', 'unknown', 'crowd']);
+        turns.push({ turnId: ++turnId, speaker, source, text: `line ${turnId}` });
+      }
+    }
+    const before = leanOf(turns);
+    const out = mergeSessions(turns);
+    const label = `seed ${seed}: ${turns.map(t => `${t.speaker}:${t.source}`).join(' ')} -> ${out.map(t => t.speaker).join(' ')}`;
+
+    // (c) same lines, same order, only the speaker may change
+    assert.equal(out.length, turns.length, label);
+    assert.deepEqual(out.map(t => t.turnId), turns.map(t => t.turnId), label);
+    assert.deepEqual(out.map(t => t.text), turns.map(t => t.text), label);
+    // (b) no session marks left
+    assert.ok(out.every(t => !/#\d+$/.test(t.speaker ?? '')), label);
+    assert.ok(out.every((t, i) => (turns[i].speaker === 'unknown') === (t.speaker === 'unknown')), label);
+    // (a) two labels that leaned opposite sides never share a letter afterwards
+    const landed = new Map(); // final letter -> set of sides that landed on it
+    turns.forEach((t, i) => {
+      const s = before.get(t.speaker);
+      if (!s) return;
+      const set = landed.get(out[i].speaker) ?? new Set();
+      set.add(s);
+      landed.set(out[i].speaker, set);
+    });
+    for (const [letter, sides] of landed) assert.ok(sides.size === 1, `${label}; ${letter} got both ${[...sides].join(' and ')}`);
+    // (d) merging the merged recording changes nothing
+    assert.deepEqual(mergeSessions(out), out, label);
+  }
+});
+
 test('mergeSessions leaves unknown and odd labels alone', async () => {
   const { mergeSessions } = await import('../src/transcribe/crowd.js');
   const turns = [

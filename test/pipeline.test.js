@@ -83,6 +83,17 @@ test('a one-turn recording is too short to coach (Review Focus 3)', async () => 
   assert.ok(c.signals);
 });
 
+test('coaching a conversation that was deleted meanwhile returns null instead of throwing', async () => {
+  const { store, llm, log } = setup();
+  assert.equal(await processConversation({ store, llm, log, id: 'gone', reflection: '' }), null);
+  assert.equal(await recoach({ store, llm, log, id: 'gone', tag: 'friend' }), null);
+  // deleted after the tap landed but before the note was written
+  const id = liveConversation(store);
+  const slow = { mock: true, json: async args => { store.deleteConversation(id); return llm.json(args); } };
+  assert.equal(await processConversation({ store, llm: slow, log, id, reflection: '' }), null);
+  assert.equal(store.getConversation(id), null);
+});
+
 test('recoach switches the tag and rewrites the note without reclassifying', async () => {
   const deps = setup();
   const id = liveConversation(deps.store);

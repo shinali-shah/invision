@@ -122,6 +122,16 @@ test('a one-turn conversation processes with a too_short note', async () => {
   await api('DELETE', `/api/conversations/${convo.id}`);
 });
 
+test('an API path nobody serves answers JSON, and the pages still come from static', async () => {
+  const miss = await api('GET', '/api/nope');
+  assert.equal(miss.status, 404);
+  assert.deepEqual(miss.body, { error: 'Not found' });
+  assert.equal((await api('POST', '/api/conversations/x/nope', {})).status, 404);
+  const page = await fetch(base + '/');
+  assert.equal(page.status, 200);
+  assert.match(page.headers.get('content-type'), /text\/html/);
+});
+
 test('malformed JSON body is a 400, not a 500', async () => {
   const res = await fetch(`${base}/api/conversations`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{nope' });
   assert.equal(res.status, 400);
@@ -331,6 +341,122 @@ test('one voice only: no screen asks for a tap, and insight does not 409 where p
   assert.equal((await api('POST', `/api/conversations/${convo.id}/insight`, {})).status, 200);
   assert.equal((await api('POST', `/api/conversations/${convo.id}/process`, { reflection: '' })).status, 200);
   await api('DELETE', `/api/conversations/${convo.id}`);
+});
+
+// A server on its own store, so a test can break the store or wire a fake stage.
+async function scratchApp({ store, llm, stage } = {}) {
+  const { mkdtempSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const { join } = await import('node:path');
+  const { createApp } = await import('../src/routes.js');
+  const { openStore } = await import('../src/db.js');
+  const { createLogger } = await import('../src/log.js');
+  const { createLlm } = await import('../src/llm.js');
+  const { createTurnAssembler } = await import('../src/transcribe/assemble.js');
+  const { DEMO_EVENTS } = await import('../src/mock/demoConversation.js');
+  const http = await import('node:http');
+  const real = openStore();
+  store = store ? store(real) : real;
+  const app = createApp({ store, llm: llm ?? createLlm({ mock: true }), log: createLogger(real, { quiet: true }), config, stage, recordingsDir: mkdtempSync(join(tmpdir(), 'playback-scratch-')) });
+  const server = http.createServer(app);
+  await new Promise(r => server.listen(0, r));
+  const call = async (method, path, body) => {
+    const res = await fetch(`http://localhost:${server.address().port}${path}`, { method, headers: { 'Content-Type': 'application/json' }, body: body && JSON.stringify(body) });
+    const text = await res.text();
+    return { status: res.status, body: text ? JSON.parse(text) : null };
+  };
+  const asm = createTurnAssembler();
+  for (const e of DEMO_EVENTS) asm.push(e);
+  const frames = [];
+  for (let t = 0; t <= 32500; t += 200) frames.push({ t, face: true, smile: 0.3, jawOpen: t % 400 ? 0.5 : 0.1, browUp: 0, yaw: 0, pitch: 0 });
+  return { store: real, call, frames, turns: asm.flush(), close: () => server.close() };
+}
+
+test('a conversation deleted while coaching runs answers 404 on every screen, not a crash or a null', async () => {
+  const quick = (await import('../src/llm.js')).createLlm({ mock: true });
+  const slow = { mock: true, json: async args => { await new Promise(r => setTimeout(r, 30)); return quick.json(args); } };
+  const { store, call, frames, turns, close } = await scratchApp({ llm: slow });
+  try {
+    const convo = store.createConversation({ tag: 'friend', otherName: 'Sam' });
+    store.updateConversation(convo.id, { turns, userLabel: 'A' });
+    const process = call('POST', `/api/conversations/${convo.id}/process`, { reflection: '' });
+    await new Promise(r => setTimeout(r, 10));
+    const behavior = call('POST', `/api/conversations/${convo.id}/behavior`, { frames, fps: 5 });
+    const insight = call('POST', `/api/conversations/${convo.id}/insight`, {});
+    await new Promise(r => setTimeout(r, 10));
+    assert.equal((await call('DELETE', `/api/conversations/${convo.id}`)).status, 204);
+    const [p, b, i] = await Promise.all([process, behavior, insight]);
+    for (const [name, r] of Object.entries({ p, b, i })) {
+      assert.equal(r.status, 404, `${name}: ${JSON.stringify(r.body)}`);
+      assert.equal(r.body.error, 'Conversation not found', name);
+    }
+    assert.equal(store.getConversation(convo.id), null);
+    // and a tag change that loses its conversation mid-recoach is a 404 too, not a TypeError
+    const again = store.createConversation({ tag: 'friend', otherName: 'Sam' });
+    store.updateConversation(again.id, { turns, userLabel: 'A' });
+    assert.equal((await call('POST', `/api/conversations/${again.id}/process`, { reflection: '' })).status, 200);
+    const retag = call('PATCH', `/api/conversations/${again.id}`, { tag: 'family' });
+    await new Promise(r => setTimeout(r, 10));
+    store.deleteConversation(again.id);
+    assert.equal((await retag).status, 404);
+  } finally { close(); }
+});
+
+test('a coaching run that blows up is a JSON error on every screen and the next tap starts clean', async () => {
+  let blow = 1;
+  const published = [];
+  const quick = (await import('../src/llm.js')).createLlm({ mock: true });
+  // slow enough that the three requests really do share the run that fails
+  const slow = { mock: true, json: async args => { await new Promise(r => setTimeout(r, 30)); return quick.json(args); } };
+  const { store, call, frames, turns, close } = await scratchApp({
+    llm: slow,
+    stage: { publish: m => published.push(m), focus() {} },
+    // the store falls over once, on the first write of the signals
+    store: real => ({ ...real, updateConversation: (id, patch) => { if (patch.signals && blow-- > 0) throw new Error('disk full'); return real.updateConversation(id, patch); } }),
+  });
+  try {
+    const convo = store.createConversation({ tag: 'friend', otherName: 'Sam' });
+    store.updateConversation(convo.id, { turns, userLabel: 'A' });
+    const process = call('POST', `/api/conversations/${convo.id}/process`, { reflection: '' });
+    await new Promise(r => setTimeout(r, 10));
+    const [p, b, i] = await Promise.all([
+      process,
+      call('POST', `/api/conversations/${convo.id}/behavior`, { frames, fps: 5 }),
+      call('POST', `/api/conversations/${convo.id}/insight`, {}),
+    ]);
+    for (const [name, r] of Object.entries({ p, b, i })) {
+      assert.equal(r.status, 500, `${name}: ${JSON.stringify(r.body)}`);
+      assert.equal(r.body.error, 'Something went wrong on our side');
+    }
+    assert.equal(published.filter(m => m.type === 'processing' && m.failed).length, 1, 'one run, one failure for the screens');
+    assert.equal(store.getConversation(convo.id).behavior, null, 'no cues were aligned to a note that never came');
+    // the failed run is no longer "in flight": the next tap runs for real
+    const retry = await call('POST', `/api/conversations/${convo.id}/process`, { reflection: '' });
+    assert.equal(retry.status, 200);
+    assert.ok(retry.body.note?.text);
+    assert.equal(published.filter(m => m.type === 'memory').length, 1, 'a finished run refreshes memory');
+  } finally { close(); }
+});
+
+test('one voice: the coach, the face alignment, the insight and the heatmap all call it yours', async () => {
+  const published = [];
+  const { store, call, frames, turns, close } = await scratchApp({ stage: { publish: m => published.push(m), focus() {} } });
+  try {
+    const convo = store.createConversation({ tag: 'friend', otherName: 'Sam' });
+    store.updateConversation(convo.id, { turns: turns.map(t => ({ ...t, speaker: 'A' })) });
+    // coaching started from the Mac's replay page, not the phone
+    const b = await call('POST', `/api/conversations/${convo.id}/behavior`, { frames, fps: 5 });
+    assert.equal(b.status, 200, JSON.stringify(b.body));
+    assert.ok(b.body.behavior.turns.length >= 2);
+    assert.ok(b.body.behavior.turns.every(t => t.speaker === 'you'), 'the one voice is the user, as the coach took it');
+    const saved = store.getConversation(convo.id);
+    assert.equal(saved.userLabel, null, 'nothing was guessed onto the record');
+    assert.equal(saved.signals.userTurns, turns.length);
+    assert.ok(published.some(m => m.type === 'memory'), 'coaching from the Mac refreshes the memory screens too');
+    const heat = await call('GET', `/api/conversations/${convo.id}/heatmap`);
+    assert.equal(heat.status, 200);
+    assert.ok(heat.body.turns.every(t => t.speaker === 'you'), JSON.stringify(heat.body.turns?.[0]));
+  } finally { close(); }
 });
 
 // ---- every route that coaches shares the one run ----

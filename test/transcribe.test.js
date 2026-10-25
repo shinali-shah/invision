@@ -503,12 +503,13 @@ function sessionsStream(scripts, calls) {
   };
 }
 
-async function bridge({ openStream, store, published = [] }) {
+// Reopens are immediate here unless a test says otherwise; the backoff has its own test below.
+async function bridge({ openStream, store, published = [], reconnectBackoffMs = 0, log = () => {} }) {
   const http = await import('node:http');
   const { WebSocket } = await import('ws');
   const { attachTranscribeSocket } = await import('../src/transcribe/wsRoute.js');
   const server = http.createServer();
-  attachTranscribeSocket({ server, store, log: () => {}, config: { mock: false }, openStream, stage: { publish: m => published.push(m) } });
+  attachTranscribeSocket({ server, store, log, config: { mock: false }, openStream, stage: { publish: m => published.push(m) }, reconnectBackoffMs });
   await new Promise(r => server.listen(0, r));
   const ws = new WebSocket(`ws://localhost:${server.address().port}/ws/transcribe?conversationId=c1`);
   const got = [];
@@ -707,7 +708,7 @@ test('audio shed while the new session is still connecting moves its clock, not 
   const { attachTranscribeSocket } = await import('../src/transcribe/wsRoute.js');
   const server = http.createServer();
   // a one-second queue limit and a bucket big enough that nothing is ever throttled
-  attachTranscribeSocket({ server, store: memStore(saved), log: () => {}, config: { mock: false }, openStream, pace: { maxQueueMs: 1000, leadMs: 60000 } });
+  attachTranscribeSocket({ server, store: memStore(saved), log: () => {}, config: { mock: false }, openStream, pace: { maxQueueMs: 1000, leadMs: 60000 }, reconnectBackoffMs: 0 });
   await new Promise(r => server.listen(0, r));
   const ws = new WebSocket(`ws://localhost:${server.address().port}/ws/transcribe?conversationId=c1`);
   const got = [];
@@ -820,6 +821,154 @@ test('Muse closing with 1000 on its own, while the phone is still recording, is 
   server.close();
   assert.equal(got.filter(m => m.type === 'error').length, 0);
   assert.deepEqual(done.turns.map(t => [t.turnId, t.text, t.startMs]), [[1, 'hi grandma', 0], [2, 'still here', 80]]);
+});
+
+test('a reopen waits a beat longer each time, and audio sent during the wait reaches the new session', async () => {
+  const saved = {};
+  const calls = [];
+  const opened = [];
+  const streams = [];
+  const openStream = sessionsStream([
+    { // dies on the first frame
+      onAudio(s, { onEvent, onClose }) {
+        if (s.sent !== 3840) return;
+        onEvent({ type: 'speechStart', turnId: 1, audioProcessedMs: 0 });
+        onEvent({ type: 'speechComplete', turnId: 1, transcript: 'hi grandma', audioProcessedMs: 50 });
+        onClose(1008);
+      },
+    },
+    { onAudio(s) { if (s.sent === 3840) onClose2(1008); } }, // and so does the second
+    { onEnd(s, { onClose }) { onClose(1000); } },
+  ], calls);
+  let onClose2;
+  const spy = opts => {
+    opened.push(Date.now());
+    if (calls.length === 1) onClose2 = opts.onClose;
+    return openStream(opts).then(s => { streams.push(s); return s; });
+  };
+  const { ws, got, server, until } = await bridge({ openStream: spy, store: memStore(saved), reconnectBackoffMs: 60 });
+  await until('ready');
+  ws.send(Buffer.alloc(3840));
+  await until('turn');
+  // nothing reopened yet: the first reopen waits one beat
+  await new Promise(r => setTimeout(r, 20));
+  assert.equal(calls.length, 1, 'no reopen in the first 20 ms');
+  ws.send(Buffer.alloc(3840)); // spoken during the wait: must not be lost
+  ws.send(Buffer.alloc(3840));
+  await new Promise(r => setTimeout(r, 70));
+  assert.equal(calls.length, 2, 'the second session opened after the beat');
+  assert.ok(opened[1] - opened[0] >= 55, `waited ${opened[1] - opened[0]}ms before the first reopen`);
+  // the second session died on its first frame; the third waits two beats
+  await new Promise(r => setTimeout(r, 70));
+  assert.equal(calls.length, 2, 'two beats have not passed');
+  await new Promise(r => setTimeout(r, 90));
+  assert.equal(calls.length, 3, 'the third session opened after two beats');
+  assert.ok(opened[2] - opened[1] >= 110, `waited ${opened[2] - opened[1]}ms before the second reopen`);
+  ws.send(JSON.stringify({ type: 'end' }));
+  const done = await until('done');
+  server.close();
+
+  assert.equal(got.filter(m => m.type === 'error').length, 0);
+  assert.equal(streams[1].sent + streams[2].sent, 2 * 3840, 'both frames from the wait went to a later session');
+  assert.deepEqual(done.turns.map(t => t.text), ['hi grandma']);
+});
+
+test('the phone leaving during a reopen wait ends the recording without opening another session', async () => {
+  const saved = {};
+  const published = [];
+  const calls = [];
+  const openStream = sessionsStream([
+    {
+      onAudio(s, { onEvent, onClose }) {
+        if (s.sent !== 3840) return;
+        onEvent({ type: 'speechStart', turnId: 1, audioProcessedMs: 0 });
+        onEvent({ type: 'speechComplete', turnId: 1, transcript: 'hi grandma', audioProcessedMs: 50 });
+        onClose(1008);
+      },
+    },
+    { onEnd(s, { onClose }) { onClose(1000); } },
+  ], calls);
+  const { ws, server, until } = await bridge({ openStream, store: memStore(saved), published, reconnectBackoffMs: 80 });
+  await until('ready');
+  ws.send(Buffer.alloc(3840));
+  await until('turn');
+  await new Promise(r => setTimeout(r, 20));
+  ws.close(); // mid-wait, no "end"
+  await new Promise(r => setTimeout(r, 120));
+  server.close();
+
+  assert.equal(calls.length, 1, 'nothing was reopened for a phone that had gone');
+  assert.deepEqual(saved.turns?.map(t => t.text), ['hi grandma']);
+  assert.equal(published.filter(m => m.type === 'done').length, 1);
+});
+
+test('"end" during a reopen wait still gets a session to drain into and then finishes', async () => {
+  const saved = {};
+  const calls = [];
+  let s2;
+  const openStream = sessionsStream([
+    {
+      onAudio(s, { onEvent, onClose }) {
+        if (s.sent !== 3840) return;
+        onEvent({ type: 'speechStart', turnId: 1, audioProcessedMs: 0 });
+        onEvent({ type: 'speechComplete', turnId: 1, transcript: 'hi grandma', audioProcessedMs: 50 });
+        onClose(1008);
+      },
+    },
+    {
+      onEnd(s, { onEvent, onClose }) {
+        s2 = s;
+        onEvent({ type: 'speechStart', turnId: 1, audioProcessedMs: 0 });
+        onEvent({ type: 'speechComplete', turnId: 1, transcript: 'bye', audioProcessedMs: 100 });
+        onClose(1000);
+      },
+    },
+  ], calls);
+  const { ws, got, server, until } = await bridge({ openStream, store: memStore(saved), reconnectBackoffMs: 60 });
+  await until('ready');
+  ws.send(Buffer.alloc(3840));
+  await until('turn');
+  ws.send(Buffer.alloc(3840));
+  ws.send(JSON.stringify({ type: 'end' }));
+  await new Promise(r => setTimeout(r, 30));
+  assert.equal(got.some(m => m.type === 'done'), false, 'done waits for the reopen');
+  const done = await until('done');
+  server.close();
+
+  assert.equal(calls.length, 2);
+  assert.equal(s2.sent, 3840, 'the frame from the wait reached the new session before end');
+  assert.deepEqual(done.turns.map(t => [t.text, t.startMs]), [['hi grandma', 0], ['bye', 80]]);
+});
+
+test('a line Muse flushes after done is not announced as a live turn', async () => {
+  const saved = {};
+  const published = [];
+  let late;
+  const openStream = ({ onEvent, onClose }) => Promise.resolve({
+    sendAudio() {},
+    async end() {
+      onEvent({ type: 'speechStart', turnId: 1, audioProcessedMs: 0 });
+      onEvent({ type: 'speechComplete', turnId: 1, transcript: 'hi grandma', audioProcessedMs: 300 });
+      onClose(1000);
+      // Muse's close frame and a last transcript can cross on the wire
+      late = () => {
+        onEvent({ type: 'speechStart', turnId: 2, audioProcessedMs: 400 });
+        onEvent({ type: 'speechComplete', turnId: 2, transcript: 'one more thing', audioProcessedMs: 900 });
+      };
+    },
+  });
+  const { ws, server, until } = await bridge({ openStream, store: memStore(saved), published });
+  await until('ready');
+  ws.send(Buffer.alloc(3840));
+  ws.send(JSON.stringify({ type: 'end' }));
+  await until('done');
+  late();
+  await new Promise(r => setTimeout(r, 20));
+  server.close();
+
+  const types = published.map(m => m.type);
+  assert.equal(types.lastIndexOf('turn') < types.indexOf('done'), true, `a turn was published after done: ${types.join(',')}`);
+  assert.deepEqual(saved.turns.map(t => t.text), ['hi grandma']);
 });
 
 // A hand-rolled client that completes the upgrade and then sends one frame with RSV1 set,

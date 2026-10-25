@@ -257,7 +257,7 @@ button.line-time::after { inset: -12px -4px; }
 .timeline { margin-bottom: 24px; padding: 22px 26px; background: var(--white); border: 1.5px solid var(--ink); border-radius: 22px; }
 .tl-head { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-bottom: 26px; }
 .tl-head .label { margin: 0; }
-.tl-key { display: inline-flex; align-items: center; gap: 7px; font-size: 12px; color: var(--ink-2); }
+.tl-key { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px 7px; font-size: 12px; color: var(--ink-2); }
 .tl-key i { width: 10px; height: 10px; border-radius: 3px; margin-left: 8px; }
 .tl-key .you { background: var(--you); }
 .tl-key .them { background: var(--ink-3); }

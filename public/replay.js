@@ -1781,7 +1781,7 @@ function renderHeader() {
   const c = state.convo;
   const first = firstName();
   $('title').textContent = `Conversation with ${first}`;
-  document.title = c ? `Replay of ${c.otherName || 'a conversation'}` : 'Playback Replay';
+  document.title = c ? `Replay of ${first === 'them' ? 'a conversation' : c.otherName}` : 'Playback Replay';
   $('side-title').textContent = first === 'them' ? 'How they responded' : `How ${first} responded`;
   const tag = $('tag');
   tag.hidden = !(c && c.tag);
@@ -2104,6 +2104,8 @@ function handle(msg) {
     if (c.behavior === undefined) c.behavior = prev.behavior ?? null;
     if (c.insight === undefined) c.insight = prev.insight ?? null;
     state.convo = c;
+    // Picked on the phone (or by the lip lock) while this page was waiting: the picker can go.
+    if (c.userLabel) state.labelNeeded = false;
     $('v-convo').hidden = false;
     $('v-error').hidden = true;
     renderAll();

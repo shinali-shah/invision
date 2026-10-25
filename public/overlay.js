@@ -158,12 +158,15 @@ export function drawMesh(ctx, xy, r, { bone = '#f3ead8', marigold = '#f4a51c', a
   // The lines above give the face its shape; the points show the model's actual output.
   let minY = 1; let maxY = 0;
   for (let i = 1; i < xy.length; i += 2) { if (xy[i] < minY) minY = xy[i]; if (xy[i] > maxY) maxY = xy[i]; }
+  // One path, one fill: 478 separate fillRects every frame showed up on a 4K canvas.
   const dot = Math.max(hair, Math.min(2.2, faceW / 150));
   ctx.fillStyle = bone;
   ctx.globalAlpha = alpha * 0.85;
+  ctx.beginPath();
   for (let i = 0; i < xy.length; i += 2) {
-    ctx.fillRect(r.x + xy[i] * r.w - dot / 2, r.y + xy[i + 1] * r.h - dot / 2, dot, dot);
+    ctx.rect(r.x + xy[i] * r.w - dot / 2, r.y + xy[i + 1] * r.h - dot / 2, dot, dot);
   }
+  ctx.fill();
 
   // corner brackets around the face, like a viewfinder locking on
   const pad = 0.04;
@@ -247,7 +250,7 @@ export function createFaceOverlay({ video, canvas, box, detect, enabled, onFrame
     const a = gone < HOLD_MS ? 1 : 1 - (gone - HOLD_MS) / FADE_MS;
     if (a <= 0) { drawn = null; smoother.reset(); clearCanvas(); return; }
     paint(a);
-    if (!fading) fading = requestAnimationFrame((t) => { fading = 0; if (drawn && enabled()) fadeOut(t); });
+    if (!fading) fading = requestAnimationFrame((t) => { fading = 0; if (!destroyed && drawn && enabled()) fadeOut(t); });
   }
 
   // One frame: run the model (unless decimated), filter, draw.
@@ -259,7 +262,7 @@ export function createFaceOverlay({ video, canvas, box, detect, enabled, onFrame
     if (!force && stats.decimated && skipNext) {
       skipNext = false;
       stats.skipped += 1;
-      if (drawn) paint(1); // hold the filtered mesh on the in-between frame
+      if (drawn && !fading) paint(1); // hold the filtered mesh on the in-between frame; mid-fade the fade owns the paint
       return;
     }
     skipNext = true;
@@ -369,6 +372,8 @@ export function createFaceOverlay({ video, canvas, box, detect, enabled, onFrame
     destroy() {
       destroyed = true;
       stopLoop();
+      cancelAnimationFrame(fading);
+      fading = 0;
       ro.disconnect();
       document.removeEventListener('fullscreenchange', onFs);
       for (const [ev, fn] of [['play', onPlay], ['playing', onPlay], ['pause', onPause], ['ended', onPause], ['seeking', onSeeking], ['seeked', onSeeked], ['emptied', onEmptied], ['loadedmetadata', onMeta]]) video.removeEventListener(ev, fn);

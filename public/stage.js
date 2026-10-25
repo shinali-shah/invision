@@ -613,7 +613,7 @@ function renderMemory() {
       el('th', { scope: 'col', text: 'You talked' }),
     );
     const rows = table.slice(-6).map((r) => el('tr', {},
-      el('td', { text: `${fmtDate(r.createdAt)} ${r.otherName || TAG_NAMES[r.tag] || ''}`.trim() }),
+      el('td', { text: `${fmtDate(r.createdAt)} ${realName(r) || TAG_NAMES[r.tag] || ''}`.trim() }),
       el('td', { text: fmtNum(r.userQuestions) }),
       el('td', { text: fmtNum(r.followUps) }),
       el('td', { text: fmtNum(r.otherAvgAnswerWords) }),
@@ -695,7 +695,7 @@ async function fetchConvo(id) {
 function setFocus(view, conversationId, otherName, { late = false } = {}) {
   if (!VIEWS.includes(view)) return;
   // While recording, renderScript asks for the brief under the conversation's own name.
-  if (view !== 'recording') setBriefName(view === 'start' ? otherName : null);
+  if (view !== 'recording') setBriefName(view === 'start' ? realName({ otherName }) : null);
   const prevView = state.view;
   state.view = view;
   state.jumpedTo = null; // the phone has spoken; we're no longer ahead of it
@@ -795,8 +795,9 @@ function handle(msg) {
       stopTimer(id);
       const turns = Array.isArray(msg.turns) ? msg.turns : turnsFor(id);
       state.doneTurns.set(id, turns);
-      // The store was updated with these before `done` went out, but no `conversation` message
-      // follows: without this the wall keeps asking for a tap the lip lock already answered.
+      // The store was updated with these before `done` went out. A `conversation` message now
+      // comes first with the same turns and label, but an older server sends only this, and
+      // without the merge the wall kept asking for a tap the lip lock had already answered.
       const c = state.convos.get(id);
       if (c) {
         c.turns = turns;

@@ -111,6 +111,17 @@ test('recorder mime list asks for AAC audio in mp4 before falling back', () => {
   assert.equal(pickRecorderMime(() => { throw new Error('no MediaRecorder'); }), '');
 });
 
+test('leveler shrugs off a reading that is not a number', () => {
+  const lev = createLeveler();
+  lev(10 ** (-30 / 20));
+  const before = lev.levelDb;
+  lev(NaN);
+  lev(Infinity);
+  assert.equal(lev.levelDb, before);
+  const g = lev(10 ** (-30 / 20));
+  assert.ok(Number.isFinite(g) && g > 1, String(g));
+});
+
 test('leveler exposes the speech level it is tracking, in dB', () => {
   const lev = createLeveler();
   assert.equal(lev.levelDb, null);

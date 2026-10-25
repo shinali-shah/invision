@@ -24,10 +24,11 @@ async function request(method, path, body) {
 const enc = encodeURIComponent;
 
 // Raw video body, so not request(). XHR rather than fetch because fetch can't
-// report upload progress. Resolves to the server's Recording.
+// report upload progress. Resolves to the server's Recording. The promise carries an
+// abort() for when the conversation is deleted while the video is still going up.
 function uploadRecording(id, blob, offsetMs, onProgress) {
-  return new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
+  const xhr = new XMLHttpRequest();
+  const done = new Promise((resolve, reject) => {
     xhr.open('POST', `/api/conversations/${enc(id)}/recording?offsetMs=${enc(Math.round(offsetMs) || 0)}`);
     xhr.setRequestHeader('Content-Type', (blob.type || 'video/mp4').split(';')[0]);
     if (onProgress) {
@@ -43,6 +44,8 @@ function uploadRecording(id, blob, offsetMs, onProgress) {
     xhr.onabort = () => reject(new Error('Upload cancelled.'));
     xhr.send(blob);
   });
+  done.abort = () => { try { xhr.abort(); } catch { /* already finished */ } };
+  return done;
 }
 
 export const api = {

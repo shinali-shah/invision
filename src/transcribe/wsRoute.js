@@ -9,6 +9,7 @@ import { detectPeople } from '../nlp/person.js';
 const MAX_CUES = 120000; // ~4 h at 8 fps; past that the phone has been left running
 const MIN_NAME_CONF = 0.7; // a lone vocative is enough; a vocative with a rival name is not
 const MAX_SESSIONS = 4; // Muse hangs up (1008) when it falls behind; this many fresh sessions per recording before we give up
+const RECONNECT_BACKOFF_MS = 300; // wait this much longer before each reopen, so a bad minute at Muse isn't met with four opens in a row
 const END_DRAIN_MS = 5000; // how long "end" waits for throttled audio to reach Muse
 
 const unnamed = convo => !convo.otherName || convo.otherName === 'them';
@@ -24,7 +25,9 @@ function cleanCues(samples) {
 }
 
 // Browser <-> Muse bridge. Audio only passes through memory here and is never written anywhere.
-export function attachTranscribeSocket({ server, store, log, config, openStream, stage = { publish() {} }, recordingsDir = null, pace = {} }) {
+export function attachTranscribeSocket({
+  server, store, log, config, openStream, stage = { publish() {} }, recordingsDir = null, pace = {}, reconnectBackoffMs = RECONNECT_BACKOFF_MS,
+}) {
   const wss = new WebSocketServer({ noServer: true });
 
   server.on('upgrade', (req, socket, head) => {
@@ -123,6 +126,10 @@ export function attachTranscribeSocket({ server, store, log, config, openStream,
     };
 
     const onEvent = event => {
+      // `done` went out with everything the assembler had. A line Muse flushes after that (its
+      // close frame still in the air) has no record to land on, and announcing it would put a
+      // live line on the stage for a recording that is over.
+      if (finished) return;
       if (Number.isFinite(event?.turnId)) maxTurnId = Math.max(maxTurnId, event.turnId);
       const out = assembler.push(event);
       // A transcript with no speechStart gets a made-up id; the next session shifts past it too
@@ -168,7 +175,8 @@ export function attachTranscribeSocket({ server, store, log, config, openStream,
       }
       log('transcribe', 'warn', `Muse stream closed with ${code}; reconnecting at ${(pacer.positionMs() / 1000).toFixed(1)}s with ${Math.round(pacer.queuedMs())}ms waiting`);
       try {
-        await connect();
+        const s = await connect();
+        if (!s) return finish(); // the phone left while we were waiting to reopen; keep what we heard
         if (!finished) log('transcribe', 'info', `transcriber back (session ${session})`);
       } catch (err) {
         log('transcribe', 'error', `could not reopen Muse stream: ${err.message}`);
@@ -180,21 +188,32 @@ export function attachTranscribeSocket({ server, store, log, config, openStream,
     // Audio that arrives before a session is ready waits in the pacer and goes out when it is.
     // An early "end" waits for the handshake too, otherwise those frames would be lost
     // and the Muse session would be opened after we'd already given up on it.
+    // A reopen waits a beat longer each time (Muse just hung up on us; knocking straight away
+    // again is how four sessions get burnt in a second). The wait is part of `connecting`, so an
+    // "end" or a vanished phone during it is handled the same as during the handshake itself,
+    // and audio that arrives meanwhile waits in the pacer for the new session.
+    // Resolves null when the phone left before we got round to opening.
     const connect = () => {
       const n = ++session;
       let startMs = null; // where this session's clock zero sits on the recording
-      connecting = openStream({
+      const wait = reconnectBackoffMs * (n - 1);
+      const open = () => openStream({
         apiKey: config.apiKey,
         model: config.asrModel,
         languages: config.languages,
         onEvent: shifted(n, () => startMs ?? pacer.positionMs(), maxTurnId),
         onError: err => log('transcribe', 'error', err.message), // Muse follows a fatal one with a close; that is where we act
         onClose: code => onClose(code, n),
-      }).then(s => {
-        if (finished || browserGone) { s.end().catch(() => {}); return s; }
-        startMs = pacer.positionMs(); // the next byte out is this session's first
-        pacer.setSink(chunk => s.sendAudio(chunk));
-        return s;
+      });
+      const delay = wait ? new Promise(r => setTimeout(r, wait).unref?.()) : Promise.resolve();
+      connecting = delay.then(() => {
+        if (n > 1 && (finished || browserGone)) return null;
+        return open().then(s => {
+          if (finished || browserGone) { s.end().catch(() => {}); return s; }
+          startMs = pacer.positionMs(); // the next byte out is this session's first
+          pacer.setSink(chunk => s.sendAudio(chunk));
+          return s;
+        });
       });
       return connecting;
     };

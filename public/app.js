@@ -684,9 +684,14 @@ function startLips(rec) {
     video: $('rec-preview'),
     timeBase: () => rec.firstAudioAt,
     send: (samples) => {
-      if (rec.ws.readyState !== WebSocket.OPEN) return;
+      // Same treatment as the audio frames: a batch from before the socket opened waits in the
+      // queue (ws.send takes strings and buffers alike), so the first seconds of cues aren't lost
+      // when a cached model comes up before a slow tunnel does.
+      const msg = JSON.stringify({ type: 'cues', samples });
+      if (rec.ws.readyState === WebSocket.OPEN) rec.ws.send(msg);
+      else if (rec.ws.readyState === WebSocket.CONNECTING) rec.queue.push(msg);
+      else return;
       rec.cuesSent = true; // fallback for the label step's copy when the server doesn't say where the label came from
-      rec.ws.send(JSON.stringify({ type: 'cues', samples }));
     },
     onState: renderLipState,
   });
@@ -767,10 +772,11 @@ async function uploadVideo(id) {
   up.error = null;
   renderVideo();
   try {
-    const recording = await api.uploadRecording(id, up.blob, up.offsetMs, (p) => {
+    up.req = api.uploadRecording(id, up.blob, up.offsetMs, (p) => {
       up.pct = Math.round(p * 100);
       renderVideo();
     });
+    const recording = await up.req;
     if (state.uploads.get(id) !== up) return; // deleted meanwhile
     up.status = 'done';
     up.blob = null; // it's on the Mac now
@@ -782,6 +788,14 @@ async function uploadVideo(id) {
     up.error = err.message;
   }
   renderVideo();
+}
+
+// The conversation is going away: stop sending its video too, otherwise the whole blob still
+// crosses the tunnel to a 404.
+function dropUpload(id) {
+  const up = state.uploads.get(id);
+  if (up && up.req) up.req.abort();
+  state.uploads.delete(id);
 }
 
 // Upload status on the label view, plus the Replay link on coaching.
@@ -1414,7 +1428,7 @@ async function deleteConversation() {
   showError('coaching-error', null);
   try {
     await api.remove(convo.id);
-    state.uploads.delete(convo.id);
+    dropUpload(convo.id);
     state.convo = null;
     await openMemory();
   } catch (err) {
@@ -1633,7 +1647,7 @@ function abandonRecording() {
   // for the server to fill in with whatever Muse still had.
   const id = state.convo && state.convo.id;
   if (id) {
-    state.uploads.delete(id);
+    dropUpload(id);
     state.convo = null;
     api.remove(id).catch(() => {});
   }
