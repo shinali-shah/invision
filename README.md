@@ -1,10 +1,52 @@
 # Playback
 
-Most tools only look at what you said. Playback looks at how the other person responded, and helps you become a better listener over time.
+Most tools only look at what you said. Playback looks at how the other person responded, and helps you
+become a better listener over time.
 
-Glasses mic → iPhone web app → **Muse Voice Transcribe** (live diarized transcript, both voices, audio discarded) → rules + **Muse Spark** analysis → one reviewed coaching note → memory view with a trend and a weekly next step.
+You wear a mic (and optionally point a camera) during a real conversation. Afterwards you get one specific piece
+of advice, backed by the moment it came from: what they said, what you said, and the line that would have landed
+better. It remembers people, so next time you get a brief before you talk, and a before/after once you have.
 
-Plan: `docs/superpowers/plans/2026-10-24-playback.md`
+Built at HackTX 2026 on Meta's Muse models.
+
+## What it does
+
+**On the phone (iPhone Safari)**
+- **Before:** type who you're about to talk to and get a brief: promises you made, things coming up for them,
+  what they lit up about last time.
+- **During:** live, diarized transcript of both voices (English and Spanish, code-switching included), plus video
+  if Camera is on. Consent is a required step.
+- **After:** a coaching note, a comparison with your last conversation with that person, what the app picked up
+  (topics, missed moments, promises), and a drafted follow-up message you can send in one tap.
+
+**On the Mac (`/mac`, one page, two sections)**
+- **Live** follows the phone in real time, big enough for a projector.
+- **Replay** opens a finished conversation:
+  - **3 takeaways:** *Try this next time* (their line, your line, and a rewrite that picks up their words),
+    *Keep doing this*, and *Ask about it next time*. Each one has a ▶ that plays the moment.
+  - **Score strip:** follow-ups, missed moments, and how they reacted after your follow-ups vs your other lines.
+  - **Timeline:** who was talking, their smile, facing and nods, with follow-ups and missed moments marked.
+  - **Transcript heatmap:** the few words per line that mattered, each with a reason.
+
+## Not an LLM wrapper
+
+The measuring is deterministic and explainable; Muse Spark is used where language judgment is needed, and
+everything it writes is checked against what was measured.
+
+| Measured without a model | Muse Spark, grounded and validated |
+|---|---|
+| Questions, talk share, answer length (`src/analysis/rules.js`) | Is this question a follow-up? Cross-checked against the lexical detector; agreement is logged |
+| Lexical follow-up detector, EN/ES stems and back-references (`src/nlp/hooks.js`) | Coaching note: a reviewer agent plus a regex guard; every number must exist in the measured signals |
+| Topics, upcoming events, your promises, missed bids | Follow-up message: rejected unless it names something real from the conversation |
+| Face cues aligned to each turn: reaction after your lines, nods, facing (`src/behavior/align.js`) | "Try instead" rewrites: only accepted if they pick up the other person's words |
+| Evidence numbers on every takeaway, before/after deltas, word heatmap, pre-meeting brief | Takeaway wording, pattern and weekly goal |
+
+Face cues come from a pretrained model, MediaPipe Face Landmarker, running in the browser (vendored in
+`public/vendor/mediapipe/`). It measures smiling, facing and head movement: observable cues only, never feelings or
+sincerity. Insight text that guesses at feelings ("she was bored", "fake smile") is rejected and replaced with the
+numbers.
+
+Every agent has a fallback (rule counts, templates, the measured numbers), so a Muse outage never dead-ends the demo.
 
 ## Run it
 
@@ -14,113 +56,63 @@ npm start          # http://localhost:3000
 npm test           # node:test, no network
 ```
 
-No `MODEL_API_KEY` → **mock mode**: the transcriber replays a scripted 30-second bilingual call (English → Spanish) and every Muse Spark agent returns deterministic output. The whole demo works offline and the header shows a "Demo audio" badge.
+No `MODEL_API_KEY` means **mock mode**: the transcriber replays a scripted bilingual call and every agent returns
+deterministic output, so the whole thing works offline.
 
 Live mode:
 
 ```bash
 cp .env.example .env    # then fill MODEL_API_KEY from dev.meta.ai
 node --env-file=.env src/server.js
+ngrok http 3000         # Safari only allows the mic and camera over https
 ```
+
+- **iPhone:** open the `https://…ngrok…` link, plug in the mic, leave Camera on, record.
+- **Mac:** open `http://localhost:3000/mac` (`?theme=dark` for dark rooms). Keys `1` / `2` switch Live and Replay.
 
 | Env | Default | |
 |---|---|---|
-| `MODEL_API_KEY` | – | Meta Model API key. Empty = mock mode |
+| `MODEL_API_KEY` | – | Meta Model API key. Empty means mock mode |
 | `MOCK` | – | `1` forces mock mode even with a key |
 | `DEMO_LANGUAGES` | `English,Spanish` | sent as `languageBias` to the transcriber |
 | `MUSE_SPARK_MODEL` | `muse-spark-1.3` | |
 | `MUSE_ASR_MODEL` | `muse-voice-transcribe-1.0` | |
-| `PORT` / `DB_PATH` | `3000` / `data/playback.db` | |
-
-### On the iPhone
-
-Safari only gives the page a microphone over https:
-
-```bash
-ngrok http 3000
-```
-
-Open the `https://…ngrok…` link on the phone. Plug the Saramonic mic in, then tap Record.
-
-### Stage view (the Mac on the projector)
-
-The phone records (the mic is plugged into it); the Mac shows what's happening, live and big.
-
-1. On the Mac: `npm start`, then `ngrok http 3000`.
-2. Mac browser: `http://localhost:3000/stage.html` → full screen (`?theme=dark` for dark rooms).
-3. iPhone: open the ngrok `https://` link and record as usual.
-
-The stage follows the phone: live transcript while recording, the note + counts + highlighted lines after coaching, the trend and next step when the phone opens Memory. Changing the tag on the phone swaps the note on stage.
-
-## The Mac: one page, two sections
-
-Open `http://localhost:3000/mac`. **Live** (keys: 1) follows the phone as it records and coaches; **Replay** (2) opens the
-video analysis. When a recording with a note lands, it jumps to Replay on its own (toggle in the header).
-
-## Replay (camera + behavior cues)
-
-Turn **Camera** on before recording (consent covers audio and video). The phone records video next to the
-transcript and uploads it to the Mac when you stop. Open the **Replay** section of `/mac`:
-
-- **Pretrained model, in the browser:** MediaPipe Face Landmarker (vendored in `public/vendor/mediapipe/`) runs over the
-  video at 5 fps and reports smiling, facing and head pose per frame. Observable cues only, never feelings or sincerity.
-- **Aligned without AI:** `src/behavior/align.js` lines the cues up with each turn: the other person's reaction in the
-  2.5 s after each of your lines, nods, facing, and where upbeat words met a flat face ("mixed").
-- **Headline stat:** their reaction after your follow-up questions vs after your other lines.
-- **Word heatmap:** `src/nlp/heatmap.js` colours every word: threads you picked up, follow-ups, topics, promises,
-  smiles (green), and missed moments, fillers, mixed signals (red), each with its reason.
-- **Did the advice hold up?** Muse Spark (`src/agents/insight.js`) checks the coaching note against the cues, picks
-  moments to replay, and is rejected (numbers-only fallback) if it claims anything about feelings or cites turns that
-  don't exist.
-
-Video stays in `data/recordings/` on the Mac; deleting a conversation deletes its video and cues.
+| `PORT` / `DB_PATH` / `RECORDINGS_DIR` | `3000` / `data/playback.db` / `data/recordings` | |
 
 ## How it fits together
 
-| Step | Code | Muse API |
+| Step | Code | Meta API |
 |---|---|---|
-| Tag + consent | `public/app.js`, `POST /api/conversations` | – |
-| Record + transcribe + separate | `public/pcm-worklet.js` → `WS /ws/transcribe` → `src/transcribe/realtime.js` | `wss://api.meta.ai/v1/asr/realtime`, `mode: DIARIZATION`, PCM 24 kHz |
-| Analyze | `src/analysis/rules.js` + `classify.js` | `POST /v1/chat/completions`, strict `json_schema` |
-| Coach → review | `src/agents/coach.js` → `reviewer.js` | same |
-| Remember | `src/agents/patternFinder.js`, `nextStep.js`, `src/pipeline.js` | same |
+| Record, transcribe, separate voices | `public/pcm-worklet.js` → `WS /ws/transcribe` → `src/transcribe/realtime.js` | Muse Voice Transcribe, `wss://api.meta.ai/v1/asr/realtime`, `DIARIZATION`, PCM 24 kHz |
+| Hooks, follow-up detector | `src/nlp/` | – |
+| Classify, coach, review | `src/analysis/classify.js`, `src/agents/coach.js`, `reviewer.js` | Muse Spark, `POST /v1/chat/completions`, strict `json_schema` |
+| Follow-up message | `src/agents/followUp.js` | Muse Spark |
+| Pattern, weekly goal | `src/agents/patternFinder.js`, `nextStep.js` | Muse Spark |
+| Before/after, brief | `src/nlp/compare.js`, `brief.js` | – |
+| Video, face cues | `public/replay.js` (MediaPipe) → `POST /behavior` → `src/behavior/align.js` | – |
+| Takeaways, rewrites | `src/agents/insight.js` | Muse Spark |
+| Heatmap | `src/nlp/heatmap.js` | – |
 
-| Hooks + follow-up detector | `src/nlp/` (no model) | – |
-| Follow-up message | `src/agents/followUp.js` (grounded in hooks, checked) | same |
-| Before / after | `src/nlp/compare.js`, `GET /api/conversations/:id/compare` | – |
-| Pre-meeting brief | `src/nlp/brief.js`, `GET /api/brief?name=` | – |
+The follow-up draft and the trend run alongside coaching, so a live conversation is coached in about 25 seconds.
 
-### What's measured vs. what's generated
+## Privacy
 
-The numbers and evidence come from deterministic NLP in `src/nlp/` and `src/analysis/rules.js`; Muse Spark is used where language judgment is actually needed, and every output is checked against what the NLP layer found.
+- Recording needs a consent step on the phone ("I told them I'm recording audio and video").
+- Audio is streamed for transcription and not stored. Video stays on the Mac in `data/recordings/`.
+- Deleting a conversation deletes its transcript, notes, video and face cues.
 
-| Deterministic (explainable, works offline) | Muse Spark (grounded + validated) |
-|---|---|
-| Questions, talk share, answer length | Is this question a follow-up? (cross-checked against the lexical detector, agreement logged) |
-| Lexical follow-up detector (EN/ES stems, back-references) | Coaching note (reviewer + regex guard; numbers must exist in signals) |
-| Topics, upcoming events, your promises, missed bids | Follow-up message (rejected unless it names a real hook; template fallback) |
-| Before/after deltas, "did you follow last note's suggestion" | Pattern + weekly goal |
-| Pre-meeting brief | – |
+## Demo (2 minutes)
 
-Every agent has the spec's fallback (rule counts only / raw counts / signal table / fixed goals / drop the note), so the demo never dead-ends. Logs for each step are in the app's Logs drawer.
+1. Type their name: the brief shows on the phone and the Mac.
+2. Record a short conversation with the camera on. Stop, tap your own line, get coaching.
+3. On the Mac, Replay opens on its own: play the *Try this next time* moment and read the rewrite.
+4. Point at the score strip: reactions after follow-ups vs other lines.
+5. Send the drafted follow-up from the phone.
+6. Talk to the same person again and show the before/after.
 
-## Demo script (2:00)
+## Still open
 
-- **0:00** One-liner, bilingual hero story.
-- **0:15** Tell the teammate you're recording (out loud — that's the consent step). Pick **Family**, tick "I told them".
-- **0:25** Record. 30-second conversation that switches languages.
-- **0:55** Stop. Tap one of your lines. Show the transcript with labels, the counts and the note with its lines highlighted.
-- **1:15** Follow the note: ask a better follow-up, teammate answers live.
-- **1:30** Memory: three conversations, the pattern with its numbers. Accept the weekly next step.
-- **1:45** Switch the tag to **Networking** on a conversation to show the note adapt.
-- **1:55** Close: it coaches you on how people respond to you, not just what you said.
-
-Before demo day: rehearse twice end to end, keep a recording of a good run, and test speaker labels in a noisy room with the glasses mic (Meta reports ~17.5% diarization error; live is worse than recordings).
-
-## Still open (from the spec)
-
-- Reflection typed or spoken (typed for now)
-- Second demo language and who speaks it (`DEMO_LANGUAGES`)
-- Mounting the mic so it picks up both voices
-- Calendar integration (stretch, not built)
-- Camera / LED (deferred)
+- Reflection is typed (spoken would be nicer)
+- Mounting the mic and camera on the glasses so they catch both people
+- Testing the face cues and iOS video recording on more real conversations
+- Calendar integration
