@@ -676,3 +676,54 @@ button.hook-chip:hover { background: var(--ink); color: var(--white); border-col
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
+
+/* ---- the other person's name: heard, not typed ---- */
+.who-pickup { margin-bottom: 18px; }
+.who-hint { margin: 6px 0 0; }
+.inline-link {
+  display: inline; padding: 0; min-height: 0; border: 0; background: transparent;
+  font: inherit; font-weight: 600; color: var(--ink); text-decoration: underline; text-underline-offset: 3px;
+}
+.inline-link:hover, .inline-link:active { color: var(--marigold); }
+.field-label .optional { margin-left: 6px; color: var(--ink-3); font-weight: 400; letter-spacing: 0; text-transform: none; }
+#other-name-field[hidden], .who-pickup[hidden] { display: none; }
+
+/* The "With Abuela" chip on the ticket: marigold so it reads as the moment the name landed. */
+.person-chip {
+  appearance: none; border: 0; cursor: pointer;
+  background: var(--marigold); color: var(--night);
+  font: 700 10px/1.3 var(--font-serif); letter-spacing: .1em; text-transform: uppercase;
+  animation: card-in .36s var(--ease) both;
+}
+.person-chip[hidden] { display: none; }
+.person-edit { display: flex; gap: 8px; margin: 0 0 12px; }
+.person-edit[hidden] { display: none; }
+.person-edit input {
+  flex: 1; min-width: 0; height: 40px; padding: 0 14px;
+  border: 1.5px solid var(--night-line); border-radius: 99px; background: var(--night-2); color: var(--bone);
+  font: inherit; font-size: 16px;
+}
+.person-edit input:focus { outline: none; border-color: var(--marigold); }
+.person-save {
+  height: 40px; padding: 0 16px; border: 0; border-radius: 99px;
+  background: var(--marigold); color: var(--night); font: 700 13px/1 var(--font-serif); cursor: pointer;
+}
+
+/* The brief, mid-conversation, on the night ticket. */
+.rec-brief { margin: 4px 0 10px; padding: 18px 20px; background: var(--night-2); border-color: var(--night-line); color: var(--bone); }
+.rec-brief .subtitle { font-size: 20px; color: var(--bone); }
+.rec-brief .card-meta { color: var(--bone-2); }
+.rec-brief .brief-items { margin-top: 12px; gap: 10px; }
+.rec-brief .brief-text { color: var(--bone); }
+.rec-brief .brief-glyph { color: var(--bone-2); }
+
+/* "With Abuela · Change" / "Who was this? Add a name" under the label headline. */
+.label-who { margin: -6px 0 14px; font-size: 14px; color: var(--ink-2); display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.label-who[hidden] { display: none; }
+.label-who strong { color: var(--ink); font-weight: 600; }
+.label-who input {
+  flex: 1; min-width: 140px; height: 40px; padding: 0 14px;
+  border: 1.5px solid var(--line); border-radius: 99px; background: var(--white); color: var(--ink); font: inherit; font-size: 16px;
+}
+.label-who input:focus { outline: none; border-color: var(--marigold); }
+.label-who .person-save { background: var(--ink); color: var(--white); }

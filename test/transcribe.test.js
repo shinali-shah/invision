@@ -390,3 +390,89 @@ test('malformed cue frames are ignored rather than crashing the stream', async (
   });
   assert.equal(done.turns.length, 1);
 });
+
+// ---- names picked up from the transcript ----
+
+// A fake Muse that answers "end" with scripted lines: [turnId, speaker, text].
+function talkingStream(lines) {
+  return ({ onEvent, onClose }) => Promise.resolve({
+    sendAudio() {},
+    async end() {
+      lines.forEach(([turnId, speaker, text], i) => {
+        const startMs = i * 3000;
+        onEvent({ type: 'speechStart', turnId, audioProcessedMs: startMs });
+        onEvent({ type: 'speaker', label: speaker, audioProcessedMs: startMs + 100 });
+        onEvent({ type: 'speechEnd', turnId, audioProcessedMs: startMs + 2000 });
+        onEvent({ type: 'speechComplete', turnId, transcript: text, audioProcessedMs: startMs + 2000 });
+      });
+      onClose(1000);
+    },
+  });
+}
+
+async function runTalk({ lines, convo = {}, config = { mock: false, userName: 'Parth' } }) {
+  const http = await import('node:http');
+  const { WebSocket } = await import('ws');
+  const { attachTranscribeSocket } = await import('../src/transcribe/wsRoute.js');
+  const saved = { ...convo };
+  const store = { getConversation: () => ({ id: 'c1', ...saved }), updateConversation: (id, patch) => { Object.assign(saved, patch); return { id, ...saved }; } };
+  const published = [];
+  const server = http.createServer();
+  attachTranscribeSocket({ server, store, log: () => {}, config, openStream: talkingStream(lines), stage: { publish: m => published.push(m) } });
+  await new Promise(r => server.listen(0, r));
+  const ws = new WebSocket(`ws://localhost:${server.address().port}/ws/transcribe?conversationId=c1`);
+  const seen = [];
+  const done = await new Promise((resolve, reject) => {
+    ws.on('message', raw => {
+      const m = JSON.parse(raw.toString());
+      seen.push(m);
+      if (m.type === 'ready') { ws.send(Buffer.alloc(3840)); ws.send(JSON.stringify({ type: 'end' })); }
+      if (m.type === 'done') resolve(m);
+    });
+    ws.on('error', reject);
+  });
+  server.close();
+  return { done, saved, published, seen };
+}
+
+test('an introduction in the stream names the conversation and tells the phone and the stage', async () => {
+  const { done, saved, published, seen } = await runTalk({ lines: [[1, 'A', 'Hey, come on in.'], [2, 'B', "Thanks! I'm Priya, by the way."], [3, 'A', 'Great to meet you.']] });
+  assert.equal(saved.otherName, 'Priya');
+  const person = seen.find(m => m.type === 'person');
+  assert.deepEqual(person, { type: 'person', name: 'Priya', turnId: 2, confidence: 0.9 });
+  assert.ok(seen.indexOf(person) < seen.indexOf(done), 'the name lands before done');
+  assert.equal(seen.filter(m => m.type === 'person').length, 1, 'said once');
+  const stageConvo = published.find(m => m.type === 'conversation');
+  assert.equal(stageConvo?.conversation.otherName, 'Priya');
+  assert.equal(done.otherName, 'Priya');
+  assert.equal(done.userLabel, null);
+});
+
+test('a name the user typed is never overwritten by what the transcript says', async () => {
+  const { saved, seen } = await runTalk({ lines: [[1, 'B', "Hi, I'm Priya."]], convo: { otherName: 'Sam' } });
+  assert.equal(saved.otherName, 'Sam');
+  assert.equal(seen.some(m => m.type === 'person'), false);
+});
+
+test('the first clean name sticks; a later different one neither replaces it nor pings the phone again', async () => {
+  const { saved, seen } = await runTalk({ lines: [[1, 'A', 'Hi Sam!'], [2, 'A', 'Thanks, Maria.']] });
+  assert.equal(saved.otherName, 'Sam');
+  assert.deepEqual(seen.filter(m => m.type === 'person').map(m => m.name), ['Sam']);
+});
+
+test('a name that only ever shows up alongside a rival is not trusted', async () => {
+  const { saved, seen } = await runTalk({ lines: [[1, 'A', 'Hi Sam, thanks Maria.']] });
+  assert.equal(saved.otherName, undefined);
+  assert.equal(seen.some(m => m.type === 'person'), false);
+});
+
+test("the user's own introduction picks their voice when nothing else has", async () => {
+  const { done, saved } = await runTalk({ lines: [[1, 'A', "Hi, I'm Parth."], [2, 'B', "Hello Parth, I'm Priya."]] });
+  assert.equal(saved.userLabel, 'A');
+  assert.equal(done.userLabel, 'A');
+  assert.equal(saved.otherName, 'Priya');
+  // a label already on the conversation stays
+  const kept = await runTalk({ lines: [[1, 'A', "Hi, I'm Parth."]], convo: { userLabel: 'B' } });
+  assert.equal(kept.saved.userLabel, 'B');
+  assert.equal(kept.done.userLabel, 'B');
+});

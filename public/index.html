@@ -27,7 +27,7 @@
     <!-- 1. Start -->
     <section class="view" id="view-start" aria-labelledby="start-title">
       <span class="label">New conversation</span>
-      <h1 id="start-title" class="title">Who are you talking with?</h1>
+      <h1 id="start-title" class="title">What kind of conversation?</h1>
 
       <div class="finish-banner" id="finish-banner-start" hidden></div>
 
@@ -39,8 +39,13 @@
       </fieldset>
       <p class="focus" id="tag-focus"></p>
 
-      <label class="field">
-        <span class="field-label">Their name</span>
+      <!-- The name usually comes out of the first line ("Hi Abuela!"), so typing it is the fallback. -->
+      <div class="who-pickup" id="who-pickup">
+        <span class="field-label">Who you're talking to</span>
+        <p class="hint who-hint">Picked up from the conversation. <button type="button" class="inline-link" id="add-name-btn">Add a name</button></p>
+      </div>
+      <label class="field" id="other-name-field" hidden>
+        <span class="field-label">Their name <span class="optional">optional</span></span>
         <input type="text" id="other-name" autocomplete="off" autocapitalize="words" enterkeyhint="done" maxlength="60" placeholder="Abuela, Sam, Dr. Okafor">
       </label>
 
@@ -75,10 +80,16 @@
         <span class="rec-tag cam-tag" aria-hidden="true">Camera on</span>
         <span class="rec-tag lip-tag" id="lip-pill" hidden>Lip lock</span>
         <h1 id="rec-title" class="rec-word">Recording</h1>
+        <button type="button" class="rec-tag person-chip" id="rec-person" hidden title="Tap to correct the name"></button>
       </div>
+      <form class="person-edit" id="person-edit" hidden>
+        <input type="text" id="person-input" autocomplete="off" autocapitalize="words" enterkeyhint="done" maxlength="60" placeholder="Their name" aria-label="Their name">
+        <button type="submit" class="person-save">Save</button>
+      </form>
       <p class="hint" id="rec-with"></p>
       <p class="hint rec-note" id="rec-note" hidden></p>
       <ol class="transcript live" id="live-transcript" aria-live="polite"></ol>
+      <section class="brief rec-brief" id="rec-brief" hidden aria-labelledby="rec-brief-title"></section>
       <div class="recording-meta">
         <span class="elapsed"><span class="rec-timer" id="rec-timer">0:00</span><small>elapsed</small></span>
         <span class="private-note">Private to you</span>
@@ -100,6 +111,7 @@
       <span class="label">After the talk</span>
       <h1 id="label-title" class="title">Which voice is yours?</h1>
       <p class="hint label-sub" id="label-hint">Tap one of your lines. Coaching only starts after this.</p>
+      <p class="label-who" id="label-who" hidden></p>
       <p class="label-voices" id="label-voices" hidden></p>
       <p class="hint label-crowd" id="label-crowd" hidden>Loud room? Lines from other people get filtered once you pick yours.</p>
       <div class="video-status" id="label-video" hidden></div>

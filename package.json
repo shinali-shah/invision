@@ -11,7 +11,7 @@
     "dev": "MOCK=1 node --watch src/server.js",
     "test": "node --test \"test/**/*.test.js\"",
     "synthetic": "node src/synthetic/cli.js",
-    "dev:synthetic": "DB_PATH=data/synthetic.db RECORDINGS_DIR=data/synthetic-recordings MOCK=1 node --watch src/server.js"
+    "dev:synthetic": "DB_PATH=data/synthetic.db RECORDINGS_DIR=data/synthetic-recordings MOCK=1 USER_NAME=Sofía node --watch src/server.js"
   },
   "dependencies": {
     "express": "^5.3.0",

@@ -91,7 +91,7 @@
       </span>
       <label class="status-pill sd-follow"><input type="checkbox" id="auto"> Open Replay when a video is ready</label>
       <span class="status-pill sd-phone" id="phone" data-state="waiting" role="status"><span class="status-dot"></span>Waiting for your phone</span>
-      <button class="avatar" aria-label="Open your profile">S</button>
+      <button class="avatar" id="avatar" aria-label="Open your profile">PS</button>
     </div>
   </header>
   <div class="sd-panes">
@@ -105,6 +105,11 @@
     const params = new URLSearchParams(location.search);
     const theme = params.get('theme');
     if (theme === 'light' || theme === 'dark') document.documentElement.dataset.theme = theme;
+    // Same name as Home: USER_NAME on the server, initials only.
+    fetch('/api/me').then(r => r.json()).then(({ name }) => {
+      const initials = String(name ?? '').trim().split(/\s+/).slice(0, 2).map(w => w[0]?.toUpperCase() ?? '').join('');
+      if (initials) $('avatar').textContent = initials;
+    }).catch(() => {});
     const withTheme = (path, extra = {}) => {
       const q = new URLSearchParams(extra);
       if (theme) q.set('theme', theme);

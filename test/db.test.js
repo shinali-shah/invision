@@ -66,3 +66,11 @@ test('kv, next steps and logs', () => {
   assert.deepEqual(logs[0].data, { a: 1 });
   assert.equal(logs[1].data, null);
 });
+
+test('the other person can be renamed after the fact', () => {
+  const store = openStore(':memory:');
+  const c = store.createConversation({ tag: 'friend', otherName: 'them' });
+  assert.equal(store.updateConversation(c.id, { otherName: 'Priya' }).otherName, 'Priya');
+  assert.equal(store.getConversation(c.id).otherName, 'Priya');
+  store.close();
+});

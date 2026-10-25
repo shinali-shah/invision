@@ -178,8 +178,16 @@ function updateRecordEnabled() {
     : 'Tick the box once they know, then tap to start.';
 }
 
+// The name field is tucked away: the transcript usually supplies the name ("Hi Abuela!").
+function showNameField(show) {
+  $('other-name-field').hidden = !show;
+  $('who-pickup').hidden = show;
+  if (show) $('other-name').focus({ preventScroll: true });
+}
+
 function resetStart() {
   $('other-name').value = '';
+  showNameField(false);
   clearTimeout(briefTimer);
   briefSeq += 1;
   renderBrief(null);
@@ -258,8 +266,9 @@ function stripLead(text, label) {
   return rest.charAt(0).toUpperCase() + rest.slice(1);
 }
 
-function renderBrief(brief) {
-  const card = $('brief-card');
+// Same card on the start view ("Before you talk to Abuela") and, once the name is heard, on the
+// ticket mid-conversation ("Before you go on").
+function renderBrief(brief, { card = $('brief-card'), title = null } = {}) {
   const items = brief && Array.isArray(brief.items) ? brief.items : [];
   if (!items.length) { card.hidden = true; card.replaceChildren(); return; }
   const meta = [
@@ -267,7 +276,7 @@ function renderBrief(brief) {
     brief.conversations ? `${brief.conversations} conversation${brief.conversations === 1 ? '' : 's'}` : null,
   ].filter(Boolean).join(', ');
   card.replaceChildren(
-    el('h2', { class: 'subtitle', id: 'brief-title', text: `Before you talk to ${brief.otherName || 'them'}` }),
+    el('h2', { class: 'subtitle', id: `${card.id}-title`, text: title || `Before you talk to ${brief.otherName || 'them'}` }),
     meta ? el('p', { class: 'card-meta', text: meta }) : null,
     el('ul', { class: 'brief-items' }, ...items.map((it) => {
       const [glyph, label] = BRIEF_KINDS[it.kind] || ['•', 'Note'];
@@ -452,6 +461,124 @@ function beginCapture(convo, ctx, stream, videoNote = null) {
     $('rec-timer').replaceChildren(String(Math.floor(s / 60)), el('span', { class: 'colon', text: ':' }), String(s % 60).padStart(2, '0'));
   }, 500);
   showView('recording');
+  // A typed name is known from the first second; a heard one arrives as a `person` message.
+  $('person-edit').hidden = true;
+  $('rec-person').hidden = true;
+  renderBrief(null, { card: $('rec-brief') });
+  if (isNamed(convo)) setPerson(convo.otherName);
+}
+
+// ---------- who they are ----------
+
+const isNamed = (convo) => !!(convo && convo.otherName && convo.otherName !== 'them');
+
+let recBriefSeq = 0;
+
+// The name landed (heard in the transcript, typed, or corrected): chip, headline, stage, brief.
+function setPerson(name) {
+  state.convo = { ...state.convo, otherName: name };
+  const chip = $('rec-person');
+  chip.textContent = `With ${name}`;
+  chip.hidden = false;
+  $('person-edit').hidden = true;
+  $('rec-with').textContent = `Session with ${name}`;
+  if (state.rec) api.stageFocus('recording', state.convo.id, name);
+  loadRecBrief(name);
+}
+
+async function loadRecBrief(name) {
+  const id = state.convo.id;
+  const seq = ++recBriefSeq;
+  let brief = null;
+  try {
+    const data = await api.getBrief(name);
+    brief = data && data.brief;
+  } catch { /* the brief is a bonus */ }
+  // Renamed since, or already stopped.
+  if (seq !== recBriefSeq || !state.rec || state.convo.id !== id) return;
+  renderBrief(brief, { card: $('rec-brief'), title: 'Before you go on' });
+}
+
+function onPersonHeard(msg) {
+  if (typeof msg.name !== 'string' || !msg.name.trim()) return;
+  // The server only says this while the conversation is still 'them', but a correction typed
+  // on the phone in the same moment wins.
+  if (isNamed(state.convo) && state.convo.otherName !== msg.name) return;
+  setPerson(msg.name);
+}
+
+// Tap the chip, fix the name in place. Submitting it empty just puts the chip back.
+function startNameEdit() {
+  const form = $('person-edit');
+  const input = $('person-input');
+  input.value = isNamed(state.convo) ? state.convo.otherName : '';
+  $('rec-person').hidden = true;
+  form.hidden = false;
+  input.focus({ preventScroll: true });
+  input.select();
+}
+
+function cancelNameEdit() {
+  $('person-edit').hidden = true;
+  $('rec-person').hidden = !isNamed(state.convo);
+}
+
+async function saveNameEdit(e) {
+  e.preventDefault();
+  const name = $('person-input').value.trim();
+  if (!name || !state.convo) return cancelNameEdit();
+  const id = state.convo.id;
+  const save = $('person-edit').querySelector('button');
+  save.disabled = true;
+  try {
+    const updated = await api.setOtherName(id, name);
+    if (!state.convo || state.convo.id !== id) return;
+    setPerson(updated.otherName);
+  } catch (err) {
+    showError('rec-error', err);
+    cancelNameEdit();
+  } finally {
+    save.disabled = false;
+  }
+}
+
+// On the label view: "With Abuela · Change", or "Who was this? Add a name" when nothing was heard.
+function renderLabelWho() {
+  const box = $('label-who');
+  const convo = state.convo;
+  const id = convo.id;
+  const named = isNamed(convo);
+  const edit = () => {
+    const input = el('input', { type: 'text', placeholder: 'Their name', 'aria-label': 'Their name', autocapitalize: 'words', maxlength: 60, enterkeyhint: 'done' });
+    input.value = named ? convo.otherName : '';
+    const save = el('button', { type: 'button', class: 'person-save', text: 'Save' });
+    const submit = async () => {
+      const name = input.value.trim();
+      if (!name) return renderLabelWho();
+      save.disabled = true;
+      try {
+        const updated = await api.setOtherName(id, name);
+        if (!stillOn('label', id)) return;
+        state.convo = { ...state.convo, otherName: updated.otherName };
+        showLabelView();
+      } catch (err) {
+        save.disabled = false;
+        showError('label-error', err);
+      }
+    };
+    save.addEventListener('click', submit);
+    input.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Enter') { ev.preventDefault(); submit(); }
+      if (ev.key === 'Escape') renderLabelWho();
+    });
+    box.replaceChildren(input, save);
+    input.focus({ preventScroll: true });
+  };
+  box.replaceChildren(
+    named ? el('span', {}, 'With ', el('strong', { text: convo.otherName })) : el('span', { text: 'Who was this?' }),
+    el('button', { type: 'button', class: 'inline-link', text: named ? 'Change' : 'Add a name', onclick: edit }),
+  );
+  box.hidden = false;
 }
 
 // ---------- video ----------
@@ -746,7 +873,12 @@ function handleSocketMessage(rec, msg) {
       renderLive();
       break;
     }
+    case 'person':
+      onPersonHeard(msg);
+      break;
     case 'done':
+      // A name heard in the last line arrives with done rather than ahead of it.
+      if (typeof msg.otherName === 'string' && msg.otherName !== 'them' && !isNamed(state.convo)) state.convo = { ...state.convo, otherName: msg.otherName };
       finishRecording(rec, Array.isArray(msg.turns) ? msg.turns : rec.turns, {
         userLabel: typeof msg.userLabel === 'string' ? msg.userLabel : null,
         crowdTurns: Number(msg.crowdTurns) || 0,
@@ -840,6 +972,7 @@ function showLabelView(keepError = false) {
   $('label-voices').textContent = `${voices} voices heard, one is you`;
   $('label-crowd').hidden = voices < 3 || !!convo.userLabel;
   $('label-transcript').dataset.empty = 'No lines were transcribed.';
+  renderLabelWho();
   renderTranscript('label-transcript', turns, convo, { pickable: true, onPick: pickLabel });
   // With nobody to pick, let them go straight on; the server will say it's too short.
   $('reflect-block').hidden = hasVoices && !convo.userLabel;
@@ -1489,8 +1622,12 @@ function init() {
   $('consent').addEventListener('change', updateRecordEnabled);
   $('camera').addEventListener('change', updateCamera);
   $('other-name').addEventListener('input', onNameInput);
+  $('add-name-btn').addEventListener('click', () => showNameField(true));
   $('record-btn').addEventListener('click', startRecording);
   $('stop-btn').addEventListener('click', stopRecording);
+  $('rec-person').addEventListener('click', startNameEdit);
+  $('person-edit').addEventListener('submit', saveNameEdit);
+  $('person-input').addEventListener('keydown', (e) => { if (e.key === 'Escape') cancelNameEdit(); });
   $('coach-btn').addEventListener('click', getCoaching);
   $('delete-btn').addEventListener('click', deleteConversation);
   $('to-memory-btn').addEventListener('click', openMemory);

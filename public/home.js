@@ -4,7 +4,8 @@
 // hardcoded reflections, /ws/stage for the recording card (the phone does the actual recording),
 // and /api/conversations/:id/{heatmap,compare} for the transcript page.
 
-const USER = { name: 'Sofía', initials: 'S' };
+// Filled in from /api/me (USER_NAME on the server); these are the fallback until it answers.
+const USER = { name: 'Parth', initials: 'PS' };
 const MONTHS = ['JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE', 'JULY', 'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER'];
 const FIGMA_GOALS = ['Ask one open question', 'Pause before replying', 'Reflect one detail'];
 const FLAG_GOALS = {
@@ -455,9 +456,10 @@ function recName() {
 function briefFor(name) {
   const key = name.trim().toLowerCase();
   if (!key) return null;
-  const past = state.convos.filter((c) => c.first.toLowerCase() === key);
+  // The one being recorded right now is the newest with this name and has nothing in it yet.
+  const past = state.convos.filter((c) => c.first.toLowerCase() === key && c.id !== state.rec.id);
   if (!past.length) return { known: false };
-  const hooks = past[0].raw.hooks || {};
+  const hooks = (past.find((c) => c.raw.hooks) || past[0]).raw.hooks || {};
   const promise = (hooks.commitments || []).find((k) => k && k.text);
   const event = (hooks.events || []).find((e) => e && e.text);
   const topics = (hooks.topics || []).map((t) => t && t.term).filter(Boolean).slice(0, 2);
@@ -469,10 +471,14 @@ function briefFor(name) {
   };
 }
 
+// Idle: whoever was typed into the card. Recording: whoever the phone heard, once there is history.
 function renderBrief() {
   if (!refs.brief) return;
-  const name = state.who.trim() ? firstName(state.who) : 'them';
-  const b = briefFor(state.who);
+  const r = state.rec;
+  const who = r.active ? (recName() || '') : state.who;
+  const name = who.trim() ? firstName(who) : 'them';
+  let b = briefFor(who);
+  if (r.active && b && !b.known) b = null;
   refs.brief.hidden = !b;
   if (!b) { refs.brief.replaceChildren(); return; }
   refs.brief.setAttribute('aria-label', `Brief for ${name}`);
@@ -491,8 +497,6 @@ function renderRecording() {
   const name = recName();
   refs.recording.className = `card recording-card ${r.active ? 'is-recording' : 'is-idle'}`;
   refs.time = el('time', { text: fmtClock(r.active && r.startedAt ? Date.now() - r.startedAt : r.lastElapsed, { padMinutes: true }) });
-  const whoInput = el('input', { value: state.who, placeholder: 'First name', 'aria-label': 'Who are you about to talk to', oninput: (e) => { state.who = e.target.value; renderBrief(); } });
-  whoInput.value = state.who;
   refs.brief = el('div', { class: 'brief' });
   fill(refs.recording,
     el('div', { class: 'recording-top' },
@@ -508,15 +512,20 @@ function renderRecording() {
         ? el('button', { class: 'button stop-button', disabled: true }, icon('stop', 16), ' Recording on your phone')
         : el('button', { class: 'button', disabled: true }, 'Start on your phone ', icon('arrow', 16)),
     ),
+    // Nobody types a name before a conversation: the transcript names it, and the brief follows.
     !r.active && el('div', { class: 'before' },
       el('div', { class: 'before-row' },
-        el('label', { class: 'who-field' }, el('span', { class: 'label', text: 'Before: who are you about to talk to?' }), whoInput),
+        el('div', { class: 'who-field' },
+          el('span', { class: 'label', text: 'Who you’re with' }),
+          el('p', { class: 'who-auto', text: 'Picked up from the conversation. When a name is heard, what you owe them and what’s coming up for them appears here.' }),
+        ),
       ),
       refs.brief,
     ),
     !r.active && el('div', { class: 'consent-step static' },
-      el('span', {}, el('strong', { text: 'Start on your phone.' }), ' Tell them you’re recording before you tap Record.')),
+      el('span', {}, el('strong', { text: 'Start on your phone.' }), ' Tell them you’re recording, then just talk.')),
     refs.live,
+    r.active && refs.brief,
     el('div', { class: 'recording-meta' },
       el('span', { class: 'elapsed' }, refs.time, ' ', el('small', { text: 'elapsed' })),
       r.active && name && el('span', { class: 'consent-ok' }, icon('check', 13), ` ${name} knows you’re recording`),
@@ -1083,8 +1092,22 @@ function init() {
   window.addEventListener('hashchange', () => { closeFollowUp(); state.confirming = false; renderPage(); window.scrollTo(0, 0); });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && state.modal) closeFollowUp(); });
   setInterval(tick, 500);
+  loadMe();
   refreshMemory();
   connect();
+}
+
+// Whose Mac this is; the hero and the avatar were drawn with the fallback until now.
+async function loadMe() {
+  try {
+    const me = await (await fetch('/api/me')).json();
+    if (!me || typeof me.name !== 'string' || !me.name.trim()) return;
+    USER.name = me.name.trim();
+    USER.initials = initialsOf(USER.name) || USER.initials;
+    if (refs.heroH1) refs.heroH1.textContent = `${greeting()}, ${USER.name}`;
+    const avatar = document.querySelector('.avatar');
+    if (avatar) avatar.textContent = USER.initials;
+  } catch { /* the fallback name stays */ }
 }
 
 init();

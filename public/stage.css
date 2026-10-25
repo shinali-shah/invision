@@ -427,3 +427,12 @@ h1, h2, h3 { margin: 0; font-family: var(--font-display); font-weight: 900; text
   .st-rec-dot, .st-line.partial .st-said::after, .st-breath, .st-dots i, .st-pill::before,
   .st-note, .st-follow, .st-hooks, .st-step, .st-line.enter, .st-view { animation: none !important; }
 }
+
+/* The brief on the ticket, once the phone has heard who it is: a strip under the live lines. */
+.st-ticket { grid-template-rows: auto minmax(0, 1fr) auto auto; }
+.st-rec-brief { border-top: 1px dashed var(--night-line); padding: calc(var(--u) * 1) 0 calc(var(--u) * .4); display: grid; gap: calc(var(--u) * .7); animation: lineIn .4s var(--ease) both; }
+.st-rec-brief[hidden] { display: none; }
+.st-rec-brief-title { margin: 0; color: var(--marigold); }
+.st-rec-brief-items { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: calc(var(--u) * .6) calc(var(--u) * 2.4); }
+.st-rec-brief-item { display: grid; gap: .3em; max-width: 30em; }
+.st-rec-brief-item .st-brief-text { font-size: max(16px, calc(var(--u) * 1.2)); }

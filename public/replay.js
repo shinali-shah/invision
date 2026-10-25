@@ -4,6 +4,8 @@
 // Transcript text and names come from speech recognition and users, so every bit
 // of data goes in via textContent, never innerHTML.
 
+import { createFaceOverlay, drawMesh, contentRect, sizeCanvas } from './overlay.js';
+
 const MODEL = 'mediapipe-face-landmarker@0.10.14';
 const VENDOR = new URL('vendor/mediapipe/', location.href).href;
 const FPS = 5;
@@ -16,7 +18,7 @@ const NOD_MAX_MS = 1500;
 const NOD_REF_MS = 1000;
 const NOD_GAP_MS = 500;
 const SEEK_TIMEOUT_MS = 4000;
-const LIVE_EVERY_MS = 100;
+const METERS_EVERY_MS = 100;
 const PREROLL_S = 0.3;
 const TAG_NAMES = { family: 'Family', friend: 'Friend', networking: 'Networking' };
 const VERDICTS = { backed: 'Backed', partly: 'Partly', 'not yet': 'Not yet' };
@@ -67,9 +69,8 @@ const state = {
   runId: 0,
   activeTurn: null,
   liveFrames: [],       // recent live detections, for the nod meter
-  lastLiveAt: 0,
-  liveBusy: false,
-  lastResult: null,     // last landmarker result drawn on the overlay
+  metersAt: 0,          // when the live meters last changed; the mesh redraws far more often
+  overlay: null,        // the live mesh (overlay.js), once init has the elements
   videoSrc: null,
   compare: { id: null, data: null }, // /compare, for the "Last time" numbers
   draftFor: null,       // conversation whose follow-up draft is in the modal's textarea
@@ -633,7 +634,7 @@ async function analyse() {
       }
       const frame = readFrame(res, videoMs);
       frames.push(frame);
-      drawOverlay(v, res, { withImage: true });
+      drawOverlay(v, res);
       updateMeters(frame, frame.t);
       updatePlayhead(videoMs);
       setProgress(i + 1, total);
@@ -676,6 +677,7 @@ async function analyse() {
       renderAnalysisBar();
       drawLanes();
       updatePlayhead();
+      if (state.overlay) state.overlay.sync();
     }
   }
 }
@@ -762,36 +764,16 @@ function renderAnalysisBar() {
 
 // ---------- overlay + meters ----------
 
-function contentRect(boxW, boxH, vw, vh) {
-  if (!vw || !vh) return { x: 0, y: 0, w: boxW, h: boxH };
-  const s = Math.min(boxW / vw, boxH / vh);
-  const w = vw * s;
-  const h = vh * s;
-  return { x: (boxW - w) / 2, y: (boxH - h) / 2, w, h };
-}
-
-function sizeCanvas(canvas, w, h) {
-  const dpr = window.devicePixelRatio || 1;
-  const W = Math.round(w * dpr);
-  const H = Math.round(h * dpr);
-  if (canvas.width !== W || canvas.height !== H) {
-    canvas.width = W;
-    canvas.height = H;
-  }
-  const ctx = canvas.getContext('2d');
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  return ctx;
-}
-
 function clearOverlay() {
+  if (state.overlay) { state.overlay.clear(); return; }
   const c = $('overlay');
   c.getContext('2d').clearRect(0, 0, c.width, c.height);
-  state.lastResult = null;
 }
 
-// Landmark dots plus a corner-bracket box. withImage paints the analysed frame too,
-// so the room sees the model working while the real player sits paused.
-function drawOverlay(source, res, { withImage = false } = {}) {
+// The analysis pass: paints the frame it just measured and the raw mesh over it, so the room
+// sees the model working while the real player sits paused. Live playback goes through
+// overlay.js instead, which smooths between frames.
+function drawOverlay(source, res) {
   const canvas = $('overlay');
   const box = $('player');
   const W = box.clientWidth;
@@ -799,44 +781,20 @@ function drawOverlay(source, res, { withImage = false } = {}) {
   const ctx = sizeCanvas(canvas, W, H);
   ctx.clearRect(0, 0, W, H);
   const r = contentRect(W, H, source.videoWidth, source.videoHeight);
-  if (withImage) {
-    ctx.fillStyle = '#000';
-    ctx.fillRect(0, 0, W, H);
-    try { ctx.drawImage(source, r.x, r.y, r.w, r.h); } catch { /* frame not ready */ }
-  }
-  state.lastResult = res;
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, W, H);
+  try { ctx.drawImage(source, r.x, r.y, r.w, r.h); } catch { /* frame not ready */ }
   const pts = res && res.faceLandmarks && res.faceLandmarks[0];
   if (!pts) return;
-  const them = cssVar('--them-hi') || '#86bba6';
-  const you = cssVar('--you-hi') || '#ebb04f';
-  let minX = 1; let minY = 1; let maxX = 0; let maxY = 0;
-  ctx.fillStyle = them;
-  ctx.globalAlpha = 0.85;
-  const dot = Math.max(1, r.w / 420);
-  for (const p of pts) {
-    if (p.x < minX) minX = p.x;
-    if (p.y < minY) minY = p.y;
-    if (p.x > maxX) maxX = p.x;
-    if (p.y > maxY) maxY = p.y;
-    ctx.fillRect(r.x + p.x * r.w - dot / 2, r.y + p.y * r.h - dot / 2, dot, dot);
-  }
-  ctx.globalAlpha = 1;
-  const pad = 0.04;
-  const x0 = r.x + Math.max(0, minX - pad) * r.w;
-  const y0 = r.y + Math.max(0, minY - pad) * r.h;
-  const x1 = r.x + Math.min(1, maxX + pad) * r.w;
-  const y1 = r.y + Math.min(1, maxY + pad) * r.h;
-  const arm = Math.min(x1 - x0, y1 - y0) * 0.22;
-  ctx.strokeStyle = you;
-  ctx.lineWidth = 3;
-  ctx.lineCap = 'round';
-  ctx.beginPath();
-  for (const [cx, cy, dx, dy] of [[x0, y0, 1, 1], [x1, y0, -1, 1], [x0, y1, 1, -1], [x1, y1, -1, -1]]) {
-    ctx.moveTo(cx + dx * arm, cy);
-    ctx.lineTo(cx, cy);
-    ctx.lineTo(cx, cy + dy * arm);
-  }
-  ctx.stroke();
+  const xy = new Float32Array(pts.length * 2);
+  pts.forEach((p, i) => { xy[i * 2] = p.x; xy[i * 2 + 1] = p.y; });
+  drawMesh(ctx, xy, r, meshColors());
+}
+
+let meshColorCache = null;
+function meshColors() {
+  if (!meshColorCache) meshColorCache = { bone: cssVar('--bone') || '#f3ead8', marigold: cssVar('--marigold') || '#f4a51c' };
+  return meshColorCache;
 }
 
 // frame: BehaviorFrame or null. t: transcript ms (for the nod flash).
@@ -876,34 +834,23 @@ function liveNod(t) {
   return nods.some((n) => n <= t && t - n < 900);
 }
 
-// Live overlay while the real video plays: throttled, never during an analysis run.
-async function liveDetect() {
-  const video = $('video');
-  if (state.liveBusy || state.analysing || !$('live-toggle').checked || video.readyState < 2) return;
+// One live detection from overlay.js (every presented frame while playing, or the still frame
+// after a pause or seek). The mesh itself is drawn there; this keeps the meters and the nod
+// window up to date, at a pace the eye can follow.
+function onLiveFrame(res, mediaTime) {
+  if (state.analysing) return;
+  const frame = readFrame(res, mediaTime * 1000);
+  const lf = state.liveFrames;
+  if (lf.length && frame.t < lf[lf.length - 1].t) lf.length = 0; // jumped back
+  lf.push(frame);
+  while (lf.length && frame.t - lf[0].t > 2500) lf.shift();
   const now = performance.now();
-  if (now - state.lastLiveAt < LIVE_EVERY_MS) return;
-  state.liveBusy = true;
-  const at = state.lastLiveAt;
-  state.lastLiveAt = now;
-  try {
-    const { res } = await detect(video, clock + Math.max(1, at ? now - at : LIVE_EVERY_MS));
-    if (state.analysing) return;
-    const videoMs = video.currentTime * 1000;
-    const frame = readFrame(res, videoMs);
-    const lf = state.liveFrames;
-    if (lf.length && frame.t < lf[lf.length - 1].t) lf.length = 0; // jumped back
-    lf.push(frame);
-    while (lf.length && frame.t - lf[0].t > 2500) lf.shift();
-    drawOverlay(video, res);
-    updateMeters(frame, frame.t);
-  } catch (err) {
-    console.warn('live overlay off', err);
-    $('live-toggle').checked = false;
-    clearOverlay();
-  } finally {
-    state.liveBusy = false;
-  }
+  if (now - state.metersAt < METERS_EVERY_MS && !$('video').paused) return;
+  state.metersAt = now;
+  updateMeters(frame, frame.t);
 }
+
+const liveOverlayOn = () => hasVideo() && !state.analysing && $('live-toggle').checked;
 
 // ---------- timeline ----------
 
@@ -1927,10 +1874,7 @@ function tick() {
     // a touch early, so the line lights up as the seek preroll lands
     const turn = turnAt(t + 350);
     if (turn && turn.turnId !== state.activeTurn) setActive(turn.turnId);
-    const live = $('live-toggle').checked;
-    if (live && !video.paused) liveDetect();
-    else if (!live && state.frames) updateMeters(frameAt(t), t);
-    if (!live && state.lastResult) clearOverlay();
+    if (!$('live-toggle').checked && state.frames) updateMeters(frameAt(t), t);
   }
   if (video.paused || video.ended) { ticking = false; return; }
   requestAnimationFrame(tick);
@@ -2178,17 +2122,24 @@ function init() {
   renderPrivacy(false);
   const video = $('video');
   for (const ev of ['play', 'seeked', 'timeupdate']) video.addEventListener(ev, startTicking);
-  video.addEventListener('seeked', () => {
-    // Paused and scrubbing: one detection so the overlay matches the frame.
-    if (video.paused && $('live-toggle').checked && !state.analysing) { state.lastLiveAt = 0; liveDetect(); }
+  state.overlay = createFaceOverlay({
+    video,
+    canvas: $('overlay'),
+    box: $('player'),
+    detect: (source, dtMs) => detect(source, clock + dtMs).then((out) => out.res),
+    enabled: liveOverlayOn,
+    onFrame: onLiveFrame,
+    colors: meshColors,
+    onError: (err) => {
+      console.warn('live overlay off', err);
+      $('live-toggle').checked = false;
+    },
   });
+  if (params.get('debug') === 'overlay') window.__overlayDebug = state.overlay.debug;
   video.addEventListener('error', () => {
     if (video.getAttribute('src')) showAnalysisMsg("Couldn't play the video. The file may still be uploading or was removed.", true);
   });
-  $('live-toggle').addEventListener('change', (e) => {
-    if (!e.target.checked) clearOverlay();
-    else if (hasVideo()) { state.lastLiveAt = 0; liveDetect(); }
-  });
+  $('live-toggle').addEventListener('change', () => state.overlay.sync());
   $('analyze-btn').addEventListener('click', () => analyse());
   $('rerun-btn').addEventListener('click', () => analyse());
   $('back-link').addEventListener('click', goBack);
@@ -2205,10 +2156,7 @@ function init() {
   track.addEventListener('click', onTrackClick);
   track.addEventListener('mousemove', onTrackHover);
   track.addEventListener('mouseleave', () => { $('hover').hidden = true; });
-  new ResizeObserver(() => {
-    drawLanes();
-    if (state.lastResult && !state.analysing) drawOverlay($('video'), state.lastResult);
-  }).observe(track);
+  new ResizeObserver(() => drawLanes()).observe(track);
   matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => drawLanes());
 
   if (state.id) loadConvo();

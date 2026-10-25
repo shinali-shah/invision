@@ -49,13 +49,17 @@ export function createApp({ store, llm, log, config, publicDir = 'public', stage
   };
 
   app.get('/api/health', (req, res) => res.json({ ok: true, mock: config.mock }));
+  app.get('/api/me', (req, res) => res.json({ name: config.userName }));
+
+  // Nobody is called 'them'; it is what a conversation says until a name is typed or heard.
+  const cleanName = raw => (typeof raw === 'string' ? raw.trim().slice(0, 80) : '') || 'them';
 
   app.post('/api/conversations', (req, res) => {
     const { tag, otherName, consentConfirmed } = req.body ?? {};
     if (consentConfirmed !== true) return fail(res, 400, 'Confirm you told them you are recording first');
     if (!TAGS.includes(tag)) return fail(res, 400, `tag must be one of ${TAGS.join(', ')}`);
-    const name = typeof otherName === 'string' ? otherName.trim().slice(0, 80) : '';
-    const convo = store.createConversation({ tag, otherName: name || 'them' });
+    // The name is optional: the transcript usually supplies it ("Hi Abuela", "I'm Priya").
+    const convo = store.createConversation({ tag, otherName: cleanName(otherName) });
     stage.publish({ type: 'conversation', conversation: convo });
     res.status(201).json(convo);
   });
@@ -112,9 +116,16 @@ export function createApp({ store, llm, log, config, publicDir = 'public', stage
 
   app.patch('/api/conversations/:id', async (req, res, next) => {
     try {
-      const convo = findConvo(req, res);
+      let convo = findConvo(req, res);
       if (!convo) return;
-      const { tag } = req.body ?? {};
+      const { tag, otherName } = req.body ?? {};
+      // Correcting (or adding) the name is a plain rename: nothing to recoach.
+      if (otherName !== undefined) {
+        if (typeof otherName !== 'string') return fail(res, 400, 'otherName must be text');
+        convo = store.updateConversation(convo.id, { otherName: cleanName(otherName) });
+        stage.publish({ type: 'conversation', conversation: convo });
+        if (tag === undefined) return res.json(convo);
+      }
       if (!TAGS.includes(tag)) return fail(res, 400, `tag must be one of ${TAGS.join(', ')}`);
       if (inFlight.has(convo.id)) return fail(res, 409, 'Coaching is still running; change the tag when it finishes');
       stage.publish({ type: 'processing', conversationId: convo.id });

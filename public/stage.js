@@ -203,7 +203,30 @@ function renderScript(view, convo) {
   renderLines('script-lines', turns, recording ? null : convo, {
     emptyText: recording ? 'Listening…' : 'No lines came through.',
   });
+  // The moment the phone hears who it is, what memory holds on them goes under the lines.
+  setBriefName(recording ? name : null);
+  renderRecBrief(recording ? name : null);
   requestAnimationFrame(() => scrollToBottom($('script-scroll')));
+}
+
+function renderRecBrief(name) {
+  const box = $('script-brief');
+  const b = name && state.brief.name === name ? state.brief.data : null;
+  const items = b && Array.isArray(b.items) ? b.items.slice(0, 3) : [];
+  if (!items.length) { box.hidden = true; box.replaceChildren(); return; }
+  box.replaceChildren(
+    el('p', { class: 'st-rec-brief-title st-brief-label', text: 'Before you go on' }),
+    el('ul', { class: 'st-rec-brief-items' }, ...items.map((it) => {
+      const label = BRIEF_LABELS[it.kind] || it.kind;
+      const t = String(it.text || '');
+      const rest = t.toLowerCase().startsWith(`${label.toLowerCase()}:`) ? t.slice(label.length + 1).trim() : t;
+      return el('li', { class: `st-rec-brief-item kind-${it.kind}` },
+        el('span', { class: 'st-brief-label', text: label }),
+        el('span', { class: 'st-brief-text', text: rest.charAt(0).toUpperCase() + rest.slice(1) }),
+      );
+    })),
+  );
+  box.hidden = false;
 }
 
 function updateTimer() {
@@ -478,7 +501,7 @@ function setBriefName(name) {
     .then((d) => {
       if (state.brief.seq !== seq) return;
       state.brief.data = (d && d.brief) || null;
-      if (state.view === 'start') render();
+      if (state.view === 'start' || state.view === 'recording') render();
     })
     .catch(() => {});
 }
@@ -650,7 +673,8 @@ async function fetchConvo(id) {
 
 function setFocus(view, conversationId, otherName) {
   if (!VIEWS.includes(view)) return;
-  setBriefName(view === 'start' ? otherName : null);
+  // While recording, renderScript asks for the brief under the conversation's own name.
+  if (view !== 'recording') setBriefName(view === 'start' ? otherName : null);
   const prevView = state.view;
   state.view = view;
   state.jumpedTo = null; // the phone has spoken; we're no longer ahead of it
