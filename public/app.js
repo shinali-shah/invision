@@ -1,5 +1,5 @@
 import { api, transcribeSocketUrl } from './api.js';
-import { createResampler, micErrorMessage, isCameraError, pickRecorderMime } from './mic.js';
+import { createResampler, micErrorMessage, isCameraError, pickRecorderMime, createLeveler, rmsOf } from './mic.js';
 
 // Spec copy, verbatim. Mirrors src/agents/context.js TAG_FOCUS.
 const TAG_FOCUS = {
@@ -337,11 +337,16 @@ function beginCapture(convo, ctx, stream, videoNote = null) {
   // so route it into a muted gain.
   const mute = ctx.createGain();
   mute.gain.value = 0;
-  source.connect(node);
+  // mic → mono → auto level → limiter → (transcription, and the video's soundtrack)
+  const level = buildLevelChain(ctx, source);
+  level.out.connect(node);
   node.connect(mute);
   mute.connect(ctx.destination);
   rec.node = node;
   rec.source = source;
+  rec.level = level;
+  // The recorder gets the levelled mono track instead of the raw quiet one.
+  rec.recordStream = new MediaStream([...stream.getVideoTracks(), ...level.dest.stream.getAudioTracks()]);
 
   node.port.onmessage = (e) => {
     if (rec.stopping) return;
@@ -403,9 +408,53 @@ function beginCapture(convo, ctx, stream, videoNote = null) {
 
 // ---------- video ----------
 
+// Some mics show up as stereo with the voice on one side only, and with the phone's own voice
+// processing off they can sit ~30 dB under normal speech. Fold to mono, then level it.
+function buildLevelChain(ctx, source) {
+  const mono = ctx.createGain();
+  mono.channelCount = 1;
+  mono.channelCountMode = 'explicit';
+  mono.channelInterpretation = 'speakers';
+  const gain = ctx.createGain();
+  gain.gain.value = 8; // a sensible head start until the first words are measured
+  const limiter = ctx.createDynamicsCompressor();
+  limiter.threshold.value = -6;
+  limiter.knee.value = 0;
+  limiter.ratio.value = 20;
+  limiter.attack.value = 0.003;
+  limiter.release.value = 0.15;
+  const meter = ctx.createAnalyser();
+  meter.fftSize = 2048;
+  const dest = ctx.createMediaStreamDestination();
+  dest.channelCount = 1;
+
+  source.connect(mono);
+  mono.connect(meter);
+  mono.connect(gain);
+  gain.connect(limiter);
+  limiter.connect(dest);
+
+  const leveler = createLeveler();
+  const buf = new Float32Array(meter.fftSize);
+  const timer = setInterval(() => {
+    meter.getFloatTimeDomainData(buf);
+    const g = leveler(rmsOf(buf));
+    if (g != null) gain.gain.setTargetAtTime(g, ctx.currentTime, 0.4);
+  }, 100);
+
+  return {
+    out: limiter,
+    dest,
+    stop() {
+      clearInterval(timer);
+      try { source.disconnect(mono); } catch { /* already gone */ }
+    },
+  };
+}
+
 // Returns false if there's no usable MediaRecorder; the camera is turned off then.
 function startVideo(rec) {
-  const stream = rec.stream;
+  const stream = rec.recordStream || rec.stream;
   const mimeType = pickRecorderMime((m) => MediaRecorder.isTypeSupported(m));
   let recorder;
   try {
@@ -414,7 +463,7 @@ function startVideo(rec) {
     recorder.onstart = () => { rec.videoAt = Date.now(); };
     recorder.start(1000);
   } catch {
-    stream.getVideoTracks().forEach((t) => { t.stop(); stream.removeTrack(t); });
+    rec.stream.getVideoTracks().forEach((t) => { t.stop(); rec.stream.removeTrack(t); });
     return false;
   }
   rec.recorder = recorder;
@@ -596,6 +645,7 @@ function handleSocketMessage(rec, msg) {
 }
 
 function releaseAudio(rec) {
+  if (rec.level) rec.level.stop();
   try { rec.ctx.onstatechange = null; } catch { /* ignore */ }
   try { rec.node && (rec.node.port.onmessage = null); } catch { /* ignore */ }
   try { rec.source && rec.source.disconnect(); } catch { /* ignore */ }

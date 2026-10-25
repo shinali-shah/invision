@@ -83,3 +83,36 @@ export function pickRecorderMime(isTypeSupported) {
   }
   return '';
 }
+
+// ---------- level ----------
+// External mics on iOS can arrive ~30 dB under normal speech (and on one side of a stereo pair)
+// once the phone's own voice processing is off. We bring speech up to a sensible level ourselves.
+
+export const TARGET_DB = -22;   // where speech should sit, RMS
+const GATE_DB = -75;            // quieter than this is room tone, not speech; don't chase it
+const MAX_GAIN = 80;            // +38 dB, enough for the quietest mic we've seen
+const MIN_GAIN = 1;
+
+export const toDb = (rms) => (rms > 0 ? 20 * Math.log10(rms) : -Infinity);
+
+export function rmsOf(samples) {
+  let sum = 0;
+  for (let i = 0; i < samples.length; i++) sum += samples[i] * samples[i];
+  return samples.length ? Math.sqrt(sum / samples.length) : 0;
+}
+
+// Tracks the speech level (falls fast when it gets loud, rises slowly) and returns the gain that
+// puts it at TARGET_DB. Silence leaves everything where it was, so pauses don't pump the noise up.
+export function createLeveler({ target = TARGET_DB, gate = GATE_DB, maxGain = MAX_GAIN } = {}) {
+  let levelDb = null;
+  return function next(rms) {
+    const db = toDb(rms);
+    if (db > gate) {
+      if (levelDb === null) levelDb = db;
+      else levelDb = db > levelDb ? levelDb + (db - levelDb) * 0.5 : levelDb + (db - levelDb) * 0.05;
+    }
+    if (levelDb === null) return null;
+    const gain = 10 ** ((target - levelDb) / 20);
+    return Math.min(maxGain, Math.max(MIN_GAIN, gain));
+  };
+}

@@ -55,3 +55,31 @@ test('anything else includes the original message', () => {
     "Couldn't start the microphone: boom"
   );
 });
+
+import { createLeveler, rmsOf, toDb, TARGET_DB } from '../public/mic.js';
+
+test('leveler lifts a quiet mic to speech level and leaves a normal one alone', () => {
+  const quiet = createLeveler();
+  let g;
+  for (let i = 0; i < 50; i++) g = quiet(10 ** (-57 / 20)); // what the Saramonic recordings measured
+  assert.ok(Math.abs(toDb(10 ** (-57 / 20) * g) - TARGET_DB) < 1, `got gain ${g}`);
+
+  const normal = createLeveler();
+  for (let i = 0; i < 50; i++) g = normal(10 ** (-22 / 20));
+  assert.equal(g, 1);
+});
+
+test('leveler ignores silence and never boosts past its ceiling', () => {
+  const lev = createLeveler();
+  assert.equal(lev(0), null);              // nothing heard yet
+  assert.equal(lev(10 ** (-90 / 20)), null); // room tone stays under the gate
+  for (let i = 0; i < 50; i++) lev(10 ** (-74 / 20));
+  assert.ok(lev(10 ** (-74 / 20)) <= 80);
+  const after = lev(0);                    // a pause holds the gain
+  assert.ok(after > 1);
+});
+
+test('rmsOf', () => {
+  assert.equal(rmsOf(new Float32Array([0.5, -0.5])), 0.5);
+  assert.equal(rmsOf(new Float32Array(0)), 0);
+});
