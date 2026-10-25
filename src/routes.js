@@ -1,6 +1,6 @@
 import express from 'express';
 import { createWriteStream, mkdirSync, existsSync, rmSync, readFileSync, writeFileSync, renameSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { pipeline as pump } from 'node:stream/promises';
 import { alignBehavior, cleanFrames } from './behavior/align.js';
 import { generateInsight } from './agents/insight.js';
@@ -307,6 +307,9 @@ export function createApp({ store, llm, log, config, publicDir = 'public', stage
   });
 
   app.get('/api/logs', (req, res) => res.json(store.listLogs(100)));
+
+  // The Mac side: Live and Replay as sections of one page.
+  app.get('/mac', (req, res) => res.sendFile(resolve(publicDir, 'studio.html')));
 
   app.use(express.static(publicDir));
 

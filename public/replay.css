@@ -611,3 +611,6 @@ button.rp-hook-chip:hover { background: color-mix(in srgb, var(--them) 18%, var(
 @media (prefers-reduced-motion: reduce) {
   .rp-progress-fill, .rp-meter-fill, .rp-meter-dot, .rp-marker, .rp-moment, .rp-convo-link { transition: none; }
 }
+
+/* Inside the Mac studio the shell already shows the brand. */
+.embedded .rp-brand, .embedded .rp-crumb { display: none; }

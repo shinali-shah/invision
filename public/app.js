@@ -513,7 +513,7 @@ function renderVideo() {
       saved ? el('span', { class: 'card-meta', text: 'Video saved' }) : null),
     coachStatus,
     saved ? el('p', { class: 'hint', text: 'Open Replay on your Mac to see the video analysis.' }) : null,
-    saved ? el('a', { class: 'primary replay-link', href: `/replay.html?id=${encodeURIComponent(convo.id)}`, text: 'Open Replay on the Mac' }) : null,
+    saved ? el('a', { class: 'primary replay-link', href: `/mac#replay=${encodeURIComponent(convo.id)}`, text: 'Open Replay on the Mac' }) : null,
   ].filter(Boolean));
   card.hidden = false;
 }

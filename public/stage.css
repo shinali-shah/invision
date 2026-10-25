@@ -628,3 +628,6 @@ body.stage-body {
 @media (prefers-reduced-motion: reduce) {
   .st-scroll { scroll-behavior: auto; }
 }
+
+/* Inside the Mac studio the shell already shows the brand. */
+.embedded .st-brand { display: none; }

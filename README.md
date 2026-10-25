@@ -52,10 +52,15 @@ The phone records (the mic is plugged into it); the Mac shows what's happening, 
 
 The stage follows the phone: live transcript while recording, the note + counts + highlighted lines after coaching, the trend and next step when the phone opens Memory. Changing the tag on the phone swaps the note on stage.
 
-## Replay page (camera + behavior cues)
+## The Mac: one page, two sections
+
+Open `http://localhost:3000/mac`. **Live** (keys: 1) follows the phone as it records and coaches; **Replay** (2) opens the
+video analysis. When a recording with a note lands, it jumps to Replay on its own (toggle in the header).
+
+## Replay (camera + behavior cues)
 
 Turn **Camera** on before recording (consent covers audio and video). The phone records video next to the
-transcript and uploads it to the Mac when you stop. Open `http://localhost:3000/replay.html` on the Mac:
+transcript and uploads it to the Mac when you stop. Open the **Replay** section of `/mac`:
 
 - **Pretrained model, in the browser:** MediaPipe Face Landmarker (vendored in `public/vendor/mediapipe/`) runs over the
   video at 5 fps and reports smiling, facing and head pose per frame. Observable cues only, never feelings or sincerity.

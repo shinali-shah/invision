@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Playback</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E%3Ccircle cx=%2211%22 cy=%2216%22 r=%227%22 fill=%22none%22 stroke=%22%23417460%22 stroke-width=%223%22/%3E%3Ccircle cx=%2221%22 cy=%2216%22 r=%227%22 fill=%22none%22 stroke=%22%23bb7a16%22 stroke-width=%223%22/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    /* The Mac side in one place: Live follows the phone, Replay digs into a finished conversation.
+       Both sections stay loaded, so switching is instant and nothing loses its place. */
+    /* ?theme=dark|light, same overrides as the stage */
+    :root[data-theme="light"] {
+      --bg: #e8ede6; --surface: #f6f8f3; --surface-2: #dfe6dc; --ink: #1f2b25;
+      --muted: #56645c; --line: #c6d1c8; --you: #b97a14; --them: #3f6f5d; --rec: #c2413a; --focus: #2f6fd0;
+      color-scheme: light;
+    }
+    :root[data-theme="dark"] {
+      --bg: #141c18; --surface: #1d2722; --surface-2: #26322c; --ink: #e6ece5;
+      --muted: #9eaca4; --line: #34433b; --you: #ebb04f; --them: #86bba6; --rec: #ec6a60; --focus: #8ab4ff;
+      color-scheme: dark;
+    }
+    html, body { height: 100%; margin: 0; }
+    /* styles.css is here for its colour tokens; its phone-sized body and main rules are not wanted */
+    body { display: flex; flex-direction: column; max-width: none; width: 100%; padding: 0; background: var(--bg); color: var(--ink); font-family: 'Hanken Grotesk', system-ui, sans-serif; }
+
+    .sd-bar { display: flex; align-items: center; gap: 20px; padding: 10px 20px; border-bottom: 1px solid var(--line); background: var(--surface); }
+    .sd-brand { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 17px; }
+    .sd-mark { width: 22px; height: 22px; }
+    .sd-mark circle { fill: none; stroke-width: 3; }
+    .sd-mark circle:first-child { stroke: var(--them); }
+    .sd-mark circle:last-child { stroke: var(--you); }
+
+    .sd-tabs { display: flex; gap: 4px; padding: 3px; border-radius: 999px; background: var(--surface-2); }
+    .sd-tab { position: relative; border: 0; background: none; color: var(--muted); font: inherit; font-weight: 600; font-size: 15px;
+              padding: 7px 18px; border-radius: 999px; cursor: pointer; }
+    .sd-tab[aria-selected="true"] { background: var(--bg); color: var(--ink); box-shadow: 0 1px 3px rgb(0 0 0 / .12); }
+    .sd-tab:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+    .sd-dot { position: absolute; top: 5px; right: 7px; width: 8px; height: 8px; border-radius: 50%; background: var(--rec); }
+    .sd-dot[hidden] { display: none; }
+
+    .sd-ready { display: flex; align-items: center; gap: 10px; margin-left: auto; font-size: 14px; color: var(--muted); }
+    .sd-ready[hidden] { display: none; }
+    .sd-ready button { border: 1px solid var(--line); background: var(--bg); color: var(--ink); font: inherit; font-weight: 600;
+                       padding: 6px 12px; border-radius: 8px; cursor: pointer; }
+    .sd-follow { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); margin-left: auto; }
+    .sd-ready:not([hidden]) + .sd-follow { margin-left: 0; }
+
+    .sd-panes { position: relative; flex: 1; min-height: 0; width: 100%; }
+    .sd-pane { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: var(--bg); }
+    .sd-pane[hidden] { display: none; }
+    @media (max-width: 700px) { .sd-follow { display: none; } .sd-bar { gap: 10px; padding: 8px 12px; } }
+  </style>
+</head>
+<body>
+  <header class="sd-bar">
+    <span class="sd-brand">
+      <svg class="sd-mark" viewBox="0 0 32 32" aria-hidden="true"><circle cx="11" cy="16" r="7"/><circle cx="21" cy="16" r="7"/></svg>
+      Playback
+    </span>
+    <nav class="sd-tabs" role="tablist" aria-label="Sections">
+      <button class="sd-tab" role="tab" id="tab-live" aria-controls="pane-live" aria-selected="true">Live</button>
+      <button class="sd-tab" role="tab" id="tab-replay" aria-controls="pane-replay" aria-selected="false">Replay<span class="sd-dot" id="replay-dot" hidden></span></button>
+    </nav>
+    <span class="sd-ready" id="ready" hidden>
+      <span id="ready-text"></span>
+      <button type="button" id="ready-open">Open replay</button>
+    </span>
+    <label class="sd-follow"><input type="checkbox" id="auto"> Jump to Replay when a video is ready</label>
+  </header>
+  <div class="sd-panes">
+    <iframe class="sd-pane" id="pane-live" role="tabpanel" aria-labelledby="tab-live" title="Live"></iframe>
+    <iframe class="sd-pane" id="pane-replay" role="tabpanel" aria-labelledby="tab-replay" title="Replay" hidden></iframe>
+  </div>
+
+  <script>
+    const $ = id => document.getElementById(id);
+    const params = new URLSearchParams(location.search);
+    const theme = params.get('theme');
+    if (theme === 'light' || theme === 'dark') document.documentElement.dataset.theme = theme;
+    const withTheme = (path, extra = {}) => {
+      const q = new URLSearchParams(extra);
+      if (theme) q.set('theme', theme);
+      const s = q.toString();
+      return s ? `${path}?${s}` : path;
+    };
+
+    const panes = { live: $('pane-live'), replay: $('pane-replay') };
+    let current = 'live';
+    let replayId = null; // what the Replay pane was last pointed at
+    let readyId = null;
+
+    function openReplay(id) {
+      // Show first: a page laid out inside a hidden frame thinks the window is 0 px wide.
+      const reload = id !== replayId || !panes.replay.src;
+      replayId = id;
+      show('replay');
+      if (reload) panes.replay.src = withTheme('replay.html', id ? { id } : {});
+    }
+
+    function show(name) {
+      current = name;
+      for (const [key, pane] of Object.entries(panes)) {
+        pane.hidden = key !== name;
+        $(`tab-${key}`).setAttribute('aria-selected', String(key === name));
+      }
+      if (name === 'replay') { $('replay-dot').hidden = true; if (readyId === replayId) $('ready').hidden = true; }
+      history.replaceState(null, '', `#${name}${name === 'replay' && replayId ? `=${replayId}` : ''}`);
+    }
+
+    $('tab-live').addEventListener('click', () => show('live'));
+    $('tab-replay').addEventListener('click', () => openReplay(readyId && !panes.replay.src ? readyId : replayId));
+    $('ready-open').addEventListener('click', () => { if (readyId) openReplay(readyId); });
+    document.addEventListener('keydown', e => {
+      if (e.target.closest('input, textarea') || e.metaKey || e.ctrlKey || e.altKey) return;
+      if (e.key === '1') show('live');
+      if (e.key === '2') openReplay(replayId ?? readyId);
+    });
+
+    // On unless they turned it off on this Mac.
+    $('auto').checked = true;
+    try { $('auto').checked = localStorage.getItem('playback-auto-replay') !== '0'; } catch { /* private mode */ }
+    $('auto').addEventListener('change', () => { try { localStorage.setItem('playback-auto-replay', $('auto').checked ? '1' : '0'); } catch { /* fine */ } });
+
+    // A conversation is worth replaying once it has both a video and a note.
+    const announced = new Set();
+    function maybeReady(c) {
+      if (!c || !c.id || !c.recording || !c.note || announced.has(c.id)) return;
+      announced.add(c.id);
+      readyId = c.id;
+      $('ready-text').textContent = `Video ready: ${c.otherName && c.otherName !== 'them' ? c.otherName : 'your conversation'}`;
+      $('ready').hidden = false;
+      if (current !== 'replay') $('replay-dot').hidden = false;
+      if ($('auto').checked) openReplay(c.id);
+    }
+
+    function listen() {
+      const ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws/stage`);
+      ws.addEventListener('message', ev => {
+        let msg;
+        try { msg = JSON.parse(ev.data); } catch { return; }
+        if (msg.type === 'conversation') maybeReady(msg.conversation);
+      });
+      ws.addEventListener('close', () => setTimeout(listen, 1500));
+    }
+
+    // Conversations that already have a video shouldn't pop the banner on load.
+    fetch('/api/conversations').then(r => r.json()).then(list => {
+      for (const c of list) if (c.recording && c.note) announced.add(c.id);
+    }).catch(() => {}).finally(listen);
+
+    panes.live.src = withTheme('stage.html');
+    const [name, id] = location.hash.slice(1).split('=');
+    if (name === 'replay') openReplay(id || null);
+  </script>
+</body>
+</html>
