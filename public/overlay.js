@@ -153,6 +153,35 @@ export function drawMesh(ctx, xy, r, { bone = '#f3ead8', marigold = '#f4a51c', a
   ctx.lineWidth = line * 1.25;
   ctx.globalAlpha = alpha;
   strokeSet(ctx, sets.lips, xy, r);
+
+  // Every landmark as a point: this is what reads as "it's scanning him" from across a room.
+  // The lines above give the face its shape; the points show the model's actual output.
+  let minY = 1; let maxY = 0;
+  for (let i = 1; i < xy.length; i += 2) { if (xy[i] < minY) minY = xy[i]; if (xy[i] > maxY) maxY = xy[i]; }
+  const dot = Math.max(hair, Math.min(2.2, faceW / 150));
+  ctx.fillStyle = bone;
+  ctx.globalAlpha = alpha * 0.85;
+  for (let i = 0; i < xy.length; i += 2) {
+    ctx.fillRect(r.x + xy[i] * r.w - dot / 2, r.y + xy[i + 1] * r.h - dot / 2, dot, dot);
+  }
+
+  // corner brackets around the face, like a viewfinder locking on
+  const pad = 0.04;
+  const x0 = r.x + Math.max(0, minX - pad) * r.w;
+  const y0 = r.y + Math.max(0, minY - pad * 1.4) * r.h;
+  const x1 = r.x + Math.min(1, maxX + pad) * r.w;
+  const y1 = r.y + Math.min(1, maxY + pad) * r.h;
+  const arm = Math.min(x1 - x0, y1 - y0) * 0.2;
+  ctx.strokeStyle = marigold;
+  ctx.lineWidth = Math.max(1.5, line * 1.6);
+  ctx.globalAlpha = alpha;
+  ctx.beginPath();
+  for (const [cx, cy, dx, dy] of [[x0, y0, 1, 1], [x1, y0, -1, 1], [x0, y1, 1, -1], [x1, y1, -1, -1]]) {
+    ctx.moveTo(cx + dx * arm, cy);
+    ctx.lineTo(cx, cy);
+    ctx.lineTo(cx, cy + dy * arm);
+  }
+  ctx.stroke();
   ctx.restore();
 }
 

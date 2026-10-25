@@ -197,6 +197,37 @@ const maya = [
   { turnId: 6, speaker: 'A', text: "I'll send you our demo video. Good luck with your brother!", startMs: 18400, endMs: 21000 },
 ];
 
+test('behavior and insight on a labelled but never-processed conversation extract the hooks first', async () => {
+  const convo = await (await fetch(`${base}/api/conversations`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ tag: 'friend', otherName: 'Maya', consentConfirmed: true }),
+  })).json();
+  // the lip lock named the voice at the end of the recording; nobody tapped "get coaching"
+  srv.store.updateConversation(convo.id, { userLabel: 'A', turns: maya });
+  assert.equal(srv.store.getConversation(convo.id).hooks, null);
+  const url = `${base}/api/conversations/${convo.id}`;
+
+  const res = await fetch(`${url}/behavior`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ model: 'mediapipe', fps: 5, frames: frames() }),
+  });
+  assert.equal(res.status, 200);
+  const after = srv.store.getConversation(convo.id);
+  assert.ok(after.hooks && Array.isArray(after.hooks.missedBids), 'hooks were extracted on the way to the behavior');
+  assert.ok(after.signals && after.signals.questions.length >= 1, 'signals too');
+  assert.ok(after.insight);
+
+  // and /insight alone does the same for a conversation that has no video
+  const bare = await (await fetch(`${base}/api/conversations`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ tag: 'friend', otherName: 'Maya', consentConfirmed: true }),
+  })).json();
+  srv.store.updateConversation(bare.id, { userLabel: 'A', turns: maya });
+  assert.equal((await fetch(`${base}/api/conversations/${bare.id}/insight`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })).status, 200);
+  assert.ok(srv.store.getConversation(bare.id).hooks, 'insight extracted the hooks first');
+});
+
+
 test('the missed moment becomes a grounded "try this" with numbers we computed', async () => {
   const hooks = extractHooks(maya, 'A');
   assert.deepEqual(hooks.missedBids.map(b => b.replyTurnId), [2]); // "Good luck with your brother!" is not a miss

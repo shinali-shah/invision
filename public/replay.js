@@ -29,8 +29,11 @@ const MARKS = {
   tk2: { cls: 'tk', sym: '2', label: 'Keep doing this' },
   tk3: { cls: 'tk', sym: '3', label: 'Ask about it next time' },
   awk: { cls: 'awk', sym: '', label: 'Awkward moment' },
+  ask: { cls: 'q', sym: '', label: 'You asked' },
+  said: { cls: 'sd', sym: '', label: 'They brought up' },
+  promise: { cls: 'pr', sym: '', label: 'You promised' },
 };
-const MARK_ORDER = ['tk1', 'tk2', 'tk3', 'awk', 'follow', 'missed'];
+const MARK_ORDER = ['tk1', 'tk2', 'tk3', 'awk', 'follow', 'missed', 'ask', 'said', 'promise'];
 // The Figma's .tl-track (who's talking, with the moment dots above it) is DOM; the face cues
 // underneath it are still a canvas.
 const TRACK_TOP = 0;    // the dots overhang the tl-head margin, like the Figma
@@ -220,6 +223,14 @@ function markersByTurn(c) {
   if (needsVoice()) return new Map();
   for (const b of (c.hooks && c.hooks.missedBids) || []) add(b.turnId, 'missed');
   for (const f of awkward().flags) if (f.who === 'you') add(f.turnId, 'awk');
+  // the quieter beats: every question you asked, the things they brought up, what you promised
+  const followed = new Set([...out.entries()].filter(([, k]) => k.has('follow')).map(([id]) => id));
+  for (const q of qs) if (!followed.has(q.turnId)) add(q.turnId, 'ask');
+  const h = c.hooks || {};
+  const mentioned = new Set((h.events || []).map((e) => e.turnId));
+  for (const t of h.topics || []) for (const id of t.turnIds || []) mentioned.add(id);
+  for (const id of mentioned) if (!out.has(id) || !out.get(id).has('missed')) add(id, 'said');
+  for (const p of h.commitments || []) add(p.turnId, 'promise');
   // numbered like the cards: 1 try, 2 keep, 3 ask
   const { tryT, keep, ask } = threeTakeaways();
   [tryT, keep, ask].forEach((t, i) => { if (t) add(t.turnId, `tk${i + 1}`); });
@@ -254,6 +265,22 @@ function markerTitle(turnId, kinds) {
     if (k.startsWith('tk')) {
       const t = tks[Number(k.slice(2)) - 1];
       return t && t.title ? `${MARKS[k].label}: ${t.title}` : MARKS[k].label;
+    }
+    if (k === 'ask') {
+      const line = turnsOf(state.convo).find((t) => t.turnId === turnId);
+      return line && line.text ? `You asked: “${line.text}”` : MARKS.ask.label;
+    }
+    if (k === 'said') {
+      const h = state.convo.hooks || {};
+      const what = [
+        ...(h.events || []).filter((e) => e.turnId === turnId).map((e) => e.text),
+        ...(h.topics || []).filter((t) => (t.turnIds || []).includes(turnId)).map((t) => t.term),
+      ].filter(Boolean);
+      return what.length ? `They brought up ${what.map((w) => `“${w}”`).join(', ')}: something to come back to` : MARKS.said.label;
+    }
+    if (k === 'promise') {
+      const p = ((state.convo.hooks && state.convo.hooks.commitments) || []).find((x) => x.turnId === turnId);
+      return p && p.text ? `You promised: “${p.text}”` : MARKS.promise.label;
     }
     return MARKS[k].label;
   }).join('\n');
@@ -1763,6 +1790,9 @@ function renderHeader() {
     el('i', { class: 'fu' }), 'Follow-up',
     el('i', { class: 'ms' }), 'Missed moment',
     el('i', { class: 'awk' }), 'Awkward',
+    el('i', { class: 'q' }), 'Asked',
+    el('i', { class: 'sd' }), 'They brought up',
+    el('i', { class: 'pr' }), 'Promised',
     el('i', { class: 'tk' }), 'Takeaway');
 }
 

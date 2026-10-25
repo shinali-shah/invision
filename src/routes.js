@@ -281,11 +281,17 @@ export function createApp({ store, llm, log, config, publicDir = 'public', stage
       // Nobody said which voice is theirs: the video usually can. Without it, every line would be
       // read as the other person's and the advice would be about the wrong person.
       let labeled = convo;
+      // The lip lock often names the voice at the end of the recording, and then nobody taps
+      // "get coaching" on the phone: the hooks never get extracted and the timeline sits empty.
+      let unprocessed = !convo.hooks && (convo.turns ?? []).length > 0;
       if (!convo.userLabel && (convo.turns ?? []).length >= 2) {
         const guess = inferUserLabel(convo.turns, frames);
         if (!guess) return res.status(409).json({ error: 'Which voice is yours? Tap one of your lines.', needsLabel: true });
         log('vision', 'info', `picked your voice (${guess.label}) from the video: ${guess.evidence}`);
         store.updateConversation(convo.id, { userLabel: guess.label });
+        unprocessed = true;
+      }
+      if (unprocessed) {
         stage.publish({ type: 'processing', conversationId: convo.id });
         labeled = await processConversation({ store, llm, log, id: convo.id, reflection: convo.reflection ?? '' });
       }
@@ -321,7 +327,11 @@ export function createApp({ store, llm, log, config, publicDir = 'public', stage
       const convo = findConvo(req, res);
       if (!convo) return;
       if (!convo.userLabel && (convo.turns ?? []).length >= 2) return res.status(409).json({ error: 'Which voice is yours? Tap one of your lines.', needsLabel: true });
-      const insight = await insightFor(convo);
+      // same as /behavior: an insight with no hooks behind it would only have the face to go on
+      const ready = !convo.hooks && (convo.turns ?? []).length > 0
+        ? await processConversation({ store, llm, log, id: convo.id, reflection: convo.reflection ?? '' })
+        : convo;
+      const insight = await insightFor(ready);
       const updated = store.updateConversation(convo.id, { insight });
       stage.publish({ type: 'conversation', conversation: updated });
       res.json(insight);
