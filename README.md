@@ -3,7 +3,7 @@
 Most tools only look at what you said. Playback looks at how the other person responded, and helps you
 become a better listener over time.
 
-You wear a mic (and optionally point a camera) during a real conversation. Afterwards you get one specific piece
+You wear glasses with a mic on them (and optionally point the phone's camera at the other person) during a real conversation. Afterwards you get one specific piece
 of advice, backed by the moment it came from: what they said, what you said, and the line that would have landed
 better. It remembers people, so next time you get a brief before you talk, and a before/after once you have.
 
