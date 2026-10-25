@@ -426,11 +426,12 @@ function renderTasks() {
   fill(refs.tasks,
     el('div', { class: 'list-title' }, el('div', {}, el('span', { class: 'label', text: 'UP NEXT' }), el('h2', { text: 'Pending tasks' }))),
     progress('Tasks completed', done, list.length),
-    ...(list.length ? list.map((t) => el('div', { class: 'task-row' },
+    // A few weeks of promises is a long list; it scrolls inside the card rather than stretching the page.
+    list.length ? el('div', { class: 'task-scroll' }, ...list.map((t) => el('div', { class: 'task-row' },
       checkRow(t.key, t.text, renderTasks),
       t.finish ? finishButton(t.convo)
         : t.convo && el('button', { class: 'followup-btn', onclick: () => openFollowUp(t.convo) }, icon('spark', 13), ' Write me a follow up'),
-    )) : [el('p', { class: 'empty-row', text: 'Nothing waiting on you.' })]),
+    ))) : el('p', { class: 'empty-row', text: 'Nothing waiting on you.' }),
   );
 }
 

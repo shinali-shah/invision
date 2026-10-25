@@ -16,6 +16,7 @@ import { alignBehavior, cleanFrames } from '../behavior/align.js';
 import { generateInsight } from '../agents/insight.js';
 import { groundedIn } from '../agents/followUp.js';
 import { SYNTHETIC_CONVERSATIONS, SYNTHETIC_GOALS } from './conversations.js';
+import { EVERYDAY } from './everyday.js';
 
 const DAY = 86400000;
 const MIN = 60000;
@@ -139,6 +140,15 @@ function respondersFor(spec, goals) {
     coach: ({ signals }) => spec.coach(signals),
     review: ({ note }) => ({ verdict: 'pass', text: note.text, suggestion: note.suggestion }),
     followUp: () => ({ text: spec.followUp.text, hooksUsed: [] }),
+    // The trend over a few dozen conversations: first week against the last one, quoting the first
+    // and last counts like the pattern finder requires.
+    pattern: ({ counts = [] }) => {
+      const avg = xs => Math.round((xs.reduce((n, x) => n + x, 0) / Math.max(1, xs.length)) * 10) / 10;
+      const early = avg(counts.slice(0, 7));
+      const late = avg(counts.slice(-7));
+      const dir = late > early ? 'rose' : late < early ? 'fell' : 'held steady';
+      return { statement: `Your follow-up questions ${dir} from an average of ${early} per conversation in your first week to ${late} in your last, going from ${counts[0]} in the first conversation to ${counts.at(-1)} in the latest.` };
+    },
     nextStep: payload => (goals.length ? { goal: goals.shift() } : defaultResponders.nextStep(payload)),
     insight: payload => {
       const flagged = new Set((payload.awkward ?? []).filter(f => f.who === 'you').map(f => f.turnId));
@@ -270,6 +280,93 @@ const at = (anchor, daysAgo, hhmm) => {
   return d.getTime();
 };
 
+const dayOf = ms => {
+  const d = new Date(ms);
+  d.setHours(0, 0, 0, 0);
+  return d.getTime();
+};
+
+const MOOD = score => (score < 30 ? 'good' : score < 70 ? 'bumps' : 'rough');
+
+// The other person's face for an everyday conversation, from what the lines are: warmer after
+// follow-ups, flat or cooler after the rest (and looking away when it was a rough one), nods on
+// their longer answers.
+function everydayFace(e) {
+  const reactions = {};
+  const away = {};
+  const nods = {};
+  e.lines.forEach(([speaker, text, opts], i) => {
+    const id = i + 1;
+    if (speaker === 'A') {
+      if (e.fu.includes(id) && !opts?.overlap) reactions[id] = 0.12 + ((id * 7) % 10) / 100;
+      else if (e.mood === 'good') reactions[id] = 0.03;
+      else {
+        reactions[id] = opts?.overlap ? -0.08 : -0.05;
+        away[id] = 0.45;
+      }
+    } else if (words(text) >= 15) {
+      nods[id] = 1 + (id % 2);
+    }
+  });
+  return { baseline: 0.14 + (e.lines.length % 5) * 0.01, reactions, away, nods };
+}
+
+const counts = s => `You asked ${s.userQuestions} question${s.userQuestions === 1 ? '' : 's'} and ${s.followUps} ${s.followUps === 1 ? 'was a follow-up' : 'were follow-ups'}.`;
+
+function everydaySpec(e, index, key, start, now) {
+  return {
+    key,
+    tag: e.tag,
+    otherName: e.who,
+    mood: e.mood,
+    start,
+    video: e.video ? { mime: 'video/mp4', offsetMs: 140 + ((index * 37) % 180) } : null,
+    lipLock: !!e.video,
+    userLabel: 'A',
+    lines: e.lines,
+    reflection: e.r,
+    classify: { followUps: e.fu, stories: e.st, reflections: e.refl ?? 0 },
+    coach: s => ({ text: `${counts(s)} ${e.tail}`, suggestion: e.sugg, citedTurnIds: e.fu }),
+    // the last couple of days still have the message sitting as a draft
+    followUp: { text: e.fup, status: now - start < 2 * DAY ? 'draft' : 'sent', sentAfterMin: 15 + ((index * 53) % 200) },
+    face: e.video ? everydayFace(e) : null,
+    insight: { moments: Object.fromEntries(Object.entries(e.m).map(([id, [title, why]]) => [id, { title, why }])), rewrites: [] },
+  };
+}
+
+/**
+ * Every day from the first of last month to today gets at least one conversation, so the Home
+ * calendar is filled in: the big ones from conversations.js on their own days, everyday ones on the
+ * rest (reused, oldest first, if a long month runs out of them). Oldest first.
+ */
+export function schedule(now) {
+  // nothing starts in the future, even when the build runs in the morning
+  const latest = now - 45 * MIN;
+  const main = SYNTHETIC_CONVERSATIONS.map(s => ({ ...s, start: Math.min(at(now, s.daysAgo, s.at), latest) }));
+  const startOf = key => main.find(m => m.key === key)?.start ?? -Infinity;
+  const taken = new Set(main.map(m => dayOf(m.start)));
+  const pool = EVERYDAY.map((e, i) => ({ e, i, used: 0 }));
+  const fits = (e, day) => (!e.after || day >= dayOf(startOf(e.after[0]) + e.after[1] * DAY))
+    && (!e.before || day < dayOf(startOf(e.before)));
+
+  const out = [...main];
+  const d = new Date(now);
+  d.setMonth(d.getMonth() - 1, 1);
+  d.setHours(0, 0, 0, 0);
+  for (; d.getTime() <= dayOf(now); d.setDate(d.getDate() + 1)) {
+    const day = d.getTime();
+    if (taken.has(day)) continue;
+    const pick = pool.find(p => !p.used && fits(p.e, day))
+      ?? [...pool].filter(p => fits(p.e, day)).sort((a, b) => a.used - b.used)[0]
+      ?? [...pool].sort((a, b) => a.used - b.used)[0];
+    const start = Math.min(at(day, 0, pick.e.at), latest);
+    if (start < day) continue; // built just after midnight: today has no time left yet
+    pick.used++;
+    out.push(everydaySpec(pick.e, pick.i, `everyday-${pick.i}${pick.used > 1 ? `-${pick.used}` : ''}`, start, now));
+  }
+  return out.sort((a, b) => a.start - b.start);
+}
+
 const fmtWhen = ms => new Date(ms).toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 
 /**
@@ -290,9 +387,10 @@ export async function buildSynthetic({ store, recordingsDir, now = Date.now(), v
 
   clock.install();
   try {
-    for (const spec of SYNTHETIC_CONVERSATIONS) {
+    const plan = schedule(now);
+    for (const spec of plan) {
       const rand = rng(spec.key);
-      const start = at(now, spec.daysAgo, spec.at);
+      const start = spec.start;
       clock.set(start);
       const llm = createLlm({ mock: true, responders: respondersFor(spec, goals) });
 
@@ -320,6 +418,9 @@ export async function buildSynthetic({ store, recordingsDir, now = Date.now(), v
       // 2. Coaching: the whole analyse → coach → review → remember chain
       clock.advance(45000);
       let done = await processConversation({ store, llm, log, id: convo.id, reflection: spec.reflection });
+      if (spec.mood && MOOD(done.hooks.awkward.score) !== spec.mood) {
+        problems.push(`${spec.key}: meant to be ${spec.mood} but scored ${done.hooks.awkward.score} (${done.hooks.awkward.flags.map(f => f.kind).join(', ') || 'no flags'})`);
+      }
       if (done.note?.status !== 'shown') problems.push(`${spec.key}: note ${done.note?.status} (${done.note?.reason})`);
       if (done.followUp?.source !== 'muse-spark') problems.push(`${spec.key}: follow-up fell back to the ${done.followUp?.source}`);
       const latest = store.latestNextStep();
@@ -383,7 +484,7 @@ export async function buildSynthetic({ store, recordingsDir, now = Date.now(), v
     }
     // One last pass so the pattern and goal reflect the whole history.
     clock.set(now - 30 * MIN);
-    await refreshMemory({ store, llm: createLlm({ mock: true, responders: respondersFor(SYNTHETIC_CONVERSATIONS.at(-1), goals) }), log });
+    await refreshMemory({ store, llm: createLlm({ mock: true, responders: respondersFor(plan.at(-1), goals) }), log });
   } finally {
     clock.restore();
   }

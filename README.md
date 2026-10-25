@@ -88,15 +88,19 @@ npm run synthetic       # writes data/synthetic.db and data/synthetic-recordings
 npm run dev:synthetic   # serves it (mock mode) on http://localhost:3000
 ```
 
-It holds 12 conversations over five weeks (English, Spanish and both mixed) with six people: Abuela and
-Mamá (family), Jordan, Priya and Marcus (friends), and Daniel and Elena (networking). Every field is
-filled in: diarized turns with lip-lock sources (including two bystander lines filtered out), signals,
-hooks, awkward flags (one conversation has gossip and a cut-in), coaching notes, follow-up messages
-(sent, edited, and still in draft), face cues and Replay takeaways, plus the trend, three weekly goals
-(changed, dismissed, accepted) and the agent logs. Ten conversations come with a stand-in video (drawn
-with ffmpeg, captions only) and per-frame face data, so Replay's timeline and player work too.
+It holds a conversation on every day from the first of last month to today (55 when built on Oct 25),
+in English, Spanish and both mixed, with eleven people: Abuela, Mamá, Papá, Tía Lupe and Diego (family);
+Jordan, Priya, Marcus, Ana, Kevin and Sam (friends); Daniel, Elena, Maya, Luis and Professor Hale
+(networking). Twelve are the long, connected ones in `src/synthetic/conversations.js`; the rest are
+everyday calls from `src/synthetic/everyday.js`, each written to land on the Home calendar as went well,
+a few bumps or a rough one (gossip, cutting in, short replies). Every field is filled in: diarized turns
+with lip-lock sources (including bystander lines filtered out), signals, hooks, awkward flags, coaching
+notes, follow-up messages (sent, edited, and drafts for the last two days), face cues and Replay takeaways,
+plus the trend, three weekly goals (changed, dismissed, accepted) and the agent logs. About two thirds come
+with a stand-in video (drawn with ffmpeg, captions only) and per-frame face data, so Replay's timeline and
+player work too.
 
-The transcripts and Muse Spark's answers are written by hand in `src/synthetic/conversations.js`;
+The transcripts and Muse Spark's answers are written by hand;
 `src/synthetic/build.js` runs them through the real pipeline, so anything an agent would reject falls back
 the same way it would live (the build lists any that do). It never touches `data/playback.db`, and the two
 sample Abuela calls are not added on top. `fixtures/synthetic/playback.json` is a snapshot of the rows,

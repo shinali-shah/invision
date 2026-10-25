@@ -503,3 +503,10 @@ svg { display: block; vertical-align: middle; }
 .uncoached-hero p { max-width:62ch; color:var(--bone-2); font-size:15px; line-height:1.55; }
 .uncoached-hero .button { margin-top:4px; }
 @media (max-width:1000px) { .uncoached { margin-left:0; } }
+
+/* Recent conversations fill whatever height the planner column gives the row, and scroll inside it. */
+.dashboard .activity { grid-template-rows:auto minmax(0,1fr); }
+.conversations-card { display:flex; flex-direction:column; min-height:0; }
+.conversations-card .conversation-scroll { flex:1 1 0; min-height:420px; max-height:none; }
+@media (max-width:850px) { .conversations-card .conversation-scroll { flex:none; max-height:640px; min-height:0; } }
+.task-scroll { max-height:520px; overflow-y:auto; margin-right:-10px; padding-right:10px; scrollbar-width:thin; scrollbar-color:var(--ink) transparent; }
