@@ -1,0 +1,7692 @@
+{
+ "dataset": {
+  "name": "synthetic",
+  "label": "SYNTHETIC DEMO DATA",
+  "seed": 20261012,
+  "builtAt": "2026-10-25T08:00:00.000Z",
+  "conversations": 13
+ },
+ "pattern": {
+  "statement": "Your follow-up questions rose from 0 to 2 per conversation over your last 13 conversations.",
+  "metric": "followUps",
+  "counts": [
+   0,
+   0,
+   1,
+   2,
+   2,
+   3,
+   2,
+   0,
+   2,
+   2,
+   3,
+   0,
+   2
+  ]
+ },
+ "nextSteps": [
+  {
+   "id": 1,
+   "text": "Ask at least 2 follow-up questions about something that matters to them, each time you talk this week.",
+   "status": "proposed",
+   "createdAt": "2026-10-14T16:32:01.855Z"
+  }
+ ],
+ "conversations": [
+  {
+   "id": "5050aade-77c4-4f16-a96e-d282123cded3",
+   "tag": "friend",
+   "otherName": "Prat",
+   "createdAt": "2026-10-12T21:40:00.000Z",
+   "seeded": false,
+   "synthetic": true,
+   "turns": [
+    {
+     "turnId": 1,
+     "speaker": "B",
+     "text": "Okay, so for the Replay timeline I was thinking we stack the talk lane, the smile lane and the nods, and then the markers sit on top so you can",
+     "startMs": 0,
+     "endMs": 12033
+    },
+    {
+     "turnId": 2,
+     "speaker": "A",
+     "text": "Can we also add a word cloud? And maybe a share button for the takeaways.",
+     "startMs": 11333,
+     "endMs": 17675
+    },
+    {
+     "turnId": 3,
+     "speaker": "B",
+     "text": "Maybe after the demo. Right now the timeline needs the follow-up markers lined up with the transcript, because clicking one has to jump the video to",
+     "startMs": 18369,
+     "endMs": 29056
+    },
+    {
+     "turnId": 4,
+     "speaker": "A",
+     "text": "Sure. What about exporting it as a PDF too?",
+     "startMs": 28256,
+     "endMs": 32199
+    },
+    {
+     "turnId": 5,
+     "speaker": "B",
+     "text": "We could. I'm stuck on the lip lock thing and honestly I haven't slept, the bystander lines keep getting tagged as mine.",
+     "startMs": 32560,
+     "endMs": 41420
+    },
+    {
+     "turnId": 6,
+     "speaker": "A",
+     "text": "Okay. Also the PDF should have the logo on it.",
+     "startMs": 41995,
+     "endMs": 46627
+    },
+    {
+     "turnId": 7,
+     "speaker": "B",
+     "text": "Got it, I can add the logo later. For the timeline, do you want nods as ticks or as a lane?",
+     "startMs": 47168,
+     "endMs": 55940
+    },
+    {
+     "turnId": 8,
+     "speaker": "A",
+     "text": "Ticks.",
+     "startMs": 56377,
+     "endMs": 57502
+    },
+    {
+     "turnId": 9,
+     "speaker": "B",
+     "text": "Ticks works. And the markers for missed moments, red or orange so they match the calendar?",
+     "startMs": 58266,
+     "endMs": 64960
+    },
+    {
+     "turnId": 10,
+     "speaker": "A",
+     "text": "Whatever's faster, I just want the extra features in.",
+     "startMs": 64360,
+     "endMs": 68386
+    },
+    {
+     "turnId": 11,
+     "speaker": "B",
+     "text": "Fair enough. I'll get the timeline lanes merged tonight and we can look at the extras after the demo.",
+     "startMs": 68952,
+     "endMs": 76696
+    },
+    {
+     "turnId": 12,
+     "speaker": "A",
+     "text": "Fine, send me the link when it is merged.",
+     "startMs": 77379,
+     "endMs": 81345
+    }
+   ],
+   "userLabel": "A",
+   "reflection": "I kept pitching extra features while Prat was explaining the timeline.",
+   "signals": {
+    "userQuestions": 2,
+    "userTurns": 6,
+    "otherTurns": 6,
+    "userTalkMs": 24034,
+    "otherTalkMs": 54790,
+    "userTalkShare": 0.3,
+    "otherAvgAnswerWords": 24,
+    "followUps": 0,
+    "reflections": 2,
+    "storiesAfterQuestions": 2,
+    "questions": [
+     {
+      "turnId": 2,
+      "isFollowUp": false,
+      "replyTurnId": 3,
+      "replyWords": 26,
+      "storyShared": true
+     },
+     {
+      "turnId": 4,
+      "isFollowUp": false,
+      "replyTurnId": 5,
+      "replyWords": 22,
+      "storyShared": true
+     }
+    ],
+    "crowd": 0,
+    "source": "muse-spark",
+    "detectorAgreement": {
+     "agree": 2,
+     "of": 2
+    }
+   },
+   "note": {
+    "text": "You asked 2 questions and 0 were follow-ups. You heard 2 stories after your questions.",
+    "suggestion": "Next time, check back in about timeline and ask how it went.",
+    "citedTurnIds": [],
+    "status": "shown",
+    "source": "muse-spark"
+   },
+   "hooks": {
+    "topics": [
+     {
+      "term": "timeline",
+      "turnIds": [
+       1,
+       3,
+       7,
+       11
+      ],
+      "weight": 7
+     },
+     {
+      "term": "lane",
+      "turnIds": [
+       1,
+       7,
+       11
+      ],
+      "weight": 6
+     },
+     {
+      "term": "markers",
+      "turnIds": [
+       1,
+       3,
+       9
+      ],
+      "weight": 5
+     },
+     {
+      "term": "ticks",
+      "turnIds": [
+       7,
+       9
+      ],
+      "weight": 4
+     },
+     {
+      "term": "Replay",
+      "turnIds": [
+       1
+      ],
+      "weight": 3
+     }
+    ],
+    "events": [
+     {
+      "text": "I'll get the timeline lanes merged tonight and we can look at the extras after the demo.",
+      "when": "tonight",
+      "hasNoun": false,
+      "turnId": 11
+     }
+    ],
+    "commitments": [],
+    "missedBids": [
+     {
+      "turnId": 1,
+      "replyTurnId": 2,
+      "cue": "timeline"
+     },
+     {
+      "turnId": 3,
+      "replyTurnId": 4,
+      "cue": "timeline"
+     },
+     {
+      "turnId": 5,
+      "replyTurnId": 6,
+      "cue": "bystander"
+     },
+     {
+      "turnId": 9,
+      "replyTurnId": 10,
+      "cue": "markers"
+     }
+    ],
+    "highlights": [
+     {
+      "turnId": 1,
+      "words": 30
+     },
+     {
+      "turnId": 3,
+      "words": 26
+     }
+    ],
+    "followUpDetector": [
+     {
+      "turnId": 2,
+      "isFollowUp": false,
+      "overlap": []
+     },
+     {
+      "turnId": 4,
+      "isFollowUp": false,
+      "overlap": []
+     }
+    ],
+    "awkward": {
+     "flags": [
+      {
+       "turnId": 2,
+       "who": "you",
+       "kind": "cut-in",
+       "label": "Cut in",
+       "evidence": "You started talking 0.7 s before they finished",
+       "weight": 3
+      },
+      {
+       "turnId": 4,
+       "who": "you",
+       "kind": "cut-in",
+       "label": "Cut in",
+       "evidence": "You started talking 0.8 s before they finished",
+       "weight": 3
+      },
+      {
+       "turnId": 10,
+       "who": "you",
+       "kind": "cut-in",
+       "label": "Cut in",
+       "evidence": "You started talking 0.6 s before they finished",
+       "weight": 3
+      }
+     ],
+     "score": 90,
+     "seams": [],
+     "worst": {
+      "turnId": 2,
+      "who": "you",
+      "kind": "cut-in",
+      "label": "Cut in",
+      "evidence": "You started talking 0.7 s before they finished",
+      "weight": 3
+     }
+    }
+   },
+   "followUp": {
+    "text": "Hey Prat! Loved hearing about timeline. Talk tonight!",
+    "hooksUsed": [
+     "timeline",
+     "tonight"
+    ],
+    "source": "muse-spark",
+    "status": "sent",
+    "sentAt": "2026-10-12T22:01:21.345Z"
+   },
+   "recording": null,
+   "behavior": {
+    "model": "mediapipe-face-landmarker@0.10.14 (synthetic)",
+    "fps": 5,
+    "frameCount": 422,
+    "faceSeenPct": 1,
+    "baseline": {
+     "smile": 0.15,
+     "animation": 0.027
+    },
+    "turns": [
+     {
+      "turnId": 1,
+      "speaker": "them",
+      "smile": 0.17,
+      "smilePeak": 0.18,
+      "facingPct": 1,
+      "nods": 0,
+      "animation": 0.028,
+      "reaction": null,
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 2,
+      "speaker": "you",
+      "smile": 0.14,
+      "smilePeak": 0.17,
+      "facingPct": 1,
+      "nods": 0,
+      "animation": 0.012,
+      "reaction": {
+       "smileDelta": -0.05,
+       "nods": 0,
+       "facingPct": 0.58
+      },
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 3,
+      "speaker": "them",
+      "smile": 0.16,
+      "smilePeak": 0.18,
+      "facingPct": 0.91,
+      "nods": 0,
+      "animation": 0.035,
+      "reaction": null,
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 4,
+      "speaker": "you",
+      "smile": 0.15,
+      "smilePeak": 0.18,
+      "facingPct": 1,
+      "nods": 0,
+      "animation": 0.02,
+      "reaction": {
+       "smileDelta": -0.05,
+       "nods": 0,
+       "facingPct": 0.62
+      },
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 5,
+      "speaker": "them",
+      "smile": 0.15,
+      "smilePeak": 0.18,
+      "facingPct": 0.89,
+      "nods": 0,
+      "animation": 0.034,
+      "reaction": null,
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 6,
+      "speaker": "you",
+      "smile": 0.14,
+      "smilePeak": 0.15,
+      "facingPct": 1,
+      "nods": 0,
+      "animation": 0.005,
+      "reaction": {
+       "smileDelta": -0.05,
+       "nods": 0,
+       "facingPct": 0.58
+      },
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 7,
+      "speaker": "them",
+      "smile": 0.15,
+      "smilePeak": 0.18,
+      "facingPct": 0.89,
+      "nods": 0,
+      "animation": 0.033,
+      "reaction": null,
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 8,
+      "speaker": "you",
+      "smile": 0.14,
+      "smilePeak": 0.15,
+      "facingPct": 1,
+      "nods": 0,
+      "animation": 0.004,
+      "reaction": {
+       "smileDelta": 0.02,
+       "nods": 0,
+       "facingPct": 1
+      },
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 9,
+      "speaker": "them",
+      "smile": 0.18,
+      "smilePeak": 0.19,
+      "facingPct": 1,
+      "nods": 0,
+      "animation": 0.037,
+      "reaction": null,
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 10,
+      "speaker": "you",
+      "smile": 0.15,
+      "smilePeak": 0.18,
+      "facingPct": 1,
+      "nods": 0,
+      "animation": 0.014,
+      "reaction": {
+       "smileDelta": -0.05,
+       "nods": 0,
+       "facingPct": 0.62
+      },
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 11,
+      "speaker": "them",
+      "smile": 0.15,
+      "smilePeak": 0.17,
+      "facingPct": 0.87,
+      "nods": 0,
+      "animation": 0.035,
+      "reaction": null,
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 12,
+      "speaker": "you",
+      "smile": 0.14,
+      "smilePeak": 0.14,
+      "facingPct": 1,
+      "nods": 0,
+      "animation": 0.003,
+      "reaction": {
+       "smileDelta": 0.01,
+       "nods": 0,
+       "facingPct": 1
+      },
+      "textTone": "neutral",
+      "congruence": null
+     }
+    ],
+    "stats": {
+     "afterFollowUps": {
+      "n": 0,
+      "smileDelta": null,
+      "nods": null
+     },
+     "afterOther": {
+      "n": 6,
+      "smileDelta": -0.03,
+      "nods": 0
+     },
+     "missedBidReactions": [
+      {
+       "turnId": 1,
+       "smileDelta": -0.05
+      },
+      {
+       "turnId": 3,
+       "smileDelta": -0.05
+      },
+      {
+       "turnId": 5,
+       "smileDelta": -0.05
+      },
+      {
+       "turnId": 9,
+       "smileDelta": -0.05
+      }
+     ]
+    }
+   },
+   "insight": {
+    "moments": [
+     {
+      "turnId": 1,
+      "title": "Left hanging",
+      "observation": "They brought up timeline and the next line moved on.",
+      "why": "One question about it would have kept the thread going."
+     }
+    ],
+    "adviceCheck": [
+     {
+      "advice": "Next time, check back in about timeline and ask how it went.",
+      "verdict": "not yet",
+      "evidenceTurnIds": [
+       8
+      ],
+      "reason": "No follow-ups on camera to compare yet."
+     }
+    ],
+    "source": "muse-spark",
+    "rewrites": [
+     {
+      "turnId": 6,
+      "title": "Stay with what they are stuck on",
+      "tryInstead": "Wait, the lip lock is tagging bystander lines as yours? When did you last sleep, and can I look at it?",
+      "because": "Prat had just said the lip lock was stuck and sleep was short; asking about that first shows you heard it before the PDF."
+     },
+     {
+      "turnId": 2,
+      "title": "Let them finish",
+      "tryInstead": "Sorry, go on, the markers sit on top of the lanes?",
+      "because": "Prat was mid-sentence about the timeline; letting it land, then asking, keeps the plan theirs to explain."
+     }
+    ],
+    "takeaways": [
+     {
+      "kind": "try",
+      "turnId": 6,
+      "title": "Stay with what they are stuck on",
+      "text": "Prat had just said the lip lock was stuck and sleep was short; asking about that first shows you heard it before the PDF.",
+      "said": "Okay. Also the PDF should have the logo on it.",
+      "theySaid": "We could. I'm stuck on the lip lock thing and honestly I haven't slept, the bystander lines keep getting tagged as mine.",
+      "tryInstead": "Wait, the lip lock is tagging bystander lines as yours? When did you last sleep, and can I look at it?",
+      "evidence": "Smile −5 · looked away 1.1 s"
+     },
+     {
+      "kind": "next",
+      "turnId": 11,
+      "title": "Ask about it next time",
+      "text": "They mentioned “I'll get the timeline lanes merged tonight and we can look at the extras after the demo.” Ask how it went.",
+      "said": null,
+      "theySaid": null,
+      "tryInstead": null,
+      "evidence": null
+     },
+     {
+      "kind": "try",
+      "turnId": 2,
+      "title": "Let them finish",
+      "text": "Prat was mid-sentence about the timeline; letting it land, then asking, keeps the plan theirs to explain.",
+      "said": "Can we also add a word cloud? And maybe a share button for the takeaways.",
+      "theySaid": "Okay, so for the Replay timeline I was thinking we stack the talk lane, the smile lane and the nods, and then the markers sit on top so you can",
+      "tryInstead": "Sorry, go on, the markers sit on top of the lanes?",
+      "evidence": "Cut in"
+     }
+    ]
+   }
+  },
+  {
+   "id": "4ce024fe-a8ca-4527-a4c7-4e7aafcda36a",
+   "tag": "friend",
+   "otherName": "Priya",
+   "createdAt": "2026-10-13T19:15:00.000Z",
+   "seeded": false,
+   "synthetic": true,
+   "turns": [
+    {
+     "turnId": 1,
+     "speaker": "A",
+     "text": "Hey, did the Muse key thing get sorted? I saw the errors in the log.",
+     "startMs": 0,
+     "endMs": 6260
+    },
+    {
+     "turnId": 2,
+     "speaker": "B",
+     "text": "Mostly. We were hitting the rate limit because every agent fired at once when a conversation finished, so I added a queue that spaces the calls about two hundred milliseconds apart and",
+     "startMs": 6618,
+     "endMs": 19467
+    },
+    {
+     "turnId": 3,
+     "speaker": "A",
+     "text": "Oh, I think I broke that, I don't know, maybe it was my coaching loop?",
+     "startMs": 18767,
+     "endMs": 25030
+    },
+    {
+     "turnId": 4,
+     "speaker": "B",
+     "text": "It was not just you. The coaching loop retried on every timeout, which doubled the calls, but the queue handles retries now. What were you working on yesterday?",
+     "startMs": 25794,
+     "endMs": 37298
+    },
+    {
+     "turnId": 5,
+     "speaker": "A",
+     "text": "Just the fallback notes. It's probably not that useful, it's whatever.",
+     "startMs": 37842,
+     "endMs": 42853
+    },
+    {
+     "turnId": 6,
+     "speaker": "B",
+     "text": "The fallback notes are what keep the demo alive when Muse is down. Can you show me how they read?",
+     "startMs": 43402,
+     "endMs": 51652
+    },
+    {
+     "turnId": 7,
+     "speaker": "A",
+     "text": "I guess. They're nothing much, mostly the counts with a sentence on top.",
+     "startMs": 52387,
+     "endMs": 57904
+    },
+    {
+     "turnId": 8,
+     "speaker": "B",
+     "text": "Counts with a sentence is exactly what the judges need to trust it. Let's put one next to a Muse note in the deck.",
+     "startMs": 58531,
+     "endMs": 68275
+    },
+    {
+     "turnId": 9,
+     "speaker": "A",
+     "text": "Maybe. I'm not sure it holds up next to the real ones.",
+     "startMs": 68732,
+     "endMs": 74184
+    },
+    {
+     "turnId": 10,
+     "speaker": "B",
+     "text": "We can test it together tomorrow. I'll pull three conversations where Muse timed out and we compare them side by side.",
+     "startMs": 74728,
+     "endMs": 83216
+    },
+    {
+     "turnId": 11,
+     "speaker": "A",
+     "text": "Okay, I can try that tomorrow with you.",
+     "startMs": 83776,
+     "endMs": 87591
+    }
+   ],
+   "userLabel": "A",
+   "reflection": "I talked my own work down the whole time. The fallback notes are actually useful.",
+   "signals": {
+    "userQuestions": 2,
+    "userTurns": 6,
+    "otherTurns": 5,
+    "userTalkMs": 32318,
+    "otherTalkMs": 50835,
+    "userTalkShare": 0.39,
+    "otherAvgAnswerWords": 30,
+    "followUps": 0,
+    "reflections": 2,
+    "storiesAfterQuestions": 2,
+    "questions": [
+     {
+      "turnId": 1,
+      "isFollowUp": false,
+      "replyTurnId": 2,
+      "replyWords": 32,
+      "storyShared": true
+     },
+     {
+      "turnId": 3,
+      "isFollowUp": false,
+      "replyTurnId": 4,
+      "replyWords": 28,
+      "storyShared": true
+     }
+    ],
+    "crowd": 0,
+    "source": "muse-spark",
+    "detectorAgreement": {
+     "agree": 1,
+     "of": 2
+    }
+   },
+   "note": {
+    "text": "You asked 2 questions and 0 were follow-ups. You heard 2 stories after your questions.",
+    "suggestion": "Next time, check back in about Muse and ask how it went.",
+    "citedTurnIds": [],
+    "status": "shown",
+    "source": "muse-spark"
+   },
+   "hooks": {
+    "topics": [
+     {
+      "term": "Muse",
+      "turnIds": [
+       6,
+       8,
+       10
+      ],
+      "weight": 8
+     },
+     {
+      "term": "notes",
+      "turnIds": [
+       6,
+       8
+      ],
+      "weight": 4
+     },
+     {
+      "term": "conversation",
+      "turnIds": [
+       2,
+       10
+      ],
+      "weight": 3
+     },
+     {
+      "term": "queue",
+      "turnIds": [
+       2,
+       4
+      ],
+      "weight": 3
+     },
+     {
+      "term": "calls",
+      "turnIds": [
+       2,
+       4
+      ],
+      "weight": 3
+     }
+    ],
+    "events": [
+     {
+      "text": "We can test it together tomorrow.",
+      "when": "tomorrow",
+      "hasNoun": true,
+      "turnId": 10
+     }
+    ],
+    "commitments": [],
+    "missedBids": [
+     {
+      "turnId": 4,
+      "replyTurnId": 5,
+      "cue": "calls"
+     },
+     {
+      "turnId": 6,
+      "replyTurnId": 7,
+      "cue": "Muse"
+     },
+     {
+      "turnId": 8,
+      "replyTurnId": 9,
+      "cue": "Muse"
+     }
+    ],
+    "highlights": [
+     {
+      "turnId": 2,
+      "words": 32
+     },
+     {
+      "turnId": 4,
+      "words": 28
+     }
+    ],
+    "followUpDetector": [
+     {
+      "turnId": 1,
+      "isFollowUp": false,
+      "overlap": []
+     },
+     {
+      "turnId": 3,
+      "isFollowUp": true,
+      "overlap": []
+     }
+    ],
+    "awkward": {
+     "flags": [
+      {
+       "turnId": 3,
+       "who": "you",
+       "kind": "cut-in",
+       "label": "Cut in",
+       "evidence": "You started talking 0.7 s before they finished",
+       "weight": 3
+      },
+      {
+       "turnId": 5,
+       "who": "you",
+       "kind": "undersell",
+       "label": "Undersold yourself",
+       "evidence": "“it's whatever” is what they'll remember about you",
+       "weight": 2
+      },
+      {
+       "turnId": 7,
+       "who": "you",
+       "kind": "undersell",
+       "label": "Undersold yourself",
+       "evidence": "“nothing much” is what they'll remember about you",
+       "weight": 2
+      }
+     ],
+     "score": 70,
+     "seams": [],
+     "worst": {
+      "turnId": 3,
+      "who": "you",
+      "kind": "cut-in",
+      "label": "Cut in",
+      "evidence": "You started talking 0.7 s before they finished",
+      "weight": 3
+     }
+    }
+   },
+   "followUp": {
+    "text": "Hey Priya! Loved hearing about Muse. Good luck tomorrow!",
+    "hooksUsed": [
+     "Muse",
+     "tomorrow"
+    ],
+    "source": "muse-spark",
+    "status": "sent",
+    "sentAt": "2026-10-13T19:43:27.591Z"
+   },
+   "recording": null,
+   "behavior": {
+    "model": "mediapipe-face-landmarker@0.10.14 (synthetic)",
+    "fps": 5,
+    "frameCount": 453,
+    "faceSeenPct": 1,
+    "baseline": {
+     "smile": 0.15,
+     "animation": 0.023
+    },
+    "turns": [
+     {
+      "turnId": 1,
+      "speaker": "you",
+      "smile": 0.14,
+      "smilePeak": 0.15,
+      "facingPct": 1,
+      "nods": 0,
+      "animation": 0.003,
+      "reaction": {
+       "smileDelta": 0.03,
+       "nods": 0,
+       "facingPct": 1
+      },
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 2,
+      "speaker": "them",
+      "smile": 0.17,
+      "smilePeak": 0.19,
+      "facingPct": 1,
+      "nods": 0,
+      "animation": 0.03,
+      "reaction": null,
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 3,
+      "speaker": "you",
+      "smile": 0.15,
+      "smilePeak": 0.17,
+      "facingPct": 1,
+      "nods": 0,
+      "animation": 0.012,
+      "reaction": {
+       "smileDelta": -0.05,
+       "nods": 0,
+       "facingPct": 0.58
+      },
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 4,
+      "speaker": "them",
+      "smile": 0.16,
+      "smilePeak": 0.18,
+      "facingPct": 0.91,
+      "nods": 0,
+      "animation": 0.035,
+      "reaction": null,
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 5,
+      "speaker": "you",
+      "smile": 0.14,
+      "smilePeak": 0.15,
+      "facingPct": 1,
+      "nods": 0,
+      "animation": 0.004,
+      "reaction": {
+       "smileDelta": -0.06,
+       "nods": 0,
+       "facingPct": 0.58
+      },
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 6,
+      "speaker": "them",
+      "smile": 0.15,
+      "smilePeak": 0.18,
+      "facingPct": 0.88,
+      "nods": 0,
+      "animation": 0.037,
+      "reaction": null,
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 7,
+      "speaker": "you",
+      "smile": 0.14,
+      "smilePeak": 0.15,
+      "facingPct": 1,
+      "nods": 0,
+      "animation": 0.003,
+      "reaction": {
+       "smileDelta": -0.05,
+       "nods": 0,
+       "facingPct": 0.62
+      },
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 8,
+      "speaker": "them",
+      "smile": 0.15,
+      "smilePeak": 0.17,
+      "facingPct": 0.9,
+      "nods": 0,
+      "animation": 0.036,
+      "reaction": null,
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 9,
+      "speaker": "you",
+      "smile": 0.14,
+      "smilePeak": 0.15,
+      "facingPct": 1,
+      "nods": 0,
+      "animation": 0.004,
+      "reaction": {
+       "smileDelta": 0.03,
+       "nods": 0,
+       "facingPct": 1
+      },
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 10,
+      "speaker": "them",
+      "smile": 0.18,
+      "smilePeak": 0.2,
+      "facingPct": 1,
+      "nods": 0,
+      "animation": 0.032,
+      "reaction": null,
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 11,
+      "speaker": "you",
+      "smile": 0.14,
+      "smilePeak": 0.15,
+      "facingPct": 1,
+      "nods": 0,
+      "animation": 0.003,
+      "reaction": {
+       "smileDelta": 0.01,
+       "nods": 0,
+       "facingPct": 1
+      },
+      "textTone": "neutral",
+      "congruence": null
+     }
+    ],
+    "stats": {
+     "afterFollowUps": {
+      "n": 0,
+      "smileDelta": null,
+      "nods": null
+     },
+     "afterOther": {
+      "n": 6,
+      "smileDelta": -0.02,
+      "nods": 0
+     },
+     "missedBidReactions": [
+      {
+       "turnId": 4,
+       "smileDelta": -0.06
+      },
+      {
+       "turnId": 6,
+       "smileDelta": -0.05
+      },
+      {
+       "turnId": 8,
+       "smileDelta": 0.03
+      }
+     ]
+    }
+   },
+   "insight": {
+    "moments": [
+     {
+      "turnId": 4,
+      "title": "Left hanging",
+      "observation": "They brought up calls and the next line moved on.",
+      "why": "One question about it would have kept the thread going."
+     }
+    ],
+    "adviceCheck": [
+     {
+      "advice": "Next time, check back in about Muse and ask how it went.",
+      "verdict": "not yet",
+      "evidenceTurnIds": [
+       1
+      ],
+      "reason": "No follow-ups on camera to compare yet."
+     }
+    ],
+    "source": "muse-spark",
+    "rewrites": [
+     {
+      "turnId": 3,
+      "title": "Stay with their story",
+      "tryInstead": "Wait, tell me more about the conversation part?",
+      "because": "Asking about what they just said keeps them talking before you switch to yourself."
+     },
+     {
+      "turnId": 5,
+      "title": "Stay with their story",
+      "tryInstead": "Wait, tell me more about the queue part?",
+      "because": "Asking about what they just said keeps them talking before you switch to yourself."
+     }
+    ],
+    "takeaways": [
+     {
+      "kind": "try",
+      "turnId": 3,
+      "title": "Stay with their story",
+      "text": "Asking about what they just said keeps them talking before you switch to yourself.",
+      "said": "Oh, I think I broke that, I don't know, maybe it was my coaching loop?",
+      "theySaid": "Mostly. We were hitting the rate limit because every agent fired at once when a conversation finished, so I added a queue that spaces the calls about two hundred milliseconds apart and",
+      "tryInstead": "Wait, tell me more about the conversation part?",
+      "evidence": "Cut in"
+     },
+     {
+      "kind": "next",
+      "turnId": 10,
+      "title": "Ask about it next time",
+      "text": "They mentioned “We can test it together tomorrow.” Ask how it went.",
+      "said": null,
+      "theySaid": null,
+      "tryInstead": null,
+      "evidence": null
+     },
+     {
+      "kind": "try",
+      "turnId": 5,
+      "title": "Stay with their story",
+      "text": "Asking about what they just said keeps them talking before you switch to yourself.",
+      "said": "Just the fallback notes. It's probably not that useful, it's whatever.",
+      "theySaid": "It was not just you. The coaching loop retried on every timeout, which doubled the calls, but the queue handles retries now. What were you working on yesterday?",
+      "tryInstead": "Wait, tell me more about the queue part?",
+      "evidence": "Undersold yourself"
+     }
+    ]
+   }
+  },
+  {
+   "id": "9755eaef-8aa7-4f97-a738-fc4bc70e697e",
+   "tag": "friend",
+   "otherName": "Parth",
+   "createdAt": "2026-10-14T16:30:00.000Z",
+   "seeded": false,
+   "synthetic": true,
+   "turns": [
+    {
+     "turnId": 1,
+     "speaker": "A",
+     "text": "Hey Parth, I think the dashboard branch has a merge conflict? I'm not totally sure though.",
+     "startMs": 0,
+     "endMs": 6806
+    },
+    {
+     "turnId": 2,
+     "speaker": "B",
+     "text": "Yeah, it's in home.css. Both of us added styles at the bottom of the file, so git can't tell which block goes first and",
+     "startMs": 7448,
+     "endMs": 17190
+    },
+    {
+     "turnId": 3,
+     "speaker": "A",
+     "text": "Oh no, should I just delete mine? I don't know which one is right.",
+     "startMs": 16590,
+     "endMs": 22740
+    },
+    {
+     "turnId": 4,
+     "speaker": "B",
+     "text": "Keep both. Mine is the recording card, yours is the scroll fix, and they don't touch the same selectors. Want to resolve it together?",
+     "startMs": 23217,
+     "endMs": 33152
+    },
+    {
+     "turnId": 5,
+     "speaker": "A",
+     "text": "Sure, I think so. Which file should we start with?",
+     "startMs": 33873,
+     "endMs": 38219
+    },
+    {
+     "turnId": 6,
+     "speaker": "B",
+     "text": "Start with home.js, the conflict there is one line, the user name. After that the CSS is just keeping both blocks.",
+     "startMs": 38755,
+     "endMs": 47553
+    },
+    {
+     "turnId": 7,
+     "speaker": "A",
+     "text": "Okay. So we keep the name from the server, and both style blocks?",
+     "startMs": 47940,
+     "endMs": 53705
+    },
+    {
+     "turnId": 8,
+     "speaker": "B",
+     "text": "Exactly. Then load the page once and check the conversations card still scrolls all the way down.",
+     "startMs": 54069,
+     "endMs": 61398
+    },
+    {
+     "turnId": 9,
+     "speaker": "A",
+     "text": "Got it. I'll send you a screenshot once the merged page loads.",
+     "startMs": 62045,
+     "endMs": 67453
+    },
+    {
+     "turnId": 10,
+     "speaker": "B",
+     "text": "Perfect. Ping me if the calendar looks off after the merge.",
+     "startMs": 68099,
+     "endMs": 72855
+    }
+   ],
+   "userLabel": "A",
+   "reflection": "I second-guessed everything. Parth was patient about it.",
+   "signals": {
+    "userQuestions": 4,
+    "userTurns": 5,
+    "otherTurns": 5,
+    "userTalkMs": 28475,
+    "otherTalkMs": 40560,
+    "userTalkShare": 0.41,
+    "otherAvgAnswerWords": 21.5,
+    "followUps": 1,
+    "reflections": 1,
+    "storiesAfterQuestions": 4,
+    "questions": [
+     {
+      "turnId": 1,
+      "isFollowUp": false,
+      "replyTurnId": 2,
+      "replyWords": 24,
+      "storyShared": true
+     },
+     {
+      "turnId": 3,
+      "isFollowUp": false,
+      "replyTurnId": 4,
+      "replyWords": 24,
+      "storyShared": true
+     },
+     {
+      "turnId": 5,
+      "isFollowUp": false,
+      "replyTurnId": 6,
+      "replyWords": 21,
+      "storyShared": true
+     },
+     {
+      "turnId": 7,
+      "isFollowUp": true,
+      "replyTurnId": 8,
+      "replyWords": 17,
+      "storyShared": true
+     }
+    ],
+    "crowd": 0,
+    "source": "muse-spark",
+    "detectorAgreement": {
+     "agree": 4,
+     "of": 4
+    }
+   },
+   "note": {
+    "text": "You asked 4 questions and 1 was a follow-up. You heard 4 stories after your questions.",
+    "suggestion": "Next time, check back in about block and ask how it went.",
+    "citedTurnIds": [
+     7
+    ],
+    "status": "shown",
+    "source": "muse-spark"
+   },
+   "hooks": {
+    "topics": [
+     {
+      "term": "block",
+      "turnIds": [
+       2,
+       6
+      ],
+      "weight": 4
+     },
+     {
+      "term": "home",
+      "turnIds": [
+       2,
+       6
+      ],
+      "weight": 3
+     },
+     {
+      "term": "card",
+      "turnIds": [
+       4,
+       8
+      ],
+      "weight": 3
+     },
+     {
+      "term": "scroll",
+      "turnIds": [
+       4,
+       8
+      ],
+      "weight": 3
+     },
+     {
+      "term": "styles",
+      "turnIds": [
+       2
+      ],
+      "weight": 2
+     }
+    ],
+    "events": [],
+    "commitments": [
+     {
+      "text": "I'll send you a screenshot once the merged page loads.",
+      "turnId": 9
+     }
+    ],
+    "missedBids": [
+     {
+      "turnId": 2,
+      "replyTurnId": 3,
+      "cue": "block"
+     },
+     {
+      "turnId": 4,
+      "replyTurnId": 5,
+      "cue": "scroll"
+     }
+    ],
+    "highlights": [
+     {
+      "turnId": 2,
+      "words": 24
+     },
+     {
+      "turnId": 4,
+      "words": 24
+     }
+    ],
+    "followUpDetector": [
+     {
+      "turnId": 1,
+      "isFollowUp": false,
+      "overlap": []
+     },
+     {
+      "turnId": 3,
+      "isFollowUp": false,
+      "overlap": []
+     },
+     {
+      "turnId": 5,
+      "isFollowUp": false,
+      "overlap": []
+     },
+     {
+      "turnId": 7,
+      "isFollowUp": true,
+      "overlap": [
+       "name",
+       "blocks"
+      ]
+     }
+    ],
+    "awkward": {
+     "flags": [
+      {
+       "turnId": 3,
+       "who": "you",
+       "kind": "cut-in",
+       "label": "Cut in",
+       "evidence": "You started talking 0.6 s before they finished",
+       "weight": 3
+      }
+     ],
+     "score": 30,
+     "seams": [],
+     "worst": {
+      "turnId": 3,
+      "who": "you",
+      "kind": "cut-in",
+      "label": "Cut in",
+      "evidence": "You started talking 0.6 s before they finished",
+      "weight": 3
+     }
+    }
+   },
+   "followUp": {
+    "text": "Hey Parth! Loved hearing about block. And like I said, I'll send you a screenshot once the merged page loads.",
+    "hooksUsed": [
+     "block",
+     "I'll send you a screenshot once the…"
+    ],
+    "source": "muse-spark",
+    "status": "sent",
+    "sentAt": "2026-10-14T17:05:12.855Z"
+   },
+   "recording": null,
+   "behavior": {
+    "model": "mediapipe-face-landmarker@0.10.14 (synthetic)",
+    "fps": 5,
+    "frameCount": 380,
+    "faceSeenPct": 1,
+    "baseline": {
+     "smile": 0.21,
+     "animation": 0.024
+    },
+    "turns": [
+     {
+      "turnId": 1,
+      "speaker": "you",
+      "smile": 0.19,
+      "smilePeak": 0.21,
+      "facingPct": 1,
+      "nods": 0,
+      "animation": 0.004,
+      "reaction": {
+       "smileDelta": 0.05,
+       "nods": 0,
+       "facingPct": 1
+      },
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 2,
+      "speaker": "them",
+      "smile": 0.23,
+      "smilePeak": 0.27,
+      "facingPct": 1,
+      "nods": 1,
+      "animation": 0.034,
+      "reaction": null,
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 3,
+      "speaker": "you",
+      "smile": 0.19,
+      "smilePeak": 0.22,
+      "facingPct": 1,
+      "nods": 0,
+      "animation": 0.01,
+      "reaction": {
+       "smileDelta": -0.06,
+       "nods": 0,
+       "facingPct": 0.77
+      },
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 4,
+      "speaker": "them",
+      "smile": 0.2,
+      "smilePeak": 0.23,
+      "facingPct": 0.94,
+      "nods": 1,
+      "animation": 0.035,
+      "reaction": null,
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 5,
+      "speaker": "you",
+      "smile": 0.19,
+      "smilePeak": 0.21,
+      "facingPct": 1,
+      "nods": 0,
+      "animation": 0.004,
+      "reaction": {
+       "smileDelta": 0.05,
+       "nods": 0,
+       "facingPct": 1
+      },
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 6,
+      "speaker": "them",
+      "smile": 0.23,
+      "smilePeak": 0.27,
+      "facingPct": 1,
+      "nods": 1,
+      "animation": 0.035,
+      "reaction": null,
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 7,
+      "speaker": "you",
+      "smile": 0.19,
+      "smilePeak": 0.21,
+      "facingPct": 1,
+      "nods": 0,
+      "animation": 0.004,
+      "reaction": {
+       "smileDelta": 0.04,
+       "nods": 0,
+       "facingPct": 1
+      },
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 8,
+      "speaker": "them",
+      "smile": 0.24,
+      "smilePeak": 0.27,
+      "facingPct": 1,
+      "nods": 1,
+      "animation": 0.034,
+      "reaction": null,
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 9,
+      "speaker": "you",
+      "smile": 0.19,
+      "smilePeak": 0.21,
+      "facingPct": 1,
+      "nods": 0,
+      "animation": 0.004,
+      "reaction": {
+       "smileDelta": 0.04,
+       "nods": 0,
+       "facingPct": 1
+      },
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 10,
+      "speaker": "them",
+      "smile": 0.24,
+      "smilePeak": 0.27,
+      "facingPct": 1,
+      "nods": 0,
+      "animation": 0.041,
+      "reaction": null,
+      "textTone": "neutral",
+      "congruence": null
+     }
+    ],
+    "stats": {
+     "afterFollowUps": {
+      "n": 1,
+      "smileDelta": 0.04,
+      "nods": 0
+     },
+     "afterOther": {
+      "n": 4,
+      "smileDelta": 0.02,
+      "nods": 0
+     },
+     "missedBidReactions": [
+      {
+       "turnId": 2,
+       "smileDelta": -0.06
+      },
+      {
+       "turnId": 4,
+       "smileDelta": 0.05
+      }
+     ]
+    }
+   },
+   "insight": {
+    "moments": [
+     {
+      "turnId": 1,
+      "title": "This landed",
+      "observation": "Right after you said this, their smile rose 5 points over baseline.",
+      "why": "Questions that pick up their words get the warmest reactions; keep doing it."
+     },
+     {
+      "turnId": 2,
+      "title": "Left hanging",
+      "observation": "They brought up block and the next line moved on.",
+      "why": "One question about it would have kept the thread going."
+     }
+    ],
+    "adviceCheck": [
+     {
+      "advice": "Next time, check back in about block and ask how it went.",
+      "verdict": "backed",
+      "evidenceTurnIds": [
+       1
+      ],
+      "reason": "After your follow-ups their smile moved 4 points vs 2 points after other lines."
+     }
+    ],
+    "source": "muse-spark",
+    "rewrites": [
+     {
+      "turnId": 3,
+      "title": "Stay with their story",
+      "tryInstead": "Wait, tell me more about the block part?",
+      "because": "Asking about what they just said keeps them talking before you switch to yourself."
+     },
+     {
+      "turnId": 5,
+      "title": "Stay with their story",
+      "tryInstead": "Wait, tell me more about the card part?",
+      "because": "Asking about what they just said keeps them talking before you switch to yourself."
+     }
+    ],
+    "takeaways": [
+     {
+      "kind": "try",
+      "turnId": 3,
+      "title": "Stay with their story",
+      "text": "Asking about what they just said keeps them talking before you switch to yourself.",
+      "said": "Oh no, should I just delete mine? I don't know which one is right.",
+      "theySaid": "Yeah, it's in home.css. Both of us added styles at the bottom of the file, so git can't tell which block goes first and",
+      "tryInstead": "Wait, tell me more about the block part?",
+      "evidence": "Cut in"
+     },
+     {
+      "kind": "keep",
+      "turnId": 7,
+      "title": "Keep asking follow-ups",
+      "text": "“Okay. So we keep the name from the server, and both style blocks?” built on what they had just told you.",
+      "said": null,
+      "theySaid": null,
+      "tryInstead": null,
+      "evidence": "Smile +4"
+     },
+     {
+      "kind": "next",
+      "turnId": 9,
+      "title": "Follow through",
+      "text": "You said “I'll send you a screenshot once the merged page loads.” Do it before you talk again.",
+      "said": null,
+      "theySaid": null,
+      "tryInstead": null,
+      "evidence": null
+     }
+    ]
+   }
+  },
+  {
+   "id": "4dc89617-65a2-4c9f-aeb0-921d1a636454",
+   "tag": "friend",
+   "otherName": "Prat",
+   "createdAt": "2026-10-15T14:10:00.000Z",
+   "seeded": false,
+   "synthetic": true,
+   "turns": [
+    {
+     "turnId": 1,
+     "speaker": "A",
+     "text": "Hey Prat, how did the timeline lanes come out?",
+     "startMs": 0,
+     "endMs": 4264
+    },
+    {
+     "turnId": 2,
+     "speaker": "B",
+     "text": "Merged last night. The follow-up markers line up with the transcript now, and clicking one jumps the video to the right second.",
+     "startMs": 5047,
+     "endMs": 14181
+    },
+    {
+     "turnId": 3,
+     "speaker": "A",
+     "text": "Nice. Is mock mode done too?",
+     "startMs": 14627,
+     "endMs": 17601
+    },
+    {
+     "turnId": 4,
+     "speaker": "B",
+     "text": "Mostly. Mock mode replays a scripted call, and every agent has a fallback, so the whole demo runs offline if Muse goes down.",
+     "startMs": 18224,
+     "endMs": 27623
+    },
+    {
+     "turnId": 5,
+     "speaker": "A",
+     "text": "How does the fallback decide what to say when Muse is down? Walk me through it.",
+     "startMs": 28408,
+     "endMs": 35125
+    },
+    {
+     "turnId": 6,
+     "speaker": "B",
+     "text": "Each agent has a rule-based version. The coach falls back to the counts, the follow-up message falls back to a template that names a topic from the conversation, and the insight falls back to the face numbers. The idea is that nobody ever sees an empty screen.",
+     "startMs": 35826,
+     "endMs": 54548
+    },
+    {
+     "turnId": 7,
+     "speaker": "A",
+     "text": "So nobody sees an empty screen, even with no key. What's the weakest fallback right now?",
+     "startMs": 55161,
+     "endMs": 61927
+    },
+    {
+     "turnId": 8,
+     "speaker": "B",
+     "text": "The takeaways. Without Muse the rewrite is a bit generic, it just asks to hear more about one word.",
+     "startMs": 62587,
+     "endMs": 70630
+    },
+    {
+     "turnId": 9,
+     "speaker": "A",
+     "text": "That makes sense. I'll send the Replay mockup Thursday with a slot for the rewrite, so we can see how the generic one reads.",
+     "startMs": 71148,
+     "endMs": 80811
+    },
+    {
+     "turnId": 10,
+     "speaker": "B",
+     "text": "That would help a lot. If the mockup shows it reads fine, we can stop worrying about it before judging.",
+     "startMs": 81426,
+     "endMs": 89819
+    }
+   ],
+   "userLabel": "A",
+   "reflection": "Asked one real question and just listened. Way better than Monday.",
+   "signals": {
+    "userQuestions": 4,
+    "userTurns": 5,
+    "otherTurns": 5,
+    "userTalkMs": 30384,
+    "otherTalkMs": 53691,
+    "userTalkShare": 0.36,
+    "otherAvgAnswerWords": 27.8,
+    "followUps": 2,
+    "reflections": 1,
+    "storiesAfterQuestions": 4,
+    "questions": [
+     {
+      "turnId": 1,
+      "isFollowUp": false,
+      "replyTurnId": 2,
+      "replyWords": 22,
+      "storyShared": true
+     },
+     {
+      "turnId": 3,
+      "isFollowUp": false,
+      "replyTurnId": 4,
+      "replyWords": 23,
+      "storyShared": true
+     },
+     {
+      "turnId": 5,
+      "isFollowUp": true,
+      "replyTurnId": 6,
+      "replyWords": 47,
+      "storyShared": true
+     },
+     {
+      "turnId": 7,
+      "isFollowUp": true,
+      "replyTurnId": 8,
+      "replyWords": 19,
+      "storyShared": true
+     }
+    ],
+    "crowd": 0,
+    "source": "muse-spark",
+    "detectorAgreement": {
+     "agree": 4,
+     "of": 4
+    }
+   },
+   "note": {
+    "text": "You asked 4 questions and 2 were follow-ups. You heard 4 stories after your questions.",
+    "suggestion": "Next time, check back in about Muse and ask how it went.",
+    "citedTurnIds": [
+     5,
+     7
+    ],
+    "status": "shown",
+    "source": "muse-spark"
+   },
+   "hooks": {
+    "topics": [
+     {
+      "term": "Muse",
+      "turnIds": [
+       4,
+       8
+      ],
+      "weight": 6
+     },
+     {
+      "term": "follow",
+      "turnIds": [
+       2,
+       6
+      ],
+      "weight": 3
+     },
+     {
+      "term": "agent",
+      "turnIds": [
+       4,
+       6
+      ],
+      "weight": 3
+     },
+     {
+      "term": "falls",
+      "turnIds": [
+       6
+      ],
+      "weight": 3
+     },
+     {
+      "term": "mock",
+      "turnIds": [
+       4
+      ],
+      "weight": 2
+     }
+    ],
+    "events": [],
+    "commitments": [
+     {
+      "text": "I'll send the Replay mockup Thursday with a slot for the rewrite,",
+      "turnId": 9
+     }
+    ],
+    "missedBids": [
+     {
+      "turnId": 2,
+      "replyTurnId": 3,
+      "cue": "follow"
+     }
+    ],
+    "highlights": [
+     {
+      "turnId": 6,
+      "words": 47
+     },
+     {
+      "turnId": 4,
+      "words": 23
+     }
+    ],
+    "followUpDetector": [
+     {
+      "turnId": 1,
+      "isFollowUp": false,
+      "overlap": []
+     },
+     {
+      "turnId": 3,
+      "isFollowUp": false,
+      "overlap": []
+     },
+     {
+      "turnId": 5,
+      "isFollowUp": true,
+      "overlap": [
+       "fallback",
+       "muse"
+      ]
+     },
+     {
+      "turnId": 7,
+      "isFollowUp": true,
+      "overlap": [
+       "nobody",
+       "sees",
+       "empty",
+       "screen"
+      ]
+     }
+    ],
+    "awkward": {
+     "flags": [],
+     "score": 0,
+     "seams": [],
+     "worst": null
+    }
+   },
+   "followUp": {
+    "text": "Hey Prat! Loved hearing about Muse. And like I said, I'll send the Replay mockup Thursday with a slot for the rewrite.",
+    "hooksUsed": [
+     "Muse",
+     "I'll send the Replay mockup Thursday…"
+    ],
+    "source": "muse-spark",
+    "status": "sent",
+    "sentAt": "2026-10-15T14:52:29.819Z"
+   },
+   "recording": null,
+   "behavior": {
+    "model": "mediapipe-face-landmarker@0.10.14 (synthetic)",
+    "fps": 5,
+    "frameCount": 465,
+    "faceSeenPct": 1,
+    "baseline": {
+     "smile": 0.27,
+     "animation": 0.025
+    },
+    "turns": [
+     {
+      "turnId": 1,
+      "speaker": "you",
+      "smile": 0.24,
+      "smilePeak": 0.27,
+      "facingPct": 1,
+      "nods": 0,
+      "animation": 0.005,
+      "reaction": {
+       "smileDelta": 0.07,
+       "nods": 0,
+       "facingPct": 1
+      },
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 2,
+      "speaker": "them",
+      "smile": 0.29,
+      "smilePeak": 0.37,
+      "facingPct": 1,
+      "nods": 2,
+      "animation": 0.036,
+      "reaction": null,
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 3,
+      "speaker": "you",
+      "smile": 0.24,
+      "smilePeak": 0.25,
+      "facingPct": 1,
+      "nods": 0,
+      "animation": 0.005,
+      "reaction": {
+       "smileDelta": -0.08,
+       "nods": 0,
+       "facingPct": 1
+      },
+      "textTone": "positive",
+      "congruence": null
+     },
+     {
+      "turnId": 4,
+      "speaker": "them",
+      "smile": 0.25,
+      "smilePeak": 0.28,
+      "facingPct": 1,
+      "nods": 2,
+      "animation": 0.036,
+      "reaction": null,
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 5,
+      "speaker": "you",
+      "smile": 0.24,
+      "smilePeak": 0.25,
+      "facingPct": 1,
+      "nods": 0,
+      "animation": 0.004,
+      "reaction": {
+       "smileDelta": 0.07,
+       "nods": 0,
+       "facingPct": 1
+      },
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 6,
+      "speaker": "them",
+      "smile": 0.28,
+      "smilePeak": 0.37,
+      "facingPct": 1,
+      "nods": 2,
+      "animation": 0.033,
+      "reaction": null,
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 7,
+      "speaker": "you",
+      "smile": 0.24,
+      "smilePeak": 0.26,
+      "facingPct": 1,
+      "nods": 0,
+      "animation": 0.004,
+      "reaction": {
+       "smileDelta": 0.07,
+       "nods": 0,
+       "facingPct": 1
+      },
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 8,
+      "speaker": "them",
+      "smile": 0.3,
+      "smilePeak": 0.37,
+      "facingPct": 1,
+      "nods": 2,
+      "animation": 0.035,
+      "reaction": null,
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 9,
+      "speaker": "you",
+      "smile": 0.24,
+      "smilePeak": 0.28,
+      "facingPct": 1,
+      "nods": 0,
+      "animation": 0.004,
+      "reaction": {
+       "smileDelta": 0.08,
+       "nods": 0,
+       "facingPct": 1
+      },
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 10,
+      "speaker": "them",
+      "smile": 0.29,
+      "smilePeak": 0.36,
+      "facingPct": 1,
+      "nods": 2,
+      "animation": 0.036,
+      "reaction": null,
+      "textTone": "neutral",
+      "congruence": null
+     }
+    ],
+    "stats": {
+     "afterFollowUps": {
+      "n": 2,
+      "smileDelta": 0.07,
+      "nods": 0
+     },
+     "afterOther": {
+      "n": 3,
+      "smileDelta": 0.02,
+      "nods": 0
+     },
+     "missedBidReactions": [
+      {
+       "turnId": 2,
+       "smileDelta": -0.08
+      }
+     ]
+    }
+   },
+   "insight": {
+    "moments": [
+     {
+      "turnId": 9,
+      "title": "This landed",
+      "observation": "Right after you said this, their smile rose 8 points over baseline.",
+      "why": "Questions that pick up their words get the warmest reactions; keep doing it."
+     },
+     {
+      "turnId": 2,
+      "title": "Left hanging",
+      "observation": "They brought up follow and the next line moved on.",
+      "why": "One question about it would have kept the thread going."
+     }
+    ],
+    "adviceCheck": [
+     {
+      "advice": "Next time, check back in about Muse and ask how it went.",
+      "verdict": "backed",
+      "evidenceTurnIds": [
+       9
+      ],
+      "reason": "After your follow-ups their smile moved 7 points vs 2 points after other lines."
+     }
+    ],
+    "source": "muse-spark",
+    "rewrites": [
+     {
+      "turnId": 3,
+      "title": "Pick up what they just finished",
+      "tryInstead": "The markers jump the video to the right second? What was the hardest part of lining them up with the transcript?",
+      "because": "Prat had just finished the timeline markers; one question about that work comes before moving down your list."
+     }
+    ],
+    "takeaways": [
+     {
+      "kind": "try",
+      "turnId": 3,
+      "title": "Pick up what they just finished",
+      "text": "Prat had just finished the timeline markers; one question about that work comes before moving down your list.",
+      "said": "Nice. Is mock mode done too?",
+      "theySaid": "Merged last night. The follow-up markers line up with the transcript now, and clicking one jumps the video to the right second.",
+      "tryInstead": "The markers jump the video to the right second? What was the hardest part of lining them up with the transcript?",
+      "evidence": "Smile −8"
+     },
+     {
+      "kind": "keep",
+      "turnId": 5,
+      "title": "Keep asking follow-ups",
+      "text": "“How does the fallback decide what to say when Muse is down? Walk me through it.” built on what they had just told you.",
+      "said": null,
+      "theySaid": null,
+      "tryInstead": null,
+      "evidence": "Smile +7"
+     },
+     {
+      "kind": "next",
+      "turnId": 9,
+      "title": "Follow through",
+      "text": "You said “I'll send the Replay mockup Thursday with a slot for the rewrite,” Do it before you talk again.",
+      "said": null,
+      "theySaid": null,
+      "tryInstead": null,
+      "evidence": null
+     }
+    ]
+   }
+  },
+  {
+   "id": "828b436e-59de-402f-a51e-2a517b79210c",
+   "tag": "friend",
+   "otherName": "Priya",
+   "createdAt": "2026-10-16T17:45:00.000Z",
+   "seeded": false,
+   "synthetic": true,
+   "turns": [
+    {
+     "turnId": 1,
+     "speaker": "A",
+     "text": "Hey, can we talk about the lip lock filter? I want it stricter.",
+     "startMs": 0,
+     "endMs": 5817
+    },
+    {
+     "turnId": 2,
+     "speaker": "B",
+     "text": "Sure. Right now a line only counts as a bystander if the face is visible and neither the mouth nor the mic is active. If we make it stricter we start dropping real lines from quiet speakers.",
+     "startMs": 6425,
+     "endMs": 21333
+    },
+    {
+     "turnId": 3,
+     "speaker": "A",
+     "text": "But the bystander lines are still getting through. Why not drop anything under a second?",
+     "startMs": 21859,
+     "endMs": 28145
+    },
+    {
+     "turnId": 4,
+     "speaker": "B",
+     "text": "Short lines are usually yeah and right, and those matter for the talk share. Also the realtime diarization I was on finally works, it separates three voices now instead of two, which took all week.",
+     "startMs": 28683,
+     "endMs": 42804
+    },
+    {
+     "turnId": 5,
+     "speaker": "A",
+     "text": "Okay, but back to the filter, I really think we need the one second cutoff.",
+     "startMs": 42104,
+     "endMs": 48380
+    },
+    {
+     "turnId": 6,
+     "speaker": "B",
+     "text": "We can try it behind a flag and compare on the five recordings we have. If the talk share stays the same, we keep it.",
+     "startMs": 48949,
+     "endMs": 59102
+    },
+    {
+     "turnId": 7,
+     "speaker": "A",
+     "text": "Fine. Can you set up the flag today?",
+     "startMs": 59884,
+     "endMs": 63433
+    },
+    {
+     "turnId": 8,
+     "speaker": "B",
+     "text": "Yes, it's a ten minute change. I'll ping you when the comparison is ready.",
+     "startMs": 64212,
+     "endMs": 70154
+    },
+    {
+     "turnId": 9,
+     "speaker": "A",
+     "text": "Thanks, I'll look at the numbers as soon as they're ready.",
+     "startMs": 70585,
+     "endMs": 75454
+    },
+    {
+     "turnId": 10,
+     "speaker": "B",
+     "text": "Sounds good. The three-voice diarization is in the same branch if you want to try it.",
+     "startMs": 75885,
+     "endMs": 82726
+    }
+   ],
+   "userLabel": "A",
+   "reflection": "Priya told me the diarization finally works and I just kept arguing about the filter.",
+   "signals": {
+    "userQuestions": 3,
+    "userTurns": 5,
+    "otherTurns": 5,
+    "userTalkMs": 26797,
+    "otherTalkMs": 51965,
+    "userTalkShare": 0.34,
+    "otherAvgAnswerWords": 28.7,
+    "followUps": 2,
+    "reflections": 1,
+    "storiesAfterQuestions": 2,
+    "questions": [
+     {
+      "turnId": 1,
+      "isFollowUp": false,
+      "replyTurnId": 2,
+      "replyWords": 37,
+      "storyShared": true
+     },
+     {
+      "turnId": 3,
+      "isFollowUp": true,
+      "replyTurnId": 4,
+      "replyWords": 35,
+      "storyShared": true
+     },
+     {
+      "turnId": 7,
+      "isFollowUp": true,
+      "replyTurnId": 8,
+      "replyWords": 14,
+      "storyShared": false
+     }
+    ],
+    "crowd": 0,
+    "source": "muse-spark",
+    "detectorAgreement": {
+     "agree": 3,
+     "of": 3
+    }
+   },
+   "note": {
+    "text": "You asked 3 questions and 2 were follow-ups. You heard 2 stories after your questions.",
+    "suggestion": "Next time, check back in about lines and ask how it went.",
+    "citedTurnIds": [
+     3,
+     7
+    ],
+    "status": "shown",
+    "source": "muse-spark"
+   },
+   "hooks": {
+    "topics": [
+     {
+      "term": "lines",
+      "turnIds": [
+       2,
+       4
+      ],
+      "weight": 5
+     },
+     {
+      "term": "talk",
+      "turnIds": [
+       4,
+       6
+      ],
+      "weight": 4
+     },
+     {
+      "term": "share",
+      "turnIds": [
+       4,
+       6
+      ],
+      "weight": 3
+     },
+     {
+      "term": "diarization",
+      "turnIds": [
+       4,
+       10
+      ],
+      "weight": 3
+     },
+     {
+      "term": "three",
+      "turnIds": [
+       4,
+       10
+      ],
+      "weight": 3
+     }
+    ],
+    "events": [],
+    "commitments": [],
+    "missedBids": [
+     {
+      "turnId": 4,
+      "replyTurnId": 5,
+      "cue": "lines"
+     }
+    ],
+    "highlights": [
+     {
+      "turnId": 2,
+      "words": 37
+     },
+     {
+      "turnId": 4,
+      "words": 35
+     }
+    ],
+    "followUpDetector": [
+     {
+      "turnId": 1,
+      "isFollowUp": false,
+      "overlap": []
+     },
+     {
+      "turnId": 3,
+      "isFollowUp": true,
+      "overlap": [
+       "bystander",
+       "lines"
+      ]
+     },
+     {
+      "turnId": 7,
+      "isFollowUp": true,
+      "overlap": [
+       "flag"
+      ]
+     }
+    ],
+    "awkward": {
+     "flags": [
+      {
+       "turnId": 5,
+       "who": "you",
+       "kind": "cut-in",
+       "label": "Cut in",
+       "evidence": "You started talking 0.7 s before they finished",
+       "weight": 3
+      }
+     ],
+     "score": 30,
+     "seams": [],
+     "worst": {
+      "turnId": 5,
+      "who": "you",
+      "kind": "cut-in",
+      "label": "Cut in",
+      "evidence": "You started talking 0.7 s before they finished",
+      "weight": 3
+     }
+    }
+   },
+   "followUp": {
+    "text": "Hey Priya! Loved hearing about lines.",
+    "hooksUsed": [
+     "lines"
+    ],
+    "source": "muse-spark",
+    "status": "sent",
+    "sentAt": "2026-10-16T18:34:22.726Z"
+   },
+   "recording": null,
+   "behavior": {
+    "model": "mediapipe-face-landmarker@0.10.14 (synthetic)",
+    "fps": 5,
+    "frameCount": 429,
+    "faceSeenPct": 1,
+    "baseline": {
+     "smile": 0.21,
+     "animation": 0.024
+    },
+    "turns": [
+     {
+      "turnId": 1,
+      "speaker": "you",
+      "smile": 0.19,
+      "smilePeak": 0.21,
+      "facingPct": 1,
+      "nods": 0,
+      "animation": 0.004,
+      "reaction": {
+       "smileDelta": 0.05,
+       "nods": 0,
+       "facingPct": 1
+      },
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 2,
+      "speaker": "them",
+      "smile": 0.23,
+      "smilePeak": 0.28,
+      "facingPct": 1,
+      "nods": 1,
+      "animation": 0.03,
+      "reaction": null,
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 3,
+      "speaker": "you",
+      "smile": 0.19,
+      "smilePeak": 0.19,
+      "facingPct": 1,
+      "nods": 0,
+      "animation": 0.004,
+      "reaction": {
+       "smileDelta": 0.04,
+       "nods": 0,
+       "facingPct": 1
+      },
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 4,
+      "speaker": "them",
+      "smile": 0.23,
+      "smilePeak": 0.26,
+      "facingPct": 1,
+      "nods": 1,
+      "animation": 0.033,
+      "reaction": null,
+      "textTone": "positive",
+      "congruence": null
+     },
+     {
+      "turnId": 5,
+      "speaker": "you",
+      "smile": 0.19,
+      "smilePeak": 0.22,
+      "facingPct": 1,
+      "nods": 0,
+      "animation": 0.015,
+      "reaction": {
+       "smileDelta": -0.06,
+       "nods": 0,
+       "facingPct": 0.77
+      },
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 6,
+      "speaker": "them",
+      "smile": 0.2,
+      "smilePeak": 0.23,
+      "facingPct": 0.94,
+      "nods": 1,
+      "animation": 0.033,
+      "reaction": null,
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 7,
+      "speaker": "you",
+      "smile": 0.19,
+      "smilePeak": 0.21,
+      "facingPct": 1,
+      "nods": 0,
+      "animation": 0.005,
+      "reaction": {
+       "smileDelta": 0.04,
+       "nods": 0,
+       "facingPct": 1
+      },
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 8,
+      "speaker": "them",
+      "smile": 0.24,
+      "smilePeak": 0.28,
+      "facingPct": 1,
+      "nods": 1,
+      "animation": 0.034,
+      "reaction": null,
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 9,
+      "speaker": "you",
+      "smile": 0.19,
+      "smilePeak": 0.21,
+      "facingPct": 1,
+      "nods": 0,
+      "animation": 0.003,
+      "reaction": {
+       "smileDelta": 0.04,
+       "nods": 0,
+       "facingPct": 1
+      },
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 10,
+      "speaker": "them",
+      "smile": 0.23,
+      "smilePeak": 0.27,
+      "facingPct": 1,
+      "nods": 1,
+      "animation": 0.037,
+      "reaction": null,
+      "textTone": "neutral",
+      "congruence": null
+     }
+    ],
+    "stats": {
+     "afterFollowUps": {
+      "n": 2,
+      "smileDelta": 0.04,
+      "nods": 0
+     },
+     "afterOther": {
+      "n": 3,
+      "smileDelta": 0.01,
+      "nods": 0
+     },
+     "missedBidReactions": [
+      {
+       "turnId": 4,
+       "smileDelta": -0.06
+      }
+     ]
+    }
+   },
+   "insight": {
+    "moments": [
+     {
+      "turnId": 1,
+      "title": "This landed",
+      "observation": "Right after you said this, their smile rose 5 points over baseline.",
+      "why": "Questions that pick up their words get the warmest reactions; keep doing it."
+     },
+     {
+      "turnId": 4,
+      "title": "Left hanging",
+      "observation": "They brought up lines and the next line moved on.",
+      "why": "One question about it would have kept the thread going."
+     }
+    ],
+    "adviceCheck": [
+     {
+      "advice": "Next time, check back in about lines and ask how it went.",
+      "verdict": "backed",
+      "evidenceTurnIds": [
+       1
+      ],
+      "reason": "After your follow-ups their smile moved 4 points vs 1 points after other lines."
+     }
+    ],
+    "source": "muse-spark",
+    "rewrites": [
+     {
+      "turnId": 5,
+      "title": "Stay with their story",
+      "tryInstead": "Wait, tell me more about the lines part?",
+      "because": "Asking about what they just said keeps them talking before you switch to yourself."
+     }
+    ],
+    "takeaways": [
+     {
+      "kind": "try",
+      "turnId": 5,
+      "title": "Stay with their story",
+      "text": "Asking about what they just said keeps them talking before you switch to yourself.",
+      "said": "Okay, but back to the filter, I really think we need the one second cutoff.",
+      "theySaid": "Short lines are usually yeah and right, and those matter for the talk share. Also the realtime diarization I was on finally works, it separates three voices now instead of two, which took all week.",
+      "tryInstead": "Wait, tell me more about the lines part?",
+      "evidence": "Cut in"
+     },
+     {
+      "kind": "keep",
+      "turnId": 3,
+      "title": "Keep asking follow-ups",
+      "text": "“But the bystander lines are still getting through. Why not drop anything under a second?” built on what they had just told you.",
+      "said": null,
+      "theySaid": null,
+      "tryInstead": null,
+      "evidence": "Smile +4"
+     }
+    ]
+   }
+  },
+  {
+   "id": "c44986fd-ab05-411d-a665-121d4e1d5751",
+   "tag": "friend",
+   "otherName": "Parth",
+   "createdAt": "2026-10-17T20:05:00.000Z",
+   "seeded": false,
+   "synthetic": true,
+   "turns": [
+    {
+     "turnId": 1,
+     "speaker": "A",
+     "text": "How's the Live tab going on the Mac side?",
+     "startMs": 0,
+     "endMs": 4195
+    },
+    {
+     "turnId": 2,
+     "speaker": "B",
+     "text": "Pretty good. It follows the phone over the websocket now, so lines show up on the projector about half a second after they're spoken.",
+     "startMs": 4835,
+     "endMs": 14613
+    },
+    {
+     "turnId": 3,
+     "speaker": "A",
+     "text": "Half a second, that's fast. What made the biggest difference?",
+     "startMs": 14991,
+     "endMs": 19477
+    },
+    {
+     "turnId": 4,
+     "speaker": "B",
+     "text": "Sending partial lines instead of waiting for the full sentence. The text fills in as people talk, which looks great on a big screen.",
+     "startMs": 20074,
+     "endMs": 29761
+    },
+    {
+     "turnId": 5,
+     "speaker": "A",
+     "text": "Does the partial text still look good when the two voices overlap?",
+     "startMs": 30340,
+     "endMs": 35620
+    },
+    {
+     "turnId": 6,
+     "speaker": "B",
+     "text": "Mostly. When they overlap, the newer line slides in under the older one so nothing jumps around. The judging on Saturday is in a big room, so I want it readable from the back row.",
+     "startMs": 36084,
+     "endMs": 50079
+    },
+    {
+     "turnId": 7,
+     "speaker": "A",
+     "text": "Readable from the back row, good call. How big is the text right now?",
+     "startMs": 50562,
+     "endMs": 56708
+    },
+    {
+     "turnId": 8,
+     "speaker": "B",
+     "text": "Forty eight pixels on the projector theme. I tested it from the far end of the hallway last night.",
+     "startMs": 57112,
+     "endMs": 64924
+    },
+    {
+     "turnId": 9,
+     "speaker": "A",
+     "text": "Forty eight pixels should carry. I'll stand at the back on Saturday and text you if anything is hard to read.",
+     "startMs": 65530,
+     "endMs": 74082
+    },
+    {
+     "turnId": 10,
+     "speaker": "B",
+     "text": "Deal. And if you have time before then, try the dark theme, it reads better on the projector.",
+     "startMs": 74878,
+     "endMs": 82247
+    }
+   ],
+   "userLabel": "A",
+   "reflection": "Good back and forth. I want to see the Live tab from the back of the room.",
+   "signals": {
+    "userQuestions": 4,
+    "userTurns": 5,
+    "otherTurns": 5,
+    "userTalkMs": 28659,
+    "otherTalkMs": 48641,
+    "userTalkShare": 0.37,
+    "otherAvgAnswerWords": 25.5,
+    "followUps": 3,
+    "reflections": 1,
+    "storiesAfterQuestions": 4,
+    "questions": [
+     {
+      "turnId": 1,
+      "isFollowUp": false,
+      "replyTurnId": 2,
+      "replyWords": 24,
+      "storyShared": true
+     },
+     {
+      "turnId": 3,
+      "isFollowUp": true,
+      "replyTurnId": 4,
+      "replyWords": 24,
+      "storyShared": true
+     },
+     {
+      "turnId": 5,
+      "isFollowUp": true,
+      "replyTurnId": 6,
+      "replyWords": 35,
+      "storyShared": true
+     },
+     {
+      "turnId": 7,
+      "isFollowUp": true,
+      "replyTurnId": 8,
+      "replyWords": 19,
+      "storyShared": true
+     }
+    ],
+    "crowd": 0,
+    "source": "muse-spark",
+    "detectorAgreement": {
+     "agree": 4,
+     "of": 4
+    }
+   },
+   "note": {
+    "text": "You asked 4 questions and 3 were follow-ups. You heard 4 stories after your questions.",
+    "suggestion": "Next time, check back in about lines and ask how it went.",
+    "citedTurnIds": [
+     3,
+     5,
+     7
+    ],
+    "status": "shown",
+    "source": "muse-spark"
+   },
+   "hooks": {
+    "topics": [
+     {
+      "term": "lines",
+      "turnIds": [
+       2,
+       4,
+       6
+      ],
+      "weight": 5
+     },
+     {
+      "term": "projector",
+      "turnIds": [
+       2,
+       8,
+       10
+      ],
+      "weight": 5
+     },
+     {
+      "term": "theme",
+      "turnIds": [
+       8,
+       10
+      ],
+      "weight": 3
+     },
+     {
+      "term": "half",
+      "turnIds": [
+       2
+      ],
+      "weight": 2
+     },
+     {
+      "term": "second",
+      "turnIds": [
+       2
+      ],
+      "weight": 2
+     }
+    ],
+    "events": [
+     {
+      "text": "The judging on Saturday is in a big room, so I want it readable from the back row.",
+      "when": "on saturday",
+      "hasNoun": false,
+      "turnId": 6
+     }
+    ],
+    "commitments": [],
+    "missedBids": [],
+    "highlights": [
+     {
+      "turnId": 6,
+      "words": 35
+     },
+     {
+      "turnId": 2,
+      "words": 24
+     }
+    ],
+    "followUpDetector": [
+     {
+      "turnId": 1,
+      "isFollowUp": false,
+      "overlap": []
+     },
+     {
+      "turnId": 3,
+      "isFollowUp": true,
+      "overlap": [
+       "half",
+       "second"
+      ]
+     },
+     {
+      "turnId": 5,
+      "isFollowUp": true,
+      "overlap": [
+       "partial",
+       "text"
+      ]
+     },
+     {
+      "turnId": 7,
+      "isFollowUp": true,
+      "overlap": [
+       "readable"
+      ]
+     }
+    ],
+    "awkward": {
+     "flags": [],
+     "score": 0,
+     "seams": [],
+     "worst": null
+    }
+   },
+   "followUp": {
+    "text": "Hey Parth! Loved hearing about lines. Talk on saturday!",
+    "hooksUsed": [
+     "lines",
+     "on saturday"
+    ],
+    "source": "muse-spark",
+    "status": "sent",
+    "sentAt": "2026-10-17T21:01:22.247Z"
+   },
+   "recording": null,
+   "behavior": {
+    "model": "mediapipe-face-landmarker@0.10.14 (synthetic)",
+    "fps": 5,
+    "frameCount": 427,
+    "faceSeenPct": 1,
+    "baseline": {
+     "smile": 0.27,
+     "animation": 0.024
+    },
+    "turns": [
+     {
+      "turnId": 1,
+      "speaker": "you",
+      "smile": 0.24,
+      "smilePeak": 0.25,
+      "facingPct": 1,
+      "nods": 0,
+      "animation": 0.002,
+      "reaction": {
+       "smileDelta": 0.07,
+       "nods": 0,
+       "facingPct": 1
+      },
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 2,
+      "speaker": "them",
+      "smile": 0.29,
+      "smilePeak": 0.37,
+      "facingPct": 1,
+      "nods": 2,
+      "animation": 0.034,
+      "reaction": null,
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 3,
+      "speaker": "you",
+      "smile": 0.24,
+      "smilePeak": 0.28,
+      "facingPct": 1,
+      "nods": 0,
+      "animation": 0.004,
+      "reaction": {
+       "smileDelta": 0.08,
+       "nods": 0,
+       "facingPct": 1
+      },
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 4,
+      "speaker": "them",
+      "smile": 0.29,
+      "smilePeak": 0.37,
+      "facingPct": 1,
+      "nods": 2,
+      "animation": 0.035,
+      "reaction": null,
+      "textTone": "positive",
+      "congruence": null
+     },
+     {
+      "turnId": 5,
+      "speaker": "you",
+      "smile": 0.24,
+      "smilePeak": 0.28,
+      "facingPct": 1,
+      "nods": 0,
+      "animation": 0.005,
+      "reaction": {
+       "smileDelta": 0.08,
+       "nods": 0,
+       "facingPct": 1
+      },
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 6,
+      "speaker": "them",
+      "smile": 0.28,
+      "smilePeak": 0.37,
+      "facingPct": 1,
+      "nods": 2,
+      "animation": 0.034,
+      "reaction": null,
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 7,
+      "speaker": "you",
+      "smile": 0.24,
+      "smilePeak": 0.25,
+      "facingPct": 1,
+      "nods": 0,
+      "animation": 0.003,
+      "reaction": {
+       "smileDelta": 0.08,
+       "nods": 0,
+       "facingPct": 1
+      },
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 8,
+      "speaker": "them",
+      "smile": 0.3,
+      "smilePeak": 0.38,
+      "facingPct": 1,
+      "nods": 2,
+      "animation": 0.035,
+      "reaction": null,
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 9,
+      "speaker": "you",
+      "smile": 0.24,
+      "smilePeak": 0.28,
+      "facingPct": 1,
+      "nods": 0,
+      "animation": 0.004,
+      "reaction": {
+       "smileDelta": 0.08,
+       "nods": 0,
+       "facingPct": 1
+      },
+      "textTone": "negative",
+      "congruence": null
+     },
+     {
+      "turnId": 10,
+      "speaker": "them",
+      "smile": 0.29,
+      "smilePeak": 0.37,
+      "facingPct": 1,
+      "nods": 2,
+      "animation": 0.036,
+      "reaction": null,
+      "textTone": "neutral",
+      "congruence": null
+     }
+    ],
+    "stats": {
+     "afterFollowUps": {
+      "n": 3,
+      "smileDelta": 0.08,
+      "nods": 0
+     },
+     "afterOther": {
+      "n": 2,
+      "smileDelta": 0.08,
+      "nods": 0
+     },
+     "missedBidReactions": []
+    }
+   },
+   "insight": {
+    "moments": [
+     {
+      "turnId": 3,
+      "title": "This landed",
+      "observation": "Right after you said this, their smile rose 8 points over baseline.",
+      "why": "Questions that pick up their words get the warmest reactions; keep doing it."
+     }
+    ],
+    "adviceCheck": [
+     {
+      "advice": "Next time, check back in about lines and ask how it went.",
+      "verdict": "partly",
+      "evidenceTurnIds": [
+       3
+      ],
+      "reason": "After your follow-ups their smile moved 8 points vs 8 points after other lines."
+     }
+    ],
+    "source": "muse-spark",
+    "rewrites": [],
+    "takeaways": [
+     {
+      "kind": "keep",
+      "turnId": 3,
+      "title": "This landed",
+      "text": "Questions that pick up their words get the warmest reactions; keep doing it.",
+      "said": null,
+      "theySaid": null,
+      "tryInstead": null,
+      "evidence": "Smile +8"
+     },
+     {
+      "kind": "next",
+      "turnId": 6,
+      "title": "Ask about it next time",
+      "text": "They mentioned “The judging on Saturday is in a big room, so I want it readable from the back row.” Ask how it went.",
+      "said": null,
+      "theySaid": null,
+      "tryInstead": null,
+      "evidence": null
+     }
+    ]
+   }
+  },
+  {
+   "id": "4d4d0624-ee82-4bf0-a7f4-2d3080b0e893",
+   "tag": "friend",
+   "otherName": "Prat",
+   "createdAt": "2026-10-18T22:20:00.000Z",
+   "seeded": false,
+   "synthetic": true,
+   "turns": [
+    {
+     "turnId": 1,
+     "speaker": "A",
+     "text": "So who's presenting on Saturday? I was thinking you should do the demo part.",
+     "startMs": 0,
+     "endMs": 5935
+    },
+    {
+     "turnId": 2,
+     "speaker": "B",
+     "text": "I can do the demo. I was thinking you'd open with the problem, because you wrote most of the coaching rules and you can explain why we",
+     "startMs": 6688,
+     "endMs": 17800
+    },
+    {
+     "turnId": 3,
+     "speaker": "A",
+     "text": "Did you see the Lantern team's practice run? Their demo crashed twice, it was kind of brutal.",
+     "startMs": 17100,
+     "endMs": 24102
+    },
+    {
+     "turnId": 4,
+     "speaker": "B",
+     "text": "Their run was early, it'll be fine by Saturday. For the opening, I think two minutes on the problem and then we switch to the phone.",
+     "startMs": 24598,
+     "endMs": 35026
+    },
+    {
+     "turnId": 5,
+     "speaker": "A",
+     "text": "Sorry, that was not fair to them. Two minutes on the problem works. Should I use the Abuela story?",
+     "startMs": 35426,
+     "endMs": 43466
+    },
+    {
+     "turnId": 6,
+     "speaker": "B",
+     "text": "Yes, people remember stories. Start with the call where the whole thing was about work, then show how the app caught it, and then",
+     "startMs": 44119,
+     "endMs": 54026
+    },
+    {
+     "turnId": 7,
+     "speaker": "A",
+     "text": "And then the live demo, right? I can hand you the phone.",
+     "startMs": 53426,
+     "endMs": 58766
+    },
+    {
+     "turnId": 8,
+     "speaker": "B",
+     "text": "Right, you hand me the phone and I record with one of the judges. Let's run it twice on Friday so the handoff is smooth.",
+     "startMs": 59451,
+     "endMs": 69654
+    },
+    {
+     "turnId": 9,
+     "speaker": "A",
+     "text": "Two runs on Friday works. I'll bring the phone stand so we're not holding it the whole time.",
+     "startMs": 70015,
+     "endMs": 77372
+    },
+    {
+     "turnId": 10,
+     "speaker": "B",
+     "text": "Perfect. I'll write the timing on a card so we both know when to switch.",
+     "startMs": 77864,
+     "endMs": 84179
+    }
+   ],
+   "userLabel": "A",
+   "reflection": "Brought up the other team for no reason and cut Prat off twice. We still landed the plan.",
+   "signals": {
+    "userQuestions": 4,
+    "userTurns": 5,
+    "otherTurns": 5,
+    "userTalkMs": 33674,
+    "otherTalkMs": 47965,
+    "userTalkShare": 0.41,
+    "otherAvgAnswerWords": 25.5,
+    "followUps": 2,
+    "reflections": 1,
+    "storiesAfterQuestions": 4,
+    "questions": [
+     {
+      "turnId": 1,
+      "isFollowUp": false,
+      "replyTurnId": 2,
+      "replyWords": 27,
+      "storyShared": true
+     },
+     {
+      "turnId": 3,
+      "isFollowUp": true,
+      "replyTurnId": 4,
+      "replyWords": 26,
+      "storyShared": true
+     },
+     {
+      "turnId": 5,
+      "isFollowUp": true,
+      "replyTurnId": 6,
+      "replyWords": 24,
+      "storyShared": true
+     },
+     {
+      "turnId": 7,
+      "isFollowUp": false,
+      "replyTurnId": 8,
+      "replyWords": 25,
+      "storyShared": true
+     }
+    ],
+    "crowd": 0,
+    "source": "muse-spark",
+    "detectorAgreement": {
+     "agree": 3,
+     "of": 4
+    }
+   },
+   "note": {
+    "text": "You asked 4 questions and 2 were follow-ups. You heard 4 stories after your questions.",
+    "suggestion": "Next time, check back in about problem and ask how it went.",
+    "citedTurnIds": [
+     3,
+     5
+    ],
+    "status": "shown",
+    "source": "muse-spark"
+   },
+   "hooks": {
+    "topics": [
+     {
+      "term": "problem",
+      "turnIds": [
+       2,
+       4
+      ],
+      "weight": 4
+     },
+     {
+      "term": "phone",
+      "turnIds": [
+       4,
+       8
+      ],
+      "weight": 4
+     },
+     {
+      "term": "switch",
+      "turnIds": [
+       4,
+       10
+      ],
+      "weight": 3
+     },
+     {
+      "term": "demo",
+      "turnIds": [
+       2
+      ],
+      "weight": 2
+     },
+     {
+      "term": "minutes",
+      "turnIds": [
+       4
+      ],
+      "weight": 2
+     }
+    ],
+    "events": [
+     {
+      "text": "Let's run it twice on Friday so the handoff is smooth.",
+      "when": "on friday",
+      "hasNoun": false,
+      "turnId": 8
+     }
+    ],
+    "commitments": [
+     {
+      "text": "I'll bring the phone stand so we're not holding it the whole time.",
+      "turnId": 9
+     }
+    ],
+    "missedBids": [],
+    "highlights": [
+     {
+      "turnId": 2,
+      "words": 27
+     },
+     {
+      "turnId": 4,
+      "words": 26
+     }
+    ],
+    "followUpDetector": [
+     {
+      "turnId": 1,
+      "isFollowUp": false,
+      "overlap": []
+     },
+     {
+      "turnId": 3,
+      "isFollowUp": true,
+      "overlap": [
+       "demo"
+      ]
+     },
+     {
+      "turnId": 5,
+      "isFollowUp": true,
+      "overlap": [
+       "minutes",
+       "problem"
+      ]
+     },
+     {
+      "turnId": 7,
+      "isFollowUp": true,
+      "overlap": []
+     }
+    ],
+    "awkward": {
+     "flags": [
+      {
+       "turnId": 3,
+       "who": "you",
+       "kind": "cut-in",
+       "label": "Cut in",
+       "evidence": "You started talking 0.7 s before they finished",
+       "weight": 3
+      },
+      {
+       "turnId": 7,
+       "who": "you",
+       "kind": "cut-in",
+       "label": "Cut in",
+       "evidence": "You started talking 0.6 s before they finished",
+       "weight": 3
+      }
+     ],
+     "score": 60,
+     "seams": [],
+     "worst": {
+      "turnId": 3,
+      "who": "you",
+      "kind": "cut-in",
+      "label": "Cut in",
+      "evidence": "You started talking 0.7 s before they finished",
+      "weight": 3
+     }
+    }
+   },
+   "followUp": {
+    "text": "Hey Prat! Loved hearing about problem. Talk on friday! And like I said, I'll bring the phone stand so we're not holding it the whole time.",
+    "hooksUsed": [
+     "problem",
+     "phone",
+     "on friday",
+     "I'll bring the phone stand so we're…"
+    ],
+    "source": "muse-spark",
+    "status": "sent",
+    "sentAt": "2026-10-18T23:23:24.179Z"
+   },
+   "recording": null,
+   "behavior": {
+    "model": "mediapipe-face-landmarker@0.10.14 (synthetic)",
+    "fps": 5,
+    "frameCount": 436,
+    "faceSeenPct": 1,
+    "baseline": {
+     "smile": 0.21,
+     "animation": 0.022
+    },
+    "turns": [
+     {
+      "turnId": 1,
+      "speaker": "you",
+      "smile": 0.19,
+      "smilePeak": 0.2,
+      "facingPct": 1,
+      "nods": 0,
+      "animation": 0.003,
+      "reaction": {
+       "smileDelta": 0.04,
+       "nods": 0,
+       "facingPct": 1
+      },
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 2,
+      "speaker": "them",
+      "smile": 0.23,
+      "smilePeak": 0.27,
+      "facingPct": 1,
+      "nods": 1,
+      "animation": 0.035,
+      "reaction": null,
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 3,
+      "speaker": "you",
+      "smile": 0.19,
+      "smilePeak": 0.23,
+      "facingPct": 1,
+      "nods": 0,
+      "animation": 0.012,
+      "reaction": {
+       "smileDelta": -0.06,
+       "nods": 0,
+       "facingPct": 0.77
+      },
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 4,
+      "speaker": "them",
+      "smile": 0.2,
+      "smilePeak": 0.23,
+      "facingPct": 0.94,
+      "nods": 1,
+      "animation": 0.033,
+      "reaction": null,
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 5,
+      "speaker": "you",
+      "smile": 0.19,
+      "smilePeak": 0.21,
+      "facingPct": 1,
+      "nods": 0,
+      "animation": 0.004,
+      "reaction": {
+       "smileDelta": 0.04,
+       "nods": 0,
+       "facingPct": 1
+      },
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 6,
+      "speaker": "them",
+      "smile": 0.23,
+      "smilePeak": 0.27,
+      "facingPct": 1,
+      "nods": 1,
+      "animation": 0.033,
+      "reaction": null,
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 7,
+      "speaker": "you",
+      "smile": 0.19,
+      "smilePeak": 0.22,
+      "facingPct": 1,
+      "nods": 0,
+      "animation": 0.015,
+      "reaction": {
+       "smileDelta": -0.06,
+       "nods": 0,
+       "facingPct": 0.69
+      },
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 8,
+      "speaker": "them",
+      "smile": 0.21,
+      "smilePeak": 0.23,
+      "facingPct": 0.92,
+      "nods": 1,
+      "animation": 0.031,
+      "reaction": null,
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 9,
+      "speaker": "you",
+      "smile": 0.19,
+      "smilePeak": 0.2,
+      "facingPct": 1,
+      "nods": 0,
+      "animation": 0.004,
+      "reaction": {
+       "smileDelta": 0.04,
+       "nods": 0,
+       "facingPct": 1
+      },
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 10,
+      "speaker": "them",
+      "smile": 0.23,
+      "smilePeak": 0.26,
+      "facingPct": 1,
+      "nods": 1,
+      "animation": 0.037,
+      "reaction": null,
+      "textTone": "neutral",
+      "congruence": null
+     }
+    ],
+    "stats": {
+     "afterFollowUps": {
+      "n": 2,
+      "smileDelta": -0.01,
+      "nods": 0
+     },
+     "afterOther": {
+      "n": 3,
+      "smileDelta": 0.01,
+      "nods": 0
+     },
+     "missedBidReactions": []
+    }
+   },
+   "insight": {
+    "moments": [
+     {
+      "turnId": 1,
+      "title": "This landed",
+      "observation": "Right after you said this, their smile rose 4 points over baseline.",
+      "why": "Questions that pick up their words get the warmest reactions; keep doing it."
+     }
+    ],
+    "adviceCheck": [
+     {
+      "advice": "Next time, check back in about problem and ask how it went.",
+      "verdict": "partly",
+      "evidenceTurnIds": [
+       1
+      ],
+      "reason": "After your follow-ups their smile moved -1 points vs 1 points after other lines."
+     }
+    ],
+    "source": "muse-spark",
+    "rewrites": [
+     {
+      "turnId": 3,
+      "title": "Stay with their story",
+      "tryInstead": "Wait, tell me more about the problem part?",
+      "because": "Asking about what they just said keeps them talking before you switch to yourself."
+     },
+     {
+      "turnId": 7,
+      "title": "Stay with their story",
+      "tryInstead": "Wait, tell me more about the remember part?",
+      "because": "Asking about what they just said keeps them talking before you switch to yourself."
+     }
+    ],
+    "takeaways": [
+     {
+      "kind": "try",
+      "turnId": 3,
+      "title": "Stay with their story",
+      "text": "Asking about what they just said keeps them talking before you switch to yourself.",
+      "said": "Did you see the Lantern team's practice run? Their demo crashed twice, it was kind of brutal.",
+      "theySaid": "I can do the demo. I was thinking you'd open with the problem, because you wrote most of the coaching rules and you can explain why we",
+      "tryInstead": "Wait, tell me more about the problem part?",
+      "evidence": "Cut in"
+     },
+     {
+      "kind": "keep",
+      "turnId": 5,
+      "title": "Keep asking follow-ups",
+      "text": "“Sorry, that was not fair to them. Two minutes on the problem works. Should I use the Abuela story?” built on what they had just told you.",
+      "said": null,
+      "theySaid": null,
+      "tryInstead": null,
+      "evidence": "Smile +4"
+     },
+     {
+      "kind": "next",
+      "turnId": 8,
+      "title": "Ask about it next time",
+      "text": "They mentioned “Let's run it twice on Friday so the handoff is smooth.” Ask how it went.",
+      "said": null,
+      "theySaid": null,
+      "tryInstead": null,
+      "evidence": null
+     }
+    ]
+   }
+  },
+  {
+   "id": "2348a501-42d1-4a74-ae46-07f5726ac996",
+   "tag": "friend",
+   "otherName": "Priya",
+   "createdAt": "2026-10-19T23:50:00.000Z",
+   "seeded": false,
+   "synthetic": true,
+   "turns": [
+    {
+     "turnId": 1,
+     "speaker": "B",
+     "text": "Hey, sorry it is late. Do you have five minutes for the face-cue calibration? The smile baseline is drifting on the darker videos and I want to",
+     "startMs": 0,
+     "endMs": 10923
+    },
+    {
+     "turnId": 2,
+     "speaker": "A",
+     "text": "Just fix it however.",
+     "startMs": 10223,
+     "endMs": 12470
+    },
+    {
+     "turnId": 3,
+     "speaker": "B",
+     "text": "I can, I just want a second pair of eyes on it. On the darker clips the smile score reads low the whole time, so every reaction looks like a drop. Should we normalize per video or per person?",
+     "startMs": 13196,
+     "endMs": 28598
+    },
+    {
+     "turnId": 4,
+     "speaker": "A",
+     "text": "Per video.",
+     "startMs": 29320,
+     "endMs": 30720
+    },
+    {
+     "turnId": 5,
+     "speaker": "B",
+     "text": "Per video makes sense to me too. How is your part going, the heatmap for the transcript?",
+     "startMs": 31478,
+     "endMs": 38788
+    },
+    {
+     "turnId": 6,
+     "speaker": "A",
+     "text": "Nothing really.",
+     "startMs": 39440,
+     "endMs": 41096
+    },
+    {
+     "turnId": 7,
+     "speaker": "B",
+     "text": "That's okay, it is late. I'll push the per video change tonight and leave a note on the pull request.",
+     "startMs": 41566,
+     "endMs": 49830
+    },
+    {
+     "turnId": 8,
+     "speaker": "A",
+     "text": "Okay.",
+     "startMs": 50215,
+     "endMs": 51247
+    },
+    {
+     "turnId": 9,
+     "speaker": "B",
+     "text": "Talk tomorrow?",
+     "startMs": 51880,
+     "endMs": 53204
+    },
+    {
+     "turnId": 10,
+     "speaker": "A",
+     "text": "Sure.",
+     "startMs": 53686,
+     "endMs": 54858
+    }
+   ],
+   "userLabel": "A",
+   "reflection": "I was exhausted and it showed. Priya asked about my part and I just shut it down.",
+   "signals": {
+    "userQuestions": 0,
+    "userTurns": 5,
+    "otherTurns": 5,
+    "userTalkMs": 7507,
+    "otherTalkMs": 43223,
+    "userTalkShare": 0.15,
+    "otherAvgAnswerWords": 0,
+    "followUps": 0,
+    "reflections": 1,
+    "storiesAfterQuestions": 0,
+    "questions": [],
+    "crowd": 0,
+    "source": "muse-spark",
+    "detectorAgreement": {
+     "agree": 0,
+     "of": 0
+    }
+   },
+   "note": {
+    "text": "You asked 0 questions and 0 were follow-ups.",
+    "suggestion": "Next time, check back in about video and ask how it went.",
+    "citedTurnIds": [],
+    "status": "shown",
+    "source": "muse-spark"
+   },
+   "hooks": {
+    "topics": [
+     {
+      "term": "video",
+      "turnIds": [
+       1,
+       3,
+       5,
+       7
+      ],
+      "weight": 8
+     },
+     {
+      "term": "late",
+      "turnIds": [
+       1,
+       7
+      ],
+      "weight": 3
+     },
+     {
+      "term": "smile",
+      "turnIds": [
+       1,
+       3
+      ],
+      "weight": 3
+     },
+     {
+      "term": "darker",
+      "turnIds": [
+       1,
+       3
+      ],
+      "weight": 3
+     }
+    ],
+    "events": [
+     {
+      "text": "I'll push the per video change tonight and leave a note on the pull request.",
+      "when": "tonight",
+      "hasNoun": false,
+      "turnId": 7
+     },
+     {
+      "text": "Talk tomorrow?",
+      "when": "tomorrow",
+      "hasNoun": false,
+      "turnId": 9
+     }
+    ],
+    "commitments": [],
+    "missedBids": [
+     {
+      "turnId": 1,
+      "replyTurnId": 2,
+      "cue": "video"
+     },
+     {
+      "turnId": 5,
+      "replyTurnId": 6,
+      "cue": "video"
+     },
+     {
+      "turnId": 7,
+      "replyTurnId": 8,
+      "cue": "video"
+     }
+    ],
+    "highlights": [
+     {
+      "turnId": 3,
+      "words": 39
+     },
+     {
+      "turnId": 1,
+      "words": 27
+     }
+    ],
+    "followUpDetector": [],
+    "awkward": {
+     "flags": [
+      {
+       "turnId": 2,
+       "who": "you",
+       "kind": "cut-in",
+       "label": "Cut in",
+       "evidence": "You started talking 0.7 s before they finished",
+       "weight": 3
+      },
+      {
+       "turnId": 6,
+       "who": "you",
+       "kind": "undersell",
+       "label": "Undersold yourself",
+       "evidence": "“Nothing really” is what they'll remember about you",
+       "weight": 2
+      },
+      {
+       "turnId": 10,
+       "who": "you",
+       "kind": "fizzle",
+       "label": "Fizzled out",
+       "evidence": "The last 3 lines were “Okay.”, “Talk tomorrow?”, “Sure.”",
+       "weight": 2
+      }
+     ],
+     "score": 70,
+     "seams": [],
+     "worst": {
+      "turnId": 2,
+      "who": "you",
+      "kind": "cut-in",
+      "label": "Cut in",
+      "evidence": "You started talking 0.7 s before they finished",
+      "weight": 3
+     }
+    }
+   },
+   "followUp": {
+    "text": "Hey Priya! Loved hearing about video. Talk tonight!",
+    "hooksUsed": [
+     "video",
+     "tonight",
+     "tomorrow"
+    ],
+    "source": "muse-spark",
+    "status": "sent",
+    "sentAt": "2026-10-20T00:59:54.858Z"
+   },
+   "recording": null,
+   "behavior": {
+    "model": "mediapipe-face-landmarker@0.10.14 (synthetic)",
+    "fps": 5,
+    "frameCount": 290,
+    "faceSeenPct": 1,
+    "baseline": {
+     "smile": 0.15,
+     "animation": 0.031
+    },
+    "turns": [
+     {
+      "turnId": 1,
+      "speaker": "them",
+      "smile": 0.17,
+      "smilePeak": 0.18,
+      "facingPct": 1,
+      "nods": 0,
+      "animation": 0.028,
+      "reaction": null,
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 2,
+      "speaker": "you",
+      "smile": 0.15,
+      "smilePeak": 0.17,
+      "facingPct": 1,
+      "nods": 0,
+      "animation": 0.038,
+      "reaction": {
+       "smileDelta": -0.06,
+       "nods": 0,
+       "facingPct": 0.5
+      },
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 3,
+      "speaker": "them",
+      "smile": 0.16,
+      "smilePeak": 0.18,
+      "facingPct": 0.92,
+      "nods": 0,
+      "animation": 0.033,
+      "reaction": null,
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 4,
+      "speaker": "you",
+      "smile": 0.14,
+      "smilePeak": 0.14,
+      "facingPct": 1,
+      "nods": 0,
+      "animation": 0.004,
+      "reaction": {
+       "smileDelta": -0.05,
+       "nods": 0,
+       "facingPct": 0.62
+      },
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 5,
+      "speaker": "them",
+      "smile": 0.15,
+      "smilePeak": 0.18,
+      "facingPct": 0.86,
+      "nods": 0,
+      "animation": 0.034,
+      "reaction": null,
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 6,
+      "speaker": "you",
+      "smile": 0.14,
+      "smilePeak": 0.14,
+      "facingPct": 1,
+      "nods": 0,
+      "animation": 0.007,
+      "reaction": {
+       "smileDelta": -0.05,
+       "nods": 0,
+       "facingPct": 0.58
+      },
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 7,
+      "speaker": "them",
+      "smile": 0.15,
+      "smilePeak": 0.18,
+      "facingPct": 0.88,
+      "nods": 0,
+      "animation": 0.033,
+      "reaction": null,
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 8,
+      "speaker": "you",
+      "smile": 0.14,
+      "smilePeak": 0.15,
+      "facingPct": 1,
+      "nods": 0,
+      "animation": 0.008,
+      "reaction": {
+       "smileDelta": -0.06,
+       "nods": 0,
+       "facingPct": 0.5
+      },
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 9,
+      "speaker": "them",
+      "smile": 0.1,
+      "smilePeak": 0.1,
+      "facingPct": 0.14,
+      "nods": 0,
+      "animation": 0.05,
+      "reaction": null,
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 10,
+      "speaker": "you",
+      "smile": 0.13,
+      "smilePeak": 0.15,
+      "facingPct": 1,
+      "nods": 0,
+      "animation": 0.012,
+      "reaction": {
+       "smileDelta": 0.01,
+       "nods": 0,
+       "facingPct": 1
+      },
+      "textTone": "neutral",
+      "congruence": null
+     }
+    ],
+    "stats": {
+     "afterFollowUps": {
+      "n": 0,
+      "smileDelta": null,
+      "nods": null
+     },
+     "afterOther": {
+      "n": 5,
+      "smileDelta": -0.04,
+      "nods": 0
+     },
+     "missedBidReactions": [
+      {
+       "turnId": 1,
+       "smileDelta": -0.06
+      },
+      {
+       "turnId": 5,
+       "smileDelta": -0.05
+      },
+      {
+       "turnId": 7,
+       "smileDelta": -0.06
+      }
+     ]
+    }
+   },
+   "insight": {
+    "moments": [
+     {
+      "turnId": 1,
+      "title": "Left hanging",
+      "observation": "They brought up video and the next line moved on.",
+      "why": "One question about it would have kept the thread going."
+     }
+    ],
+    "adviceCheck": [
+     {
+      "advice": "Next time, check back in about video and ask how it went.",
+      "verdict": "not yet",
+      "evidenceTurnIds": [
+       10
+      ],
+      "reason": "No follow-ups on camera to compare yet."
+     }
+    ],
+    "source": "muse-spark",
+    "rewrites": [
+     {
+      "turnId": 6,
+      "title": "Answer, then ask back",
+      "tryInstead": "Slow, the heatmap is fighting me. Did normalizing per video fix the darker clips?",
+      "because": "Priya asked about your part; a real answer and a question about the darker clips keeps it a conversation even when you are tired."
+     },
+     {
+      "turnId": 2,
+      "title": "Give it the five minutes",
+      "tryInstead": "The smile baseline drifts on the darker videos? Show me one, I have five minutes.",
+      "because": "Priya asked for five minutes on the calibration; picking up the darker videos shows you heard the problem."
+     }
+    ],
+    "takeaways": [
+     {
+      "kind": "try",
+      "turnId": 6,
+      "title": "Answer, then ask back",
+      "text": "Priya asked about your part; a real answer and a question about the darker clips keeps it a conversation even when you are tired.",
+      "said": "Nothing really.",
+      "theySaid": "Per video makes sense to me too. How is your part going, the heatmap for the transcript?",
+      "tryInstead": "Slow, the heatmap is fighting me. Did normalizing per video fix the darker clips?",
+      "evidence": "Undersold yourself"
+     },
+     {
+      "kind": "next",
+      "turnId": 7,
+      "title": "Ask about it next time",
+      "text": "They mentioned “I'll push the per video change tonight and leave a note on the pull request.” Ask how it went.",
+      "said": null,
+      "theySaid": null,
+      "tryInstead": null,
+      "evidence": null
+     },
+     {
+      "kind": "try",
+      "turnId": 2,
+      "title": "Give it the five minutes",
+      "text": "Priya asked for five minutes on the calibration; picking up the darker videos shows you heard the problem.",
+      "said": "Just fix it however.",
+      "theySaid": "Hey, sorry it is late. Do you have five minutes for the face-cue calibration? The smile baseline is drifting on the darker videos and I want to",
+      "tryInstead": "The smile baseline drifts on the darker videos? Show me one, I have five minutes.",
+      "evidence": "Cut in"
+     }
+    ]
+   }
+  },
+  {
+   "id": "4677b22e-f348-48ba-a898-44556bdd5687",
+   "tag": "friend",
+   "otherName": "Parth",
+   "createdAt": "2026-10-20T13:00:00.000Z",
+   "seeded": false,
+   "synthetic": true,
+   "turns": [
+    {
+     "turnId": 1,
+     "speaker": "A",
+     "text": "Let's split what's left before the demo. What's on your list?",
+     "startMs": 0,
+     "endMs": 4997
+    },
+    {
+     "turnId": 2,
+     "speaker": "B",
+     "text": "The Mac dashboard colors, mostly. I spent last night on the palette, and the green for went well is finally the same green on the phone, the Mac and the projector.",
+     "startMs": 5602,
+     "endMs": 17979
+    },
+    {
+     "turnId": 3,
+     "speaker": "A",
+     "text": "The same green everywhere, that's a big deal. How did you get them to match?",
+     "startMs": 18664,
+     "endMs": 25122
+    },
+    {
+     "turnId": 4,
+     "speaker": "B",
+     "text": "I moved every color into one tokens file and checked them in light and dark. The yellow was the hard one, on the projector it kept looking orange, so I darkened it a little.",
+     "startMs": 25692,
+     "endMs": 39473
+    },
+    {
+     "turnId": 5,
+     "speaker": "A",
+     "text": "The yellow looked orange on the projector? Did you test it in the room we're judging in?",
+     "startMs": 40123,
+     "endMs": 47265
+    },
+    {
+     "turnId": 6,
+     "speaker": "B",
+     "text": "Not yet, that's on my list for Friday. What's on yours?",
+     "startMs": 47629,
+     "endMs": 52685
+    },
+    {
+     "turnId": 7,
+     "speaker": "A",
+     "text": "The transcript heatmap and the Replay copy. I'll get the Replay transcript heatmap working by Friday. I'll send you a link when it works.",
+     "startMs": 53324,
+     "endMs": 62954
+    },
+    {
+     "turnId": 8,
+     "speaker": "B",
+     "text": "Great. If the heatmap uses the same palette, the highlights will match the calendar too.",
+     "startMs": 63476,
+     "endMs": 69800
+    },
+    {
+     "turnId": 9,
+     "speaker": "A",
+     "text": "Good idea, the heatmap can pull the colors straight from your tokens file.",
+     "startMs": 70485,
+     "endMs": 76277
+    },
+    {
+     "turnId": 10,
+     "speaker": "B",
+     "text": "Perfect. Then on Saturday morning we only have to rehearse.",
+     "startMs": 76658,
+     "endMs": 81076
+    }
+   ],
+   "userLabel": "A",
+   "reflection": "Parth lit up about the colors. Asking how they matched was the right call.",
+   "signals": {
+    "userQuestions": 3,
+    "userTurns": 5,
+    "otherTurns": 5,
+    "userTalkMs": 34019,
+    "otherTalkMs": 41956,
+    "userTalkShare": 0.45,
+    "otherAvgAnswerWords": 25.3,
+    "followUps": 2,
+    "reflections": 2,
+    "storiesAfterQuestions": 2,
+    "questions": [
+     {
+      "turnId": 1,
+      "isFollowUp": false,
+      "replyTurnId": 2,
+      "replyWords": 31,
+      "storyShared": true
+     },
+     {
+      "turnId": 3,
+      "isFollowUp": true,
+      "replyTurnId": 4,
+      "replyWords": 34,
+      "storyShared": true
+     },
+     {
+      "turnId": 5,
+      "isFollowUp": true,
+      "replyTurnId": 6,
+      "replyWords": 11,
+      "storyShared": false
+     }
+    ],
+    "crowd": 0,
+    "source": "muse-spark",
+    "detectorAgreement": {
+     "agree": 3,
+     "of": 3
+    }
+   },
+   "note": {
+    "text": "You asked 3 questions and 2 were follow-ups. You heard 2 stories after your questions.",
+    "suggestion": "Next time, check back in about colors and ask how it went.",
+    "citedTurnIds": [
+     3,
+     5
+    ],
+    "status": "shown",
+    "source": "muse-spark"
+   },
+   "hooks": {
+    "topics": [
+     {
+      "term": "colors",
+      "turnIds": [
+       2,
+       4
+      ],
+      "weight": 4
+     },
+     {
+      "term": "projector",
+      "turnIds": [
+       2,
+       4
+      ],
+      "weight": 4
+     },
+     {
+      "term": "palette",
+      "turnIds": [
+       2,
+       8
+      ],
+      "weight": 3
+     },
+     {
+      "term": "green",
+      "turnIds": [
+       2
+      ],
+      "weight": 3
+     },
+     {
+      "term": "tokens",
+      "turnIds": [
+       4
+      ],
+      "weight": 2
+     }
+    ],
+    "events": [
+     {
+      "text": "Then on Saturday morning we only have to rehearse.",
+      "when": "on saturday",
+      "hasNoun": false,
+      "turnId": 10
+     }
+    ],
+    "commitments": [
+     {
+      "text": "I'll send you a link when it works.",
+      "turnId": 7
+     }
+    ],
+    "missedBids": [],
+    "highlights": [
+     {
+      "turnId": 4,
+      "words": 34
+     },
+     {
+      "turnId": 2,
+      "words": 31
+     }
+    ],
+    "followUpDetector": [
+     {
+      "turnId": 1,
+      "isFollowUp": false,
+      "overlap": []
+     },
+     {
+      "turnId": 3,
+      "isFollowUp": true,
+      "overlap": [
+       "green"
+      ]
+     },
+     {
+      "turnId": 5,
+      "isFollowUp": true,
+      "overlap": [
+       "yellow",
+       "looked",
+       "orange",
+       "projector"
+      ]
+     }
+    ],
+    "awkward": {
+     "flags": [],
+     "score": 0,
+     "seams": [],
+     "worst": null
+    }
+   },
+   "followUp": {
+    "text": "Hey Parth! Loved hearing about colors. Talk on saturday! And like I said, I'll send you a link when it works.",
+    "hooksUsed": [
+     "colors",
+     "on saturday",
+     "I'll send you a link when it works."
+    ],
+    "source": "muse-spark",
+    "status": "sent",
+    "sentAt": "2026-10-20T14:17:21.076Z"
+   },
+   "recording": null,
+   "behavior": {
+    "model": "mediapipe-face-landmarker@0.10.14 (synthetic)",
+    "fps": 5,
+    "frameCount": 421,
+    "faceSeenPct": 1,
+    "baseline": {
+     "smile": 0.27,
+     "animation": 0.024
+    },
+    "turns": [
+     {
+      "turnId": 1,
+      "speaker": "you",
+      "smile": 0.24,
+      "smilePeak": 0.25,
+      "facingPct": 1,
+      "nods": 0,
+      "animation": 0.004,
+      "reaction": {
+       "smileDelta": 0.07,
+       "nods": 0,
+       "facingPct": 1
+      },
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 2,
+      "speaker": "them",
+      "smile": 0.29,
+      "smilePeak": 0.37,
+      "facingPct": 1,
+      "nods": 2,
+      "animation": 0.036,
+      "reaction": null,
+      "textTone": "positive",
+      "congruence": null
+     },
+     {
+      "turnId": 3,
+      "speaker": "you",
+      "smile": 0.24,
+      "smilePeak": 0.25,
+      "facingPct": 1,
+      "nods": 0,
+      "animation": 0.003,
+      "reaction": {
+       "smileDelta": 0.08,
+       "nods": 0,
+       "facingPct": 1
+      },
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 4,
+      "speaker": "them",
+      "smile": 0.29,
+      "smilePeak": 0.38,
+      "facingPct": 1,
+      "nods": 2,
+      "animation": 0.035,
+      "reaction": null,
+      "textTone": "negative",
+      "congruence": "match"
+     },
+     {
+      "turnId": 5,
+      "speaker": "you",
+      "smile": 0.24,
+      "smilePeak": 0.27,
+      "facingPct": 1,
+      "nods": 0,
+      "animation": 0.004,
+      "reaction": {
+       "smileDelta": 0.08,
+       "nods": 0,
+       "facingPct": 1
+      },
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 6,
+      "speaker": "them",
+      "smile": 0.31,
+      "smilePeak": 0.37,
+      "facingPct": 1,
+      "nods": 0,
+      "animation": 0.041,
+      "reaction": null,
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 7,
+      "speaker": "you",
+      "smile": 0.24,
+      "smilePeak": 0.25,
+      "facingPct": 1,
+      "nods": 0,
+      "animation": 0.003,
+      "reaction": {
+       "smileDelta": 0.07,
+       "nods": 0,
+       "facingPct": 1
+      },
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 8,
+      "speaker": "them",
+      "smile": 0.3,
+      "smilePeak": 0.37,
+      "facingPct": 1,
+      "nods": 2,
+      "animation": 0.046,
+      "reaction": null,
+      "textTone": "positive",
+      "congruence": null
+     },
+     {
+      "turnId": 9,
+      "speaker": "you",
+      "smile": 0.24,
+      "smilePeak": 0.28,
+      "facingPct": 1,
+      "nods": 0,
+      "animation": 0.005,
+      "reaction": {
+       "smileDelta": 0.08,
+       "nods": 0,
+       "facingPct": 1
+      },
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 10,
+      "speaker": "them",
+      "smile": 0.32,
+      "smilePeak": 0.37,
+      "facingPct": 1,
+      "nods": 0,
+      "animation": 0.041,
+      "reaction": null,
+      "textTone": "neutral",
+      "congruence": null
+     }
+    ],
+    "stats": {
+     "afterFollowUps": {
+      "n": 2,
+      "smileDelta": 0.08,
+      "nods": 0
+     },
+     "afterOther": {
+      "n": 3,
+      "smileDelta": 0.07,
+      "nods": 0
+     },
+     "missedBidReactions": []
+    }
+   },
+   "insight": {
+    "moments": [
+     {
+      "turnId": 3,
+      "title": "This landed",
+      "observation": "Right after you said this, their smile rose 8 points over baseline.",
+      "why": "Questions that pick up their words get the warmest reactions; keep doing it."
+     }
+    ],
+    "adviceCheck": [
+     {
+      "advice": "Next time, check back in about colors and ask how it went.",
+      "verdict": "backed",
+      "evidenceTurnIds": [
+       3
+      ],
+      "reason": "After your follow-ups their smile moved 8 points vs 7 points after other lines."
+     }
+    ],
+    "source": "muse-spark",
+    "rewrites": [],
+    "takeaways": [
+     {
+      "kind": "keep",
+      "turnId": 3,
+      "title": "This landed",
+      "text": "Questions that pick up their words get the warmest reactions; keep doing it.",
+      "said": null,
+      "theySaid": null,
+      "tryInstead": null,
+      "evidence": "Smile +8"
+     },
+     {
+      "kind": "next",
+      "turnId": 10,
+      "title": "Ask about it next time",
+      "text": "They mentioned “Then on Saturday morning we only have to rehearse.” Ask how it went.",
+      "said": null,
+      "theySaid": null,
+      "tryInstead": null,
+      "evidence": null
+     }
+    ]
+   }
+  },
+  {
+   "id": "6fbd86ca-3f69-48ec-a3e3-f6488b4d99ac",
+   "tag": "friend",
+   "otherName": "Prat",
+   "createdAt": "2026-10-21T18:25:00.000Z",
+   "seeded": false,
+   "synthetic": true,
+   "turns": [
+    {
+     "turnId": 1,
+     "speaker": "A",
+     "text": "Before I say anything, how do you want the Replay video overlay to work?",
+     "startMs": 0,
+     "endMs": 5855
+    },
+    {
+     "turnId": 2,
+     "speaker": "B",
+     "text": "I want the face mesh drawn on the other person, smoothed so it doesn't jitter, and lined up with the transcript so the dots move with the words. Right now it lags about two frames behind.",
+     "startMs": 6366,
+     "endMs": 20768
+    },
+    {
+     "turnId": 3,
+     "speaker": "A",
+     "text": "So the mesh is smoothed and lined up with the words, but it lags two frames. What's causing the lag?",
+     "startMs": 21495,
+     "endMs": 29901
+    },
+    {
+     "turnId": 4,
+     "speaker": "B",
+     "text": "The model runs on every frame, and we draw after it finishes. If I draw the last result right away and correct it on the next frame, the lag disappears.",
+     "startMs": 30350,
+     "endMs": 42477
+    },
+    {
+     "turnId": 5,
+     "speaker": "A",
+     "text": "Draw the last result, then correct it. Does that make the mesh jump when someone turns quickly?",
+     "startMs": 43239,
+     "endMs": 50328
+    },
+    {
+     "turnId": 6,
+     "speaker": "B",
+     "text": "A little, so I blend the two frames. It looks smooth at normal speed and only wobbles when you scrub fast.",
+     "startMs": 51051,
+     "endMs": 59783
+    },
+    {
+     "turnId": 7,
+     "speaker": "A",
+     "text": "Blending sounds right for the demo. What do you need from me for the overlay?",
+     "startMs": 60454,
+     "endMs": 66692
+    },
+    {
+     "turnId": 8,
+     "speaker": "B",
+     "text": "Just a second pair of eyes. I'll send a clip tonight and you can tell me if the blending looks okay.",
+     "startMs": 67062,
+     "endMs": 75848
+    },
+    {
+     "turnId": 9,
+     "speaker": "A",
+     "text": "I'll watch the clip tonight and reply with notes before you start the next part.",
+     "startMs": 76443,
+     "endMs": 82729
+    },
+    {
+     "turnId": 10,
+     "speaker": "B",
+     "text": "Thanks, that helps. This is the part of the project I'm most proud of.",
+     "startMs": 83291,
+     "endMs": 89403
+    }
+   ],
+   "userLabel": "A",
+   "reflection": "Asked about Prat's work before mine, like the note said. It worked.",
+   "signals": {
+    "userQuestions": 4,
+    "userTurns": 5,
+    "otherTurns": 5,
+    "userTalkMs": 33874,
+    "otherTalkMs": 50159,
+    "userTalkShare": 0.4,
+    "otherAvgAnswerWords": 27,
+    "followUps": 2,
+    "reflections": 1,
+    "storiesAfterQuestions": 4,
+    "questions": [
+     {
+      "turnId": 1,
+      "isFollowUp": false,
+      "replyTurnId": 2,
+      "replyWords": 36,
+      "storyShared": true
+     },
+     {
+      "turnId": 3,
+      "isFollowUp": true,
+      "replyTurnId": 4,
+      "replyWords": 30,
+      "storyShared": true
+     },
+     {
+      "turnId": 5,
+      "isFollowUp": true,
+      "replyTurnId": 6,
+      "replyWords": 21,
+      "storyShared": true
+     },
+     {
+      "turnId": 7,
+      "isFollowUp": false,
+      "replyTurnId": 8,
+      "replyWords": 21,
+      "storyShared": true
+     }
+    ],
+    "crowd": 0,
+    "source": "muse-spark",
+    "detectorAgreement": {
+     "agree": 3,
+     "of": 4
+    }
+   },
+   "note": {
+    "text": "You asked 4 questions and 2 were follow-ups. You heard 4 stories after your questions.",
+    "suggestion": "Next time, check back in about frames and ask how it went.",
+    "citedTurnIds": [
+     3,
+     5
+    ],
+    "status": "shown",
+    "source": "muse-spark"
+   },
+   "hooks": {
+    "topics": [
+     {
+      "term": "frames",
+      "turnIds": [
+       2,
+       4,
+       6
+      ],
+      "weight": 7
+     },
+     {
+      "term": "draw",
+      "turnIds": [
+       4
+      ],
+      "weight": 3
+     },
+     {
+      "term": "looks",
+      "turnIds": [
+       6,
+       8
+      ],
+      "weight": 3
+     },
+     {
+      "term": "mesh",
+      "turnIds": [
+       2
+      ],
+      "weight": 2
+     },
+     {
+      "term": "words",
+      "turnIds": [
+       2
+      ],
+      "weight": 2
+     }
+    ],
+    "events": [
+     {
+      "text": "I'll send a clip tonight and you can tell me if the blending looks okay.",
+      "when": "tonight",
+      "hasNoun": false,
+      "turnId": 8
+     }
+    ],
+    "commitments": [],
+    "missedBids": [],
+    "highlights": [
+     {
+      "turnId": 2,
+      "words": 36
+     },
+     {
+      "turnId": 4,
+      "words": 30
+     }
+    ],
+    "followUpDetector": [
+     {
+      "turnId": 1,
+      "isFollowUp": false,
+      "overlap": []
+     },
+     {
+      "turnId": 3,
+      "isFollowUp": true,
+      "overlap": [
+       "mesh",
+       "smoothed",
+       "lined",
+       "words",
+       "lags",
+       "frames"
+      ]
+     },
+     {
+      "turnId": 5,
+      "isFollowUp": true,
+      "overlap": [
+       "draw",
+       "result",
+       "correct"
+      ]
+     },
+     {
+      "turnId": 7,
+      "isFollowUp": true,
+      "overlap": [
+       "blending"
+      ]
+     }
+    ],
+    "awkward": {
+     "flags": [],
+     "score": 0,
+     "seams": [],
+     "worst": null
+    }
+   },
+   "followUp": {
+    "text": "Hey Prat! Loved hearing about frames. Talk tonight!",
+    "hooksUsed": [
+     "frames",
+     "tonight"
+    ],
+    "source": "muse-spark",
+    "status": "sent",
+    "sentAt": "2026-10-21T19:49:29.403Z"
+   },
+   "recording": null,
+   "behavior": {
+    "model": "mediapipe-face-landmarker@0.10.14 (synthetic)",
+    "fps": 5,
+    "frameCount": 463,
+    "faceSeenPct": 1,
+    "baseline": {
+     "smile": 0.27,
+     "animation": 0.024
+    },
+    "turns": [
+     {
+      "turnId": 1,
+      "speaker": "you",
+      "smile": 0.24,
+      "smilePeak": 0.28,
+      "facingPct": 1,
+      "nods": 0,
+      "animation": 0.004,
+      "reaction": {
+       "smileDelta": 0.08,
+       "nods": 0,
+       "facingPct": 1
+      },
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 2,
+      "speaker": "them",
+      "smile": 0.29,
+      "smilePeak": 0.37,
+      "facingPct": 1,
+      "nods": 2,
+      "animation": 0.032,
+      "reaction": null,
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 3,
+      "speaker": "you",
+      "smile": 0.24,
+      "smilePeak": 0.25,
+      "facingPct": 1,
+      "nods": 0,
+      "animation": 0.004,
+      "reaction": {
+       "smileDelta": 0.08,
+       "nods": 0,
+       "facingPct": 1
+      },
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 4,
+      "speaker": "them",
+      "smile": 0.29,
+      "smilePeak": 0.38,
+      "facingPct": 1,
+      "nods": 2,
+      "animation": 0.034,
+      "reaction": null,
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 5,
+      "speaker": "you",
+      "smile": 0.24,
+      "smilePeak": 0.25,
+      "facingPct": 1,
+      "nods": 0,
+      "animation": 0.003,
+      "reaction": {
+       "smileDelta": 0.07,
+       "nods": 0,
+       "facingPct": 1
+      },
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 6,
+      "speaker": "them",
+      "smile": 0.29,
+      "smilePeak": 0.38,
+      "facingPct": 1,
+      "nods": 2,
+      "animation": 0.038,
+      "reaction": null,
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 7,
+      "speaker": "you",
+      "smile": 0.24,
+      "smilePeak": 0.27,
+      "facingPct": 1,
+      "nods": 0,
+      "animation": 0.004,
+      "reaction": {
+       "smileDelta": 0.08,
+       "nods": 0,
+       "facingPct": 1
+      },
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 8,
+      "speaker": "them",
+      "smile": 0.3,
+      "smilePeak": 0.37,
+      "facingPct": 1,
+      "nods": 2,
+      "animation": 0.034,
+      "reaction": null,
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 9,
+      "speaker": "you",
+      "smile": 0.24,
+      "smilePeak": 0.25,
+      "facingPct": 1,
+      "nods": 0,
+      "animation": 0.003,
+      "reaction": {
+       "smileDelta": 0.08,
+       "nods": 0,
+       "facingPct": 1
+      },
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 10,
+      "speaker": "them",
+      "smile": 0.3,
+      "smilePeak": 0.37,
+      "facingPct": 1,
+      "nods": 2,
+      "animation": 0.041,
+      "reaction": null,
+      "textTone": "positive",
+      "congruence": null
+     }
+    ],
+    "stats": {
+     "afterFollowUps": {
+      "n": 2,
+      "smileDelta": 0.08,
+      "nods": 0
+     },
+     "afterOther": {
+      "n": 3,
+      "smileDelta": 0.08,
+      "nods": 0
+     },
+     "missedBidReactions": []
+    }
+   },
+   "insight": {
+    "moments": [
+     {
+      "turnId": 1,
+      "title": "This landed",
+      "observation": "Right after you said this, their smile rose 8 points over baseline.",
+      "why": "Questions that pick up their words get the warmest reactions; keep doing it."
+     }
+    ],
+    "adviceCheck": [
+     {
+      "advice": "Next time, check back in about frames and ask how it went.",
+      "verdict": "partly",
+      "evidenceTurnIds": [
+       1
+      ],
+      "reason": "After your follow-ups their smile moved 8 points vs 8 points after other lines."
+     }
+    ],
+    "source": "muse-spark",
+    "rewrites": [],
+    "takeaways": [
+     {
+      "kind": "keep",
+      "turnId": 3,
+      "title": "Keep asking follow-ups",
+      "text": "“So the mesh is smoothed and lined up with the words, but it lags two frames. What's causing the lag?” built on what they had just told you.",
+      "said": null,
+      "theySaid": null,
+      "tryInstead": null,
+      "evidence": "Smile +8"
+     },
+     {
+      "kind": "next",
+      "turnId": 8,
+      "title": "Ask about it next time",
+      "text": "They mentioned “I'll send a clip tonight and you can tell me if the blending looks okay.” Ask how it went.",
+      "said": null,
+      "theySaid": null,
+      "tryInstead": null,
+      "evidence": null
+     }
+    ]
+   }
+  },
+  {
+   "id": "b2b7ad94-88a6-49d4-ac48-13781aa2b56a",
+   "tag": "friend",
+   "otherName": "Priya",
+   "createdAt": "2026-10-22T15:40:00.000Z",
+   "seeded": false,
+   "synthetic": true,
+   "turns": [
+    {
+     "turnId": 1,
+     "speaker": "A",
+     "text": "Can you walk me through the Muse Voice demo and the diarization?",
+     "startMs": 0,
+     "endMs": 5428
+    },
+    {
+     "turnId": 2,
+     "speaker": "B",
+     "text": "Sure. It is the three-voice diarization in action. Two people talk over each other and the transcript keeps them apart, even with a bystander in the background. The Muse Voice demo is on Friday for the sponsor booth.",
+     "startMs": 5925,
+     "endMs": 20884
+    },
+    {
+     "turnId": 3,
+     "speaker": "A",
+     "text": "The demo for the sponsor booth is on Friday? What do you want them to notice first?",
+     "startMs": 21541,
+     "endMs": 28892
+    },
+    {
+     "turnId": 4,
+     "speaker": "B",
+     "text": "That the voices stay separated when people interrupt each other. Interruptions are where every other transcriber breaks down.",
+     "startMs": 29420,
+     "endMs": 36974
+    },
+    {
+     "turnId": 5,
+     "speaker": "A",
+     "text": "Interruptions are where ours used to break down too. How did you fix it?",
+     "startMs": 37746,
+     "endMs": 43744
+    },
+    {
+     "turnId": 6,
+     "speaker": "B",
+     "text": "Shorter windows for the diarization, plus the lip lock cues from the phone. When the mouth on camera moves, that voice wins the overlap.",
+     "startMs": 44443,
+     "endMs": 54169
+    },
+    {
+     "turnId": 7,
+     "speaker": "A",
+     "text": "So the camera breaks the tie. That's clever. Can I help you set up on Friday?",
+     "startMs": 54678,
+     "endMs": 61569
+    },
+    {
+     "turnId": 8,
+     "speaker": "B",
+     "text": "Yes please, I need someone to play the second voice and interrupt me on purpose.",
+     "startMs": 61932,
+     "endMs": 68278
+    },
+    {
+     "turnId": 9,
+     "speaker": "A",
+     "text": "I'll bring my laptop on Friday and interrupt you as much as the demo needs.",
+     "startMs": 68730,
+     "endMs": 75255
+    },
+    {
+     "turnId": 10,
+     "speaker": "B",
+     "text": "Perfect, that will be the most useful interrupting anyone does all weekend.",
+     "startMs": 75794,
+     "endMs": 81036
+    }
+   ],
+   "userLabel": "A",
+   "reflection": "Finally asked Priya about the diarization. It is genuinely impressive.",
+   "signals": {
+    "userQuestions": 4,
+    "userTurns": 5,
+    "otherTurns": 5,
+    "userTalkMs": 32193,
+    "otherTalkMs": 43827,
+    "userTalkShare": 0.42,
+    "otherAvgAnswerWords": 23.8,
+    "followUps": 3,
+    "reflections": 1,
+    "storiesAfterQuestions": 4,
+    "questions": [
+     {
+      "turnId": 1,
+      "isFollowUp": false,
+      "replyTurnId": 2,
+      "replyWords": 38,
+      "storyShared": true
+     },
+     {
+      "turnId": 3,
+      "isFollowUp": true,
+      "replyTurnId": 4,
+      "replyWords": 18,
+      "storyShared": true
+     },
+     {
+      "turnId": 5,
+      "isFollowUp": true,
+      "replyTurnId": 6,
+      "replyWords": 24,
+      "storyShared": true
+     },
+     {
+      "turnId": 7,
+      "isFollowUp": true,
+      "replyTurnId": 8,
+      "replyWords": 15,
+      "storyShared": true
+     }
+    ],
+    "crowd": 0,
+    "source": "muse-spark",
+    "detectorAgreement": {
+     "agree": 4,
+     "of": 4
+    }
+   },
+   "note": {
+    "text": "You asked 4 questions and 3 were follow-ups. You heard 4 stories after your questions.",
+    "suggestion": "Next time, check back in about Voice and ask how it went.",
+    "citedTurnIds": [
+     3,
+     5,
+     7
+    ],
+    "status": "shown",
+    "source": "muse-spark"
+   },
+   "hooks": {
+    "topics": [
+     {
+      "term": "Voice",
+      "turnIds": [
+       2,
+       4,
+       6,
+       8
+      ],
+      "weight": 11
+     },
+     {
+      "term": "diarization",
+      "turnIds": [
+       2,
+       6
+      ],
+      "weight": 4
+     },
+     {
+      "term": "Muse",
+      "turnIds": [
+       2
+      ],
+      "weight": 4
+     },
+     {
+      "term": "interrupt",
+      "turnIds": [
+       4,
+       8
+      ],
+      "weight": 4
+     },
+     {
+      "term": "demo",
+      "turnIds": [
+       2
+      ],
+      "weight": 2
+     }
+    ],
+    "events": [
+     {
+      "text": "The Muse Voice demo is on Friday for the sponsor booth.",
+      "when": "on friday",
+      "hasNoun": false,
+      "turnId": 2
+     }
+    ],
+    "commitments": [
+     {
+      "text": "I'll bring my laptop on Friday and interrupt you as much as the demo needs.",
+      "turnId": 9
+     }
+    ],
+    "missedBids": [],
+    "highlights": [
+     {
+      "turnId": 2,
+      "words": 38
+     },
+     {
+      "turnId": 6,
+      "words": 24
+     }
+    ],
+    "followUpDetector": [
+     {
+      "turnId": 1,
+      "isFollowUp": false,
+      "overlap": []
+     },
+     {
+      "turnId": 3,
+      "isFollowUp": true,
+      "overlap": [
+       "demo",
+       "sponsor",
+       "booth",
+       "friday"
+      ]
+     },
+     {
+      "turnId": 5,
+      "isFollowUp": true,
+      "overlap": [
+       "interruptions",
+       "break"
+      ]
+     },
+     {
+      "turnId": 7,
+      "isFollowUp": true,
+      "overlap": [
+       "camera"
+      ]
+     }
+    ],
+    "awkward": {
+     "flags": [],
+     "score": 0,
+     "seams": [],
+     "worst": null
+    }
+   },
+   "followUp": {
+    "text": "Hey Priya! Loved hearing about Voice. Talk on friday! And like I said, I'll bring my laptop on Friday and interrupt you as much as the demo needs.",
+    "hooksUsed": [
+     "Voice",
+     "interrupt",
+     "demo",
+     "on friday",
+     "I'll bring my laptop on Friday and…"
+    ],
+    "source": "muse-spark",
+    "status": "sent",
+    "sentAt": "2026-10-22T17:11:21.036Z"
+   },
+   "recording": null,
+   "behavior": {
+    "model": "mediapipe-face-landmarker@0.10.14 (synthetic)",
+    "fps": 5,
+    "frameCount": 421,
+    "faceSeenPct": 1,
+    "baseline": {
+     "smile": 0.27,
+     "animation": 0.024
+    },
+    "turns": [
+     {
+      "turnId": 1,
+      "speaker": "you",
+      "smile": 0.24,
+      "smilePeak": 0.27,
+      "facingPct": 1,
+      "nods": 0,
+      "animation": 0.004,
+      "reaction": {
+       "smileDelta": 0.09,
+       "nods": 0,
+       "facingPct": 1
+      },
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 2,
+      "speaker": "them",
+      "smile": 0.28,
+      "smilePeak": 0.38,
+      "facingPct": 1,
+      "nods": 2,
+      "animation": 0.033,
+      "reaction": null,
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 3,
+      "speaker": "you",
+      "smile": 0.24,
+      "smilePeak": 0.27,
+      "facingPct": 1,
+      "nods": 0,
+      "animation": 0.004,
+      "reaction": {
+       "smileDelta": 0.07,
+       "nods": 0,
+       "facingPct": 1
+      },
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 4,
+      "speaker": "them",
+      "smile": 0.3,
+      "smilePeak": 0.36,
+      "facingPct": 1,
+      "nods": 2,
+      "animation": 0.035,
+      "reaction": null,
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 5,
+      "speaker": "you",
+      "smile": 0.24,
+      "smilePeak": 0.25,
+      "facingPct": 1,
+      "nods": 0,
+      "animation": 0.003,
+      "reaction": {
+       "smileDelta": 0.07,
+       "nods": 0,
+       "facingPct": 1
+      },
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 6,
+      "speaker": "them",
+      "smile": 0.29,
+      "smilePeak": 0.37,
+      "facingPct": 1,
+      "nods": 2,
+      "animation": 0.033,
+      "reaction": null,
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 7,
+      "speaker": "you",
+      "smile": 0.24,
+      "smilePeak": 0.25,
+      "facingPct": 1,
+      "nods": 0,
+      "animation": 0.003,
+      "reaction": {
+       "smileDelta": 0.07,
+       "nods": 0,
+       "facingPct": 1
+      },
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 8,
+      "speaker": "them",
+      "smile": 0.3,
+      "smilePeak": 0.36,
+      "facingPct": 1,
+      "nods": 2,
+      "animation": 0.037,
+      "reaction": null,
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 9,
+      "speaker": "you",
+      "smile": 0.24,
+      "smilePeak": 0.27,
+      "facingPct": 1,
+      "nods": 0,
+      "animation": 0.004,
+      "reaction": {
+       "smileDelta": 0.08,
+       "nods": 0,
+       "facingPct": 1
+      },
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 10,
+      "speaker": "them",
+      "smile": 0.31,
+      "smilePeak": 0.37,
+      "facingPct": 1,
+      "nods": 0,
+      "animation": 0.043,
+      "reaction": null,
+      "textTone": "neutral",
+      "congruence": null
+     }
+    ],
+    "stats": {
+     "afterFollowUps": {
+      "n": 3,
+      "smileDelta": 0.07,
+      "nods": 0
+     },
+     "afterOther": {
+      "n": 2,
+      "smileDelta": 0.09,
+      "nods": 0
+     },
+     "missedBidReactions": []
+    }
+   },
+   "insight": {
+    "moments": [
+     {
+      "turnId": 1,
+      "title": "This landed",
+      "observation": "Right after you said this, their smile rose 9 points over baseline.",
+      "why": "Questions that pick up their words get the warmest reactions; keep doing it."
+     }
+    ],
+    "adviceCheck": [
+     {
+      "advice": "Next time, check back in about Voice and ask how it went.",
+      "verdict": "partly",
+      "evidenceTurnIds": [
+       1
+      ],
+      "reason": "After your follow-ups their smile moved 7 points vs 9 points after other lines."
+     }
+    ],
+    "source": "muse-spark",
+    "rewrites": [],
+    "takeaways": [
+     {
+      "kind": "keep",
+      "turnId": 3,
+      "title": "Keep asking follow-ups",
+      "text": "“The demo for the sponsor booth is on Friday? What do you want them to notice first?” built on what they had just told you.",
+      "said": null,
+      "theySaid": null,
+      "tryInstead": null,
+      "evidence": "Smile +7"
+     },
+     {
+      "kind": "next",
+      "turnId": 2,
+      "title": "Ask about it next time",
+      "text": "They mentioned “The Muse Voice demo is on Friday for the sponsor booth.” Ask how it went.",
+      "said": null,
+      "theySaid": null,
+      "tryInstead": null,
+      "evidence": null
+     }
+    ]
+   }
+  },
+  {
+   "id": "e0a73e8b-7f38-49dd-a07e-4070fd609f6c",
+   "tag": "friend",
+   "otherName": "Parth",
+   "createdAt": "2026-10-23T10:15:00.000Z",
+   "seeded": false,
+   "synthetic": true,
+   "turns": [
+    {
+     "turnId": 1,
+     "speaker": "A",
+     "text": "Quick one, the calendar shows yesterday as empty on your machine?",
+     "startMs": 0,
+     "endMs": 4716
+    },
+    {
+     "turnId": 2,
+     "speaker": "B",
+     "text": "Yeah, on mine the streak says one day. I think the date is being read in UTC, so anything after seven in the evening lands on the next day and",
+     "startMs": 5132,
+     "endMs": 17272
+    },
+    {
+     "turnId": 3,
+     "speaker": "A",
+     "text": "Can you just send me the line?",
+     "startMs": 16572,
+     "endMs": 20027
+    },
+    {
+     "turnId": 4,
+     "speaker": "B",
+     "text": "Sure, it is the dayKey function in home.js. It uses the ISO string, which is UTC. If we build the key from the local date instead, the evening ones stay on the right day.",
+     "startMs": 20400,
+     "endMs": 34002
+    },
+    {
+     "turnId": 5,
+     "speaker": "A",
+     "text": "Okay.",
+     "startMs": 34428,
+     "endMs": 35631
+    },
+    {
+     "turnId": 6,
+     "speaker": "B",
+     "text": "Do you want me to fix it, or do you want to take it? I am also looking at a second bug where the pending tasks repeat when",
+     "startMs": 36311,
+     "endMs": 47544
+    },
+    {
+     "turnId": 7,
+     "speaker": "A",
+     "text": "I'll send you the repro steps tonight and take the date one.",
+     "startMs": 46944,
+     "endMs": 52156
+    },
+    {
+     "turnId": 8,
+     "speaker": "B",
+     "text": "Thanks. I'll take the repeating tasks then. We should be fine before judging, and the new palette is live on the projector too.",
+     "startMs": 52890,
+     "endMs": 62157
+    },
+    {
+     "turnId": 9,
+     "speaker": "A",
+     "text": "Sorry, I'm rushing today. The palette looks great, and thanks for finding the timezone thing.",
+     "startMs": 62535,
+     "endMs": 68924
+    },
+    {
+     "turnId": 10,
+     "speaker": "B",
+     "text": "No worries, the palette was the fun part of my week. And it was a good catch from the screenshots you sent yesterday.",
+     "startMs": 69353,
+     "endMs": 78803
+    }
+   ],
+   "userLabel": "A",
+   "reflection": "I was rushing and cut Parth off twice. Need to slow down tomorrow.",
+   "signals": {
+    "userQuestions": 2,
+    "userTurns": 5,
+    "otherTurns": 5,
+    "userTalkMs": 20975,
+    "otherTalkMs": 55692,
+    "userTalkShare": 0.27,
+    "otherAvgAnswerWords": 32,
+    "followUps": 0,
+    "reflections": 2,
+    "storiesAfterQuestions": 2,
+    "questions": [
+     {
+      "turnId": 1,
+      "isFollowUp": false,
+      "replyTurnId": 2,
+      "replyWords": 30,
+      "storyShared": true
+     },
+     {
+      "turnId": 3,
+      "isFollowUp": false,
+      "replyTurnId": 4,
+      "replyWords": 34,
+      "storyShared": true
+     }
+    ],
+    "crowd": 0,
+    "source": "muse-spark",
+    "detectorAgreement": {
+     "agree": 2,
+     "of": 2
+    }
+   },
+   "note": {
+    "text": "You asked 2 questions and 0 were follow-ups. You heard 2 stories after your questions.",
+    "suggestion": "Next time, check back in about date and ask how it went.",
+    "citedTurnIds": [],
+    "status": "shown",
+    "source": "muse-spark"
+   },
+   "hooks": {
+    "topics": [
+     {
+      "term": "date",
+      "turnIds": [
+       2,
+       4
+      ],
+      "weight": 4
+     },
+     {
+      "term": "palette",
+      "turnIds": [
+       8,
+       10
+      ],
+      "weight": 4
+     },
+     {
+      "term": "evening",
+      "turnIds": [
+       2,
+       4
+      ],
+      "weight": 3
+     },
+     {
+      "term": "tasks",
+      "turnIds": [
+       6,
+       8
+      ],
+      "weight": 3
+     },
+     {
+      "term": "yesterday",
+      "turnIds": [
+       10
+      ],
+      "weight": 2
+     }
+    ],
+    "events": [],
+    "commitments": [
+     {
+      "text": "I'll send you the repro steps tonight and take the date one.",
+      "turnId": 7
+     }
+    ],
+    "missedBids": [
+     {
+      "turnId": 4,
+      "replyTurnId": 5,
+      "cue": "date"
+     },
+     {
+      "turnId": 6,
+      "replyTurnId": 7,
+      "cue": "tasks"
+     }
+    ],
+    "highlights": [
+     {
+      "turnId": 4,
+      "words": 34
+     },
+     {
+      "turnId": 2,
+      "words": 30
+     }
+    ],
+    "followUpDetector": [
+     {
+      "turnId": 1,
+      "isFollowUp": false,
+      "overlap": []
+     },
+     {
+      "turnId": 3,
+      "isFollowUp": false,
+      "overlap": []
+     }
+    ],
+    "awkward": {
+     "flags": [
+      {
+       "turnId": 3,
+       "who": "you",
+       "kind": "cut-in",
+       "label": "Cut in",
+       "evidence": "You started talking 0.7 s before they finished",
+       "weight": 3
+      },
+      {
+       "turnId": 7,
+       "who": "you",
+       "kind": "cut-in",
+       "label": "Cut in",
+       "evidence": "You started talking 0.6 s before they finished",
+       "weight": 3
+      }
+     ],
+     "score": 60,
+     "seams": [],
+     "worst": {
+      "turnId": 3,
+      "who": "you",
+      "kind": "cut-in",
+      "label": "Cut in",
+      "evidence": "You started talking 0.7 s before they finished",
+      "weight": 3
+     }
+    }
+   },
+   "followUp": {
+    "text": "Hey Parth! Loved hearing about date. And like I said, I'll send you the repro steps tonight and take the date one.",
+    "hooksUsed": [
+     "date",
+     "I'll send you the repro steps tonight…"
+    ],
+    "source": "muse-spark",
+    "status": "draft",
+    "sentAt": null
+   },
+   "recording": null,
+   "behavior": {
+    "model": "mediapipe-face-landmarker@0.10.14 (synthetic)",
+    "fps": 5,
+    "frameCount": 410,
+    "faceSeenPct": 1,
+    "baseline": {
+     "smile": 0.21,
+     "animation": 0.027
+    },
+    "turns": [
+     {
+      "turnId": 1,
+      "speaker": "you",
+      "smile": 0.19,
+      "smilePeak": 0.2,
+      "facingPct": 1,
+      "nods": 0,
+      "animation": 0.003,
+      "reaction": {
+       "smileDelta": 0.05,
+       "nods": 0,
+       "facingPct": 1
+      },
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 2,
+      "speaker": "them",
+      "smile": 0.23,
+      "smilePeak": 0.28,
+      "facingPct": 1,
+      "nods": 1,
+      "animation": 0.033,
+      "reaction": null,
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 3,
+      "speaker": "you",
+      "smile": 0.19,
+      "smilePeak": 0.22,
+      "facingPct": 1,
+      "nods": 0,
+      "animation": 0.018,
+      "reaction": {
+       "smileDelta": -0.06,
+       "nods": 0,
+       "facingPct": 0.75
+      },
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 4,
+      "speaker": "them",
+      "smile": 0.21,
+      "smilePeak": 0.23,
+      "facingPct": 0.96,
+      "nods": 1,
+      "animation": 0.033,
+      "reaction": null,
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 5,
+      "speaker": "you",
+      "smile": 0.18,
+      "smilePeak": 0.19,
+      "facingPct": 1,
+      "nods": 0,
+      "animation": 0.009,
+      "reaction": {
+       "smileDelta": -0.06,
+       "nods": 0,
+       "facingPct": 0.75
+      },
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 6,
+      "speaker": "them",
+      "smile": 0.21,
+      "smilePeak": 0.23,
+      "facingPct": 0.95,
+      "nods": 1,
+      "animation": 0.033,
+      "reaction": null,
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 7,
+      "speaker": "you",
+      "smile": 0.2,
+      "smilePeak": 0.22,
+      "facingPct": 1,
+      "nods": 0,
+      "animation": 0.011,
+      "reaction": {
+       "smileDelta": -0.06,
+       "nods": 0,
+       "facingPct": 0.69
+      },
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 8,
+      "speaker": "them",
+      "smile": 0.2,
+      "smilePeak": 0.23,
+      "facingPct": 0.91,
+      "nods": 1,
+      "animation": 0.035,
+      "reaction": null,
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 9,
+      "speaker": "you",
+      "smile": 0.19,
+      "smilePeak": 0.2,
+      "facingPct": 1,
+      "nods": 0,
+      "animation": 0.003,
+      "reaction": {
+       "smileDelta": 0.05,
+       "nods": 0,
+       "facingPct": 1
+      },
+      "textTone": "positive",
+      "congruence": null
+     },
+     {
+      "turnId": 10,
+      "speaker": "them",
+      "smile": 0.23,
+      "smilePeak": 0.27,
+      "facingPct": 1,
+      "nods": 1,
+      "animation": 0.032,
+      "reaction": null,
+      "textTone": "positive",
+      "congruence": null
+     }
+    ],
+    "stats": {
+     "afterFollowUps": {
+      "n": 0,
+      "smileDelta": null,
+      "nods": null
+     },
+     "afterOther": {
+      "n": 5,
+      "smileDelta": -0.02,
+      "nods": 0
+     },
+     "missedBidReactions": [
+      {
+       "turnId": 4,
+       "smileDelta": -0.06
+      },
+      {
+       "turnId": 6,
+       "smileDelta": -0.06
+      }
+     ]
+    }
+   },
+   "insight": {
+    "moments": [
+     {
+      "turnId": 1,
+      "title": "This landed",
+      "observation": "Right after you said this, their smile rose 5 points over baseline.",
+      "why": "Questions that pick up their words get the warmest reactions; keep doing it."
+     },
+     {
+      "turnId": 4,
+      "title": "Left hanging",
+      "observation": "They brought up date and the next line moved on.",
+      "why": "One question about it would have kept the thread going."
+     }
+    ],
+    "adviceCheck": [
+     {
+      "advice": "Next time, check back in about date and ask how it went.",
+      "verdict": "not yet",
+      "evidenceTurnIds": [
+       1
+      ],
+      "reason": "No follow-ups on camera to compare yet."
+     }
+    ],
+    "source": "muse-spark",
+    "rewrites": [
+     {
+      "turnId": 3,
+      "title": "Stay with their story",
+      "tryInstead": "Wait, tell me more about the date part?",
+      "because": "Asking about what they just said keeps them talking before you switch to yourself."
+     },
+     {
+      "turnId": 7,
+      "title": "Stay with their story",
+      "tryInstead": "Wait, tell me more about the tasks part?",
+      "because": "Asking about what they just said keeps them talking before you switch to yourself."
+     }
+    ],
+    "takeaways": [
+     {
+      "kind": "try",
+      "turnId": 3,
+      "title": "Stay with their story",
+      "text": "Asking about what they just said keeps them talking before you switch to yourself.",
+      "said": "Can you just send me the line?",
+      "theySaid": "Yeah, on mine the streak says one day. I think the date is being read in UTC, so anything after seven in the evening lands on the next day and",
+      "tryInstead": "Wait, tell me more about the date part?",
+      "evidence": "Cut in"
+     },
+     {
+      "kind": "next",
+      "turnId": 7,
+      "title": "Follow through",
+      "text": "You said “I'll send you the repro steps tonight and take the date one.” Do it before you talk again.",
+      "said": null,
+      "theySaid": null,
+      "tryInstead": null,
+      "evidence": null
+     },
+     {
+      "kind": "try",
+      "turnId": 7,
+      "title": "Stay with their story",
+      "text": "Asking about what they just said keeps them talking before you switch to yourself.",
+      "said": "I'll send you the repro steps tonight and take the date one.",
+      "theySaid": "Do you want me to fix it, or do you want to take it? I am also looking at a second bug where the pending tasks repeat when",
+      "tryInstead": "Wait, tell me more about the tasks part?",
+      "evidence": "Cut in"
+     }
+    ]
+   }
+  },
+  {
+   "id": "1c3fb0bb-c9b0-4534-a955-35e28fc3a524",
+   "tag": "friend",
+   "otherName": "Prat",
+   "createdAt": "2026-10-24T21:30:00.000Z",
+   "seeded": false,
+   "synthetic": true,
+   "turns": [
+    {
+     "turnId": 1,
+     "speaker": "A",
+     "text": "We made it. How are you feeling about tomorrow?",
+     "startMs": 0,
+     "endMs": 4229
+    },
+    {
+     "turnId": 2,
+     "speaker": "B",
+     "text": "Good, honestly. The demo runs clean twice in a row now, and the timing card works. I keep thinking about what comes after though, realtime dashboards for teams, where a coach can see the whole room live.",
+     "startMs": 4832,
+     "endMs": 19659
+    },
+    {
+     "turnId": 3,
+     "speaker": "A",
+     "text": "Realtime dashboards for a whole room? What would a coach see first?",
+     "startMs": 20082,
+     "endMs": 25267
+    },
+    {
+     "turnId": 4,
+     "speaker": "B",
+     "text": "Who's talking too much, who hasn't spoken yet, and where the follow-ups are happening. Like the calendar, but a live dashboard for everyone at once.",
+     "startMs": 25994,
+     "endMs": 36241
+    },
+    {
+     "turnId": 5,
+     "speaker": "A",
+     "text": "Who hasn't spoken yet is the part I'd want most. Could it run on the same websocket as the Live tab?",
+     "startMs": 36830,
+     "endMs": 45677
+    },
+    {
+     "turnId": 6,
+     "speaker": "B",
+     "text": "Probably, the live view already streams turns. The dashboard would need a second view that groups them by person.",
+     "startMs": 46388,
+     "endMs": 54465
+    },
+    {
+     "turnId": 7,
+     "speaker": "A",
+     "text": "Let's sketch that second view after judging. I'll send you the deck tonight so you can do one last read.",
+     "startMs": 55038,
+     "endMs": 63258
+    },
+    {
+     "turnId": 8,
+     "speaker": "B",
+     "text": "Perfect. I'll read it first thing and send back any notes before we leave.",
+     "startMs": 63912,
+     "endMs": 70001
+    },
+    {
+     "turnId": 9,
+     "speaker": "A",
+     "text": "Your notes always help. Thanks for carrying the timeline and the overlay this week, it made the whole thing work.",
+     "startMs": 70616,
+     "endMs": 78764
+    },
+    {
+     "turnId": 10,
+     "speaker": "B",
+     "text": "Thanks for the coaching rules. See you at nine tomorrow, and bring the phone stand.",
+     "startMs": 79526,
+     "endMs": 86113
+    }
+   ],
+   "userLabel": "A",
+   "reflection": "Best one yet. Prat has a great idea for after the hackathon.",
+   "signals": {
+    "userQuestions": 3,
+    "userTurns": 5,
+    "otherTurns": 5,
+    "userTalkMs": 34629,
+    "otherTalkMs": 45827,
+    "userTalkShare": 0.43,
+    "otherAvgAnswerWords": 27,
+    "followUps": 2,
+    "reflections": 2,
+    "storiesAfterQuestions": 3,
+    "questions": [
+     {
+      "turnId": 1,
+      "isFollowUp": false,
+      "replyTurnId": 2,
+      "replyWords": 37,
+      "storyShared": true
+     },
+     {
+      "turnId": 3,
+      "isFollowUp": true,
+      "replyTurnId": 4,
+      "replyWords": 25,
+      "storyShared": true
+     },
+     {
+      "turnId": 5,
+      "isFollowUp": true,
+      "replyTurnId": 6,
+      "replyWords": 19,
+      "storyShared": true
+     }
+    ],
+    "crowd": 0,
+    "source": "muse-spark",
+    "detectorAgreement": {
+     "agree": 3,
+     "of": 3
+    }
+   },
+   "note": {
+    "text": "You asked 3 questions and 2 were follow-ups. You heard 3 stories after your questions.",
+    "suggestion": "Next time, check back in about dashboard and ask how it went.",
+    "citedTurnIds": [
+     3,
+     5
+    ],
+    "status": "shown",
+    "source": "muse-spark"
+   },
+   "hooks": {
+    "topics": [
+     {
+      "term": "dashboard",
+      "turnIds": [
+       2,
+       4,
+       6
+      ],
+      "weight": 6
+     },
+     {
+      "term": "live",
+      "turnIds": [
+       2,
+       4,
+       6
+      ],
+      "weight": 6
+     },
+     {
+      "term": "view",
+      "turnIds": [
+       6
+      ],
+      "weight": 3
+     },
+     {
+      "term": "works",
+      "turnIds": [
+       2
+      ],
+      "weight": 2
+     },
+     {
+      "term": "realtime",
+      "turnIds": [
+       2
+      ],
+      "weight": 2
+     }
+    ],
+    "events": [
+     {
+      "text": "See you at nine tomorrow, and bring the phone stand.",
+      "when": "tomorrow",
+      "hasNoun": false,
+      "turnId": 10
+     }
+    ],
+    "commitments": [
+     {
+      "text": "I'll send you the deck tonight so you can do one last read.",
+      "turnId": 7
+     }
+    ],
+    "missedBids": [],
+    "highlights": [
+     {
+      "turnId": 2,
+      "words": 37
+     },
+     {
+      "turnId": 4,
+      "words": 25
+     }
+    ],
+    "followUpDetector": [
+     {
+      "turnId": 1,
+      "isFollowUp": false,
+      "overlap": []
+     },
+     {
+      "turnId": 3,
+      "isFollowUp": true,
+      "overlap": [
+       "realtime",
+       "dashboards",
+       "whole",
+       "room",
+       "coach"
+      ]
+     },
+     {
+      "turnId": 5,
+      "isFollowUp": true,
+      "overlap": [
+       "spoken",
+       "live"
+      ]
+     }
+    ],
+    "awkward": {
+     "flags": [],
+     "score": 0,
+     "seams": [],
+     "worst": null
+    }
+   },
+   "followUp": {
+    "text": "Hey Prat! Loved hearing about dashboard. Talk tomorrow! And like I said, I'll send you the deck tonight so you can do one last read.",
+    "hooksUsed": [
+     "dashboard",
+     "tomorrow",
+     "I'll send you the deck tonight so you…"
+    ],
+    "source": "muse-spark",
+    "status": "draft",
+    "sentAt": null
+   },
+   "recording": null,
+   "behavior": {
+    "model": "mediapipe-face-landmarker@0.10.14 (synthetic)",
+    "fps": 5,
+    "frameCount": 446,
+    "faceSeenPct": 1,
+    "baseline": {
+     "smile": 0.27,
+     "animation": 0.023
+    },
+    "turns": [
+     {
+      "turnId": 1,
+      "speaker": "you",
+      "smile": 0.25,
+      "smilePeak": 0.28,
+      "facingPct": 1,
+      "nods": 0,
+      "animation": 0.004,
+      "reaction": {
+       "smileDelta": 0.08,
+       "nods": 0,
+       "facingPct": 1
+      },
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 2,
+      "speaker": "them",
+      "smile": 0.28,
+      "smilePeak": 0.37,
+      "facingPct": 1,
+      "nods": 2,
+      "animation": 0.032,
+      "reaction": null,
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 3,
+      "speaker": "you",
+      "smile": 0.24,
+      "smilePeak": 0.28,
+      "facingPct": 1,
+      "nods": 0,
+      "animation": 0.004,
+      "reaction": {
+       "smileDelta": 0.08,
+       "nods": 0,
+       "facingPct": 1
+      },
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 4,
+      "speaker": "them",
+      "smile": 0.29,
+      "smilePeak": 0.37,
+      "facingPct": 1,
+      "nods": 2,
+      "animation": 0.035,
+      "reaction": null,
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 5,
+      "speaker": "you",
+      "smile": 0.24,
+      "smilePeak": 0.28,
+      "facingPct": 1,
+      "nods": 0,
+      "animation": 0.004,
+      "reaction": {
+       "smileDelta": 0.08,
+       "nods": 0,
+       "facingPct": 1
+      },
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 6,
+      "speaker": "them",
+      "smile": 0.29,
+      "smilePeak": 0.36,
+      "facingPct": 1,
+      "nods": 2,
+      "animation": 0.036,
+      "reaction": null,
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 7,
+      "speaker": "you",
+      "smile": 0.24,
+      "smilePeak": 0.28,
+      "facingPct": 1,
+      "nods": 0,
+      "animation": 0.004,
+      "reaction": {
+       "smileDelta": 0.08,
+       "nods": 0,
+       "facingPct": 1
+      },
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 8,
+      "speaker": "them",
+      "smile": 0.3,
+      "smilePeak": 0.36,
+      "facingPct": 1,
+      "nods": 2,
+      "animation": 0.038,
+      "reaction": null,
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 9,
+      "speaker": "you",
+      "smile": 0.24,
+      "smilePeak": 0.25,
+      "facingPct": 1,
+      "nods": 0,
+      "animation": 0.003,
+      "reaction": {
+       "smileDelta": 0.07,
+       "nods": 0,
+       "facingPct": 1
+      },
+      "textTone": "neutral",
+      "congruence": null
+     },
+     {
+      "turnId": 10,
+      "speaker": "them",
+      "smile": 0.3,
+      "smilePeak": 0.37,
+      "facingPct": 1,
+      "nods": 2,
+      "animation": 0.035,
+      "reaction": null,
+      "textTone": "neutral",
+      "congruence": null
+     }
+    ],
+    "stats": {
+     "afterFollowUps": {
+      "n": 2,
+      "smileDelta": 0.08,
+      "nods": 0
+     },
+     "afterOther": {
+      "n": 3,
+      "smileDelta": 0.08,
+      "nods": 0
+     },
+     "missedBidReactions": []
+    }
+   },
+   "insight": {
+    "moments": [
+     {
+      "turnId": 1,
+      "title": "This landed",
+      "observation": "Right after you said this, their smile rose 8 points over baseline.",
+      "why": "Questions that pick up their words get the warmest reactions; keep doing it."
+     }
+    ],
+    "adviceCheck": [
+     {
+      "advice": "Next time, check back in about dashboard and ask how it went.",
+      "verdict": "partly",
+      "evidenceTurnIds": [
+       1
+      ],
+      "reason": "After your follow-ups their smile moved 8 points vs 8 points after other lines."
+     }
+    ],
+    "source": "muse-spark",
+    "rewrites": [],
+    "takeaways": [
+     {
+      "kind": "keep",
+      "turnId": 3,
+      "title": "Keep asking follow-ups",
+      "text": "“Realtime dashboards for a whole room? What would a coach see first?” built on what they had just told you.",
+      "said": null,
+      "theySaid": null,
+      "tryInstead": null,
+      "evidence": "Smile +8"
+     },
+     {
+      "kind": "next",
+      "turnId": 10,
+      "title": "Ask about it next time",
+      "text": "They mentioned “See you at nine tomorrow, and bring the phone stand.” Ask how it went.",
+      "said": null,
+      "theySaid": null,
+      "tryInstead": null,
+      "evidence": null
+     }
+    ]
+   }
+  }
+ ],
+ "logs": [
+  {
+   "ts": "2026-10-12T21:41:25.345Z",
+   "agent": "transcribe",
+   "level": "info",
+   "message": "12 turns, speakers A/B; audio discarded (synthetic)",
+   "data": null
+  },
+  {
+   "ts": "2026-10-12T21:42:10.345Z",
+   "agent": "nlp",
+   "level": "info",
+   "message": "hooks extracted",
+   "data": {
+    "topics": [
+     "timeline",
+     "lane",
+     "markers",
+     "ticks",
+     "Replay"
+    ],
+    "events": 1,
+    "commitments": 0,
+    "missedBids": 4
+   }
+  },
+  {
+   "ts": "2026-10-12T21:42:10.345Z",
+   "agent": "followUp",
+   "level": "info",
+   "message": "follow-up drafted",
+   "data": {
+    "hooksUsed": [
+     "timeline",
+     "tonight"
+    ]
+   }
+  },
+  {
+   "ts": "2026-10-12T21:42:10.345Z",
+   "agent": "nlp",
+   "level": "info",
+   "message": "signals classified; detector agrees with Muse Spark on 2 of 2 questions",
+   "data": {
+    "questions": 2,
+    "followUps": 0
+   }
+  },
+  {
+   "ts": "2026-10-12T21:42:10.345Z",
+   "agent": "coach",
+   "level": "info",
+   "message": "note drafted",
+   "data": null
+  },
+  {
+   "ts": "2026-10-12T21:42:10.345Z",
+   "agent": "review",
+   "level": "info",
+   "message": "reviewer: pass",
+   "data": null
+  },
+  {
+   "ts": "2026-10-12T21:44:10.345Z",
+   "agent": "vision",
+   "level": "info",
+   "message": "face cues aligned: 422 frames, face in 100% (synthetic)",
+   "data": {
+    "afterFollowUps": {
+     "n": 0,
+     "smileDelta": null,
+     "nods": null
+    },
+    "afterOther": {
+     "n": 6,
+     "smileDelta": -0.03,
+     "nods": 0
+    },
+    "missedBidReactions": [
+     {
+      "turnId": 1,
+      "smileDelta": -0.05
+     },
+     {
+      "turnId": 3,
+      "smileDelta": -0.05
+     },
+     {
+      "turnId": 5,
+      "smileDelta": -0.05
+     },
+     {
+      "turnId": 9,
+      "smileDelta": -0.05
+     }
+    ]
+   }
+  },
+  {
+   "ts": "2026-10-12T22:01:21.345Z",
+   "agent": "followUp",
+   "level": "info",
+   "message": "sent to Prat",
+   "data": null
+  },
+  {
+   "ts": "2026-10-13T19:16:31.591Z",
+   "agent": "transcribe",
+   "level": "info",
+   "message": "11 turns, speakers A/B; audio discarded (synthetic)",
+   "data": null
+  },
+  {
+   "ts": "2026-10-13T19:17:16.591Z",
+   "agent": "nlp",
+   "level": "info",
+   "message": "hooks extracted",
+   "data": {
+    "topics": [
+     "Muse",
+     "notes",
+     "conversation",
+     "queue",
+     "calls"
+    ],
+    "events": 1,
+    "commitments": 0,
+    "missedBids": 3
+   }
+  },
+  {
+   "ts": "2026-10-13T19:17:16.591Z",
+   "agent": "followUp",
+   "level": "info",
+   "message": "follow-up drafted",
+   "data": {
+    "hooksUsed": [
+     "Muse",
+     "tomorrow"
+    ]
+   }
+  },
+  {
+   "ts": "2026-10-13T19:17:16.591Z",
+   "agent": "nlp",
+   "level": "info",
+   "message": "signals classified; detector agrees with Muse Spark on 1 of 2 questions",
+   "data": {
+    "questions": 2,
+    "followUps": 0
+   }
+  },
+  {
+   "ts": "2026-10-13T19:17:16.591Z",
+   "agent": "coach",
+   "level": "info",
+   "message": "note drafted",
+   "data": null
+  },
+  {
+   "ts": "2026-10-13T19:17:16.591Z",
+   "agent": "review",
+   "level": "info",
+   "message": "reviewer: pass",
+   "data": null
+  },
+  {
+   "ts": "2026-10-13T19:19:16.591Z",
+   "agent": "vision",
+   "level": "info",
+   "message": "face cues aligned: 453 frames, face in 100% (synthetic)",
+   "data": {
+    "afterFollowUps": {
+     "n": 0,
+     "smileDelta": null,
+     "nods": null
+    },
+    "afterOther": {
+     "n": 6,
+     "smileDelta": -0.02,
+     "nods": 0
+    },
+    "missedBidReactions": [
+     {
+      "turnId": 4,
+      "smileDelta": -0.06
+     },
+     {
+      "turnId": 6,
+      "smileDelta": -0.05
+     },
+     {
+      "turnId": 8,
+      "smileDelta": 0.03
+     }
+    ]
+   }
+  },
+  {
+   "ts": "2026-10-13T19:43:27.591Z",
+   "agent": "followUp",
+   "level": "info",
+   "message": "sent to Priya",
+   "data": null
+  },
+  {
+   "ts": "2026-10-14T16:31:16.855Z",
+   "agent": "transcribe",
+   "level": "info",
+   "message": "10 turns, speakers A/B; audio discarded (synthetic)",
+   "data": null
+  },
+  {
+   "ts": "2026-10-14T16:32:01.855Z",
+   "agent": "nlp",
+   "level": "info",
+   "message": "hooks extracted",
+   "data": {
+    "topics": [
+     "block",
+     "home",
+     "card",
+     "scroll",
+     "styles"
+    ],
+    "events": 0,
+    "commitments": 1,
+    "missedBids": 2
+   }
+  },
+  {
+   "ts": "2026-10-14T16:32:01.855Z",
+   "agent": "followUp",
+   "level": "info",
+   "message": "follow-up drafted",
+   "data": {
+    "hooksUsed": [
+     "block",
+     "I'll send you a screenshot once the…"
+    ]
+   }
+  },
+  {
+   "ts": "2026-10-14T16:32:01.855Z",
+   "agent": "nlp",
+   "level": "info",
+   "message": "signals classified; detector agrees with Muse Spark on 4 of 4 questions",
+   "data": {
+    "questions": 4,
+    "followUps": 1
+   }
+  },
+  {
+   "ts": "2026-10-14T16:32:01.855Z",
+   "agent": "pattern",
+   "level": "info",
+   "message": "Your follow-up questions rose from 0 to 1 per conversation over your last 3 conversations.",
+   "data": null
+  },
+  {
+   "ts": "2026-10-14T16:32:01.855Z",
+   "agent": "coach",
+   "level": "info",
+   "message": "note drafted",
+   "data": null
+  },
+  {
+   "ts": "2026-10-14T16:32:01.855Z",
+   "agent": "nextStep",
+   "level": "info",
+   "message": "proposed: Ask at least 2 follow-up questions about something that matters to them, each time you talk this week.",
+   "data": null
+  },
+  {
+   "ts": "2026-10-14T16:32:01.855Z",
+   "agent": "review",
+   "level": "info",
+   "message": "reviewer: pass",
+   "data": null
+  },
+  {
+   "ts": "2026-10-14T16:34:01.855Z",
+   "agent": "vision",
+   "level": "info",
+   "message": "face cues aligned: 380 frames, face in 100% (synthetic)",
+   "data": {
+    "afterFollowUps": {
+     "n": 1,
+     "smileDelta": 0.04,
+     "nods": 0
+    },
+    "afterOther": {
+     "n": 4,
+     "smileDelta": 0.02,
+     "nods": 0
+    },
+    "missedBidReactions": [
+     {
+      "turnId": 2,
+      "smileDelta": -0.06
+     },
+     {
+      "turnId": 4,
+      "smileDelta": 0.05
+     }
+    ]
+   }
+  },
+  {
+   "ts": "2026-10-14T17:05:12.855Z",
+   "agent": "followUp",
+   "level": "info",
+   "message": "sent to Parth",
+   "data": null
+  },
+  {
+   "ts": "2026-10-15T14:11:33.819Z",
+   "agent": "transcribe",
+   "level": "info",
+   "message": "10 turns, speakers A/B; audio discarded (synthetic)",
+   "data": null
+  },
+  {
+   "ts": "2026-10-15T14:12:18.819Z",
+   "agent": "nlp",
+   "level": "info",
+   "message": "hooks extracted",
+   "data": {
+    "topics": [
+     "Muse",
+     "follow",
+     "agent",
+     "falls",
+     "mock"
+    ],
+    "events": 0,
+    "commitments": 1,
+    "missedBids": 1
+   }
+  },
+  {
+   "ts": "2026-10-15T14:12:18.819Z",
+   "agent": "followUp",
+   "level": "info",
+   "message": "follow-up drafted",
+   "data": {
+    "hooksUsed": [
+     "Muse",
+     "I'll send the Replay mockup Thursday…"
+    ]
+   }
+  },
+  {
+   "ts": "2026-10-15T14:12:18.819Z",
+   "agent": "nlp",
+   "level": "info",
+   "message": "signals classified; detector agrees with Muse Spark on 4 of 4 questions",
+   "data": {
+    "questions": 4,
+    "followUps": 2
+   }
+  },
+  {
+   "ts": "2026-10-15T14:12:18.819Z",
+   "agent": "pattern",
+   "level": "info",
+   "message": "Your follow-up questions rose from 0 to 2 per conversation over your last 4 conversations.",
+   "data": null
+  },
+  {
+   "ts": "2026-10-15T14:12:18.819Z",
+   "agent": "coach",
+   "level": "info",
+   "message": "note drafted",
+   "data": null
+  },
+  {
+   "ts": "2026-10-15T14:12:18.819Z",
+   "agent": "review",
+   "level": "info",
+   "message": "reviewer: pass",
+   "data": null
+  },
+  {
+   "ts": "2026-10-15T14:14:18.819Z",
+   "agent": "vision",
+   "level": "info",
+   "message": "face cues aligned: 465 frames, face in 100% (synthetic)",
+   "data": {
+    "afterFollowUps": {
+     "n": 2,
+     "smileDelta": 0.07,
+     "nods": 0
+    },
+    "afterOther": {
+     "n": 3,
+     "smileDelta": 0.02,
+     "nods": 0
+    },
+    "missedBidReactions": [
+     {
+      "turnId": 2,
+      "smileDelta": -0.08
+     }
+    ]
+   }
+  },
+  {
+   "ts": "2026-10-15T14:52:29.819Z",
+   "agent": "followUp",
+   "level": "info",
+   "message": "sent to Prat",
+   "data": null
+  },
+  {
+   "ts": "2026-10-16T17:46:26.726Z",
+   "agent": "transcribe",
+   "level": "info",
+   "message": "10 turns, speakers A/B; audio discarded (synthetic)",
+   "data": null
+  },
+  {
+   "ts": "2026-10-16T17:47:11.726Z",
+   "agent": "nlp",
+   "level": "info",
+   "message": "hooks extracted",
+   "data": {
+    "topics": [
+     "lines",
+     "talk",
+     "share",
+     "diarization",
+     "three"
+    ],
+    "events": 0,
+    "commitments": 0,
+    "missedBids": 1
+   }
+  },
+  {
+   "ts": "2026-10-16T17:47:11.726Z",
+   "agent": "followUp",
+   "level": "info",
+   "message": "follow-up drafted",
+   "data": {
+    "hooksUsed": [
+     "lines"
+    ]
+   }
+  },
+  {
+   "ts": "2026-10-16T17:47:11.726Z",
+   "agent": "nlp",
+   "level": "info",
+   "message": "signals classified; detector agrees with Muse Spark on 3 of 3 questions",
+   "data": {
+    "questions": 3,
+    "followUps": 2
+   }
+  },
+  {
+   "ts": "2026-10-16T17:47:11.726Z",
+   "agent": "pattern",
+   "level": "info",
+   "message": "Your follow-up questions rose from 0 to 2 per conversation over your last 5 conversations.",
+   "data": null
+  },
+  {
+   "ts": "2026-10-16T17:47:11.726Z",
+   "agent": "coach",
+   "level": "info",
+   "message": "note drafted",
+   "data": null
+  },
+  {
+   "ts": "2026-10-16T17:47:11.726Z",
+   "agent": "review",
+   "level": "info",
+   "message": "reviewer: pass",
+   "data": null
+  },
+  {
+   "ts": "2026-10-16T17:49:11.726Z",
+   "agent": "vision",
+   "level": "info",
+   "message": "face cues aligned: 429 frames, face in 100% (synthetic)",
+   "data": {
+    "afterFollowUps": {
+     "n": 2,
+     "smileDelta": 0.04,
+     "nods": 0
+    },
+    "afterOther": {
+     "n": 3,
+     "smileDelta": 0.01,
+     "nods": 0
+    },
+    "missedBidReactions": [
+     {
+      "turnId": 4,
+      "smileDelta": -0.06
+     }
+    ]
+   }
+  },
+  {
+   "ts": "2026-10-16T18:34:22.726Z",
+   "agent": "followUp",
+   "level": "info",
+   "message": "sent to Priya",
+   "data": null
+  },
+  {
+   "ts": "2026-10-17T20:06:26.247Z",
+   "agent": "transcribe",
+   "level": "info",
+   "message": "10 turns, speakers A/B; audio discarded (synthetic)",
+   "data": null
+  },
+  {
+   "ts": "2026-10-17T20:07:11.247Z",
+   "agent": "nlp",
+   "level": "info",
+   "message": "hooks extracted",
+   "data": {
+    "topics": [
+     "lines",
+     "projector",
+     "theme",
+     "half",
+     "second"
+    ],
+    "events": 1,
+    "commitments": 0,
+    "missedBids": 0
+   }
+  },
+  {
+   "ts": "2026-10-17T20:07:11.247Z",
+   "agent": "followUp",
+   "level": "info",
+   "message": "follow-up drafted",
+   "data": {
+    "hooksUsed": [
+     "lines",
+     "on saturday"
+    ]
+   }
+  },
+  {
+   "ts": "2026-10-17T20:07:11.247Z",
+   "agent": "nlp",
+   "level": "info",
+   "message": "signals classified; detector agrees with Muse Spark on 4 of 4 questions",
+   "data": {
+    "questions": 4,
+    "followUps": 3
+   }
+  },
+  {
+   "ts": "2026-10-17T20:07:11.247Z",
+   "agent": "pattern",
+   "level": "info",
+   "message": "Your follow-up questions rose from 0 to 3 per conversation over your last 6 conversations.",
+   "data": null
+  },
+  {
+   "ts": "2026-10-17T20:07:11.247Z",
+   "agent": "coach",
+   "level": "info",
+   "message": "note drafted",
+   "data": null
+  },
+  {
+   "ts": "2026-10-17T20:07:11.247Z",
+   "agent": "review",
+   "level": "info",
+   "message": "reviewer: pass",
+   "data": null
+  },
+  {
+   "ts": "2026-10-17T20:09:11.247Z",
+   "agent": "vision",
+   "level": "info",
+   "message": "face cues aligned: 427 frames, face in 100% (synthetic)",
+   "data": {
+    "afterFollowUps": {
+     "n": 3,
+     "smileDelta": 0.08,
+     "nods": 0
+    },
+    "afterOther": {
+     "n": 2,
+     "smileDelta": 0.08,
+     "nods": 0
+    },
+    "missedBidReactions": []
+   }
+  },
+  {
+   "ts": "2026-10-17T21:01:22.247Z",
+   "agent": "followUp",
+   "level": "info",
+   "message": "sent to Parth",
+   "data": null
+  },
+  {
+   "ts": "2026-10-18T22:21:28.179Z",
+   "agent": "transcribe",
+   "level": "info",
+   "message": "10 turns, speakers A/B; audio discarded (synthetic)",
+   "data": null
+  },
+  {
+   "ts": "2026-10-18T22:22:13.179Z",
+   "agent": "nlp",
+   "level": "info",
+   "message": "hooks extracted",
+   "data": {
+    "topics": [
+     "problem",
+     "phone",
+     "switch",
+     "demo",
+     "minutes"
+    ],
+    "events": 1,
+    "commitments": 1,
+    "missedBids": 0
+   }
+  },
+  {
+   "ts": "2026-10-18T22:22:13.179Z",
+   "agent": "followUp",
+   "level": "info",
+   "message": "follow-up drafted",
+   "data": {
+    "hooksUsed": [
+     "problem",
+     "phone",
+     "on friday",
+     "I'll bring the phone stand so we're…"
+    ]
+   }
+  },
+  {
+   "ts": "2026-10-18T22:22:13.179Z",
+   "agent": "nlp",
+   "level": "info",
+   "message": "signals classified; detector agrees with Muse Spark on 3 of 4 questions",
+   "data": {
+    "questions": 4,
+    "followUps": 2
+   }
+  },
+  {
+   "ts": "2026-10-18T22:22:13.179Z",
+   "agent": "pattern",
+   "level": "info",
+   "message": "Your follow-up questions rose from 0 to 2 per conversation over your last 7 conversations.",
+   "data": null
+  },
+  {
+   "ts": "2026-10-18T22:22:13.179Z",
+   "agent": "coach",
+   "level": "info",
+   "message": "note drafted",
+   "data": null
+  },
+  {
+   "ts": "2026-10-18T22:22:13.179Z",
+   "agent": "review",
+   "level": "info",
+   "message": "reviewer: pass",
+   "data": null
+  },
+  {
+   "ts": "2026-10-18T22:24:13.179Z",
+   "agent": "vision",
+   "level": "info",
+   "message": "face cues aligned: 436 frames, face in 100% (synthetic)",
+   "data": {
+    "afterFollowUps": {
+     "n": 2,
+     "smileDelta": -0.01,
+     "nods": 0
+    },
+    "afterOther": {
+     "n": 3,
+     "smileDelta": 0.01,
+     "nods": 0
+    },
+    "missedBidReactions": []
+   }
+  },
+  {
+   "ts": "2026-10-18T23:23:24.179Z",
+   "agent": "followUp",
+   "level": "info",
+   "message": "sent to Prat",
+   "data": null
+  },
+  {
+   "ts": "2026-10-19T23:50:58.858Z",
+   "agent": "transcribe",
+   "level": "info",
+   "message": "10 turns, speakers A/B; audio discarded (synthetic)",
+   "data": null
+  },
+  {
+   "ts": "2026-10-19T23:51:43.858Z",
+   "agent": "nlp",
+   "level": "info",
+   "message": "hooks extracted",
+   "data": {
+    "topics": [
+     "video",
+     "late",
+     "smile",
+     "darker"
+    ],
+    "events": 2,
+    "commitments": 0,
+    "missedBids": 3
+   }
+  },
+  {
+   "ts": "2026-10-19T23:51:43.858Z",
+   "agent": "followUp",
+   "level": "info",
+   "message": "follow-up drafted",
+   "data": {
+    "hooksUsed": [
+     "video",
+     "tonight",
+     "tomorrow"
+    ]
+   }
+  },
+  {
+   "ts": "2026-10-19T23:51:43.858Z",
+   "agent": "nlp",
+   "level": "info",
+   "message": "signals classified; detector agrees with Muse Spark on 0 of 0 questions",
+   "data": {
+    "questions": 0,
+    "followUps": 0
+   }
+  },
+  {
+   "ts": "2026-10-19T23:51:43.858Z",
+   "agent": "pattern",
+   "level": "info",
+   "message": "Your follow-up questions held steady from 0 to 0 per conversation over your last 8 conversations.",
+   "data": null
+  },
+  {
+   "ts": "2026-10-19T23:51:43.858Z",
+   "agent": "coach",
+   "level": "info",
+   "message": "note drafted",
+   "data": null
+  },
+  {
+   "ts": "2026-10-19T23:51:43.858Z",
+   "agent": "review",
+   "level": "info",
+   "message": "reviewer: pass",
+   "data": null
+  },
+  {
+   "ts": "2026-10-19T23:53:43.858Z",
+   "agent": "vision",
+   "level": "info",
+   "message": "face cues aligned: 290 frames, face in 100% (synthetic)",
+   "data": {
+    "afterFollowUps": {
+     "n": 0,
+     "smileDelta": null,
+     "nods": null
+    },
+    "afterOther": {
+     "n": 5,
+     "smileDelta": -0.04,
+     "nods": 0
+    },
+    "missedBidReactions": [
+     {
+      "turnId": 1,
+      "smileDelta": -0.06
+     },
+     {
+      "turnId": 5,
+      "smileDelta": -0.05
+     },
+     {
+      "turnId": 7,
+      "smileDelta": -0.06
+     }
+    ]
+   }
+  },
+  {
+   "ts": "2026-10-20T00:59:54.858Z",
+   "agent": "followUp",
+   "level": "info",
+   "message": "sent to Priya",
+   "data": null
+  },
+  {
+   "ts": "2026-10-20T13:01:25.076Z",
+   "agent": "transcribe",
+   "level": "info",
+   "message": "10 turns, speakers A/B; audio discarded (synthetic)",
+   "data": null
+  },
+  {
+   "ts": "2026-10-20T13:02:10.076Z",
+   "agent": "nlp",
+   "level": "info",
+   "message": "hooks extracted",
+   "data": {
+    "topics": [
+     "colors",
+     "projector",
+     "palette",
+     "green",
+     "tokens"
+    ],
+    "events": 1,
+    "commitments": 1,
+    "missedBids": 0
+   }
+  },
+  {
+   "ts": "2026-10-20T13:02:10.076Z",
+   "agent": "followUp",
+   "level": "info",
+   "message": "follow-up drafted",
+   "data": {
+    "hooksUsed": [
+     "colors",
+     "on saturday",
+     "I'll send you a link when it works."
+    ]
+   }
+  },
+  {
+   "ts": "2026-10-20T13:02:10.076Z",
+   "agent": "nlp",
+   "level": "info",
+   "message": "signals classified; detector agrees with Muse Spark on 3 of 3 questions",
+   "data": {
+    "questions": 3,
+    "followUps": 2
+   }
+  },
+  {
+   "ts": "2026-10-20T13:02:10.076Z",
+   "agent": "pattern",
+   "level": "info",
+   "message": "Your follow-up questions rose from 0 to 2 per conversation over your last 9 conversations.",
+   "data": null
+  },
+  {
+   "ts": "2026-10-20T13:02:10.076Z",
+   "agent": "coach",
+   "level": "info",
+   "message": "note drafted",
+   "data": null
+  },
+  {
+   "ts": "2026-10-20T13:02:10.076Z",
+   "agent": "review",
+   "level": "info",
+   "message": "reviewer: pass",
+   "data": null
+  },
+  {
+   "ts": "2026-10-20T13:04:10.076Z",
+   "agent": "vision",
+   "level": "info",
+   "message": "face cues aligned: 421 frames, face in 100% (synthetic)",
+   "data": {
+    "afterFollowUps": {
+     "n": 2,
+     "smileDelta": 0.08,
+     "nods": 0
+    },
+    "afterOther": {
+     "n": 3,
+     "smileDelta": 0.07,
+     "nods": 0
+    },
+    "missedBidReactions": []
+   }
+  },
+  {
+   "ts": "2026-10-20T14:17:21.076Z",
+   "agent": "followUp",
+   "level": "info",
+   "message": "sent to Parth",
+   "data": null
+  },
+  {
+   "ts": "2026-10-21T18:26:33.403Z",
+   "agent": "transcribe",
+   "level": "info",
+   "message": "10 turns, speakers A/B; audio discarded (synthetic)",
+   "data": null
+  },
+  {
+   "ts": "2026-10-21T18:27:18.403Z",
+   "agent": "nlp",
+   "level": "info",
+   "message": "hooks extracted",
+   "data": {
+    "topics": [
+     "frames",
+     "draw",
+     "looks",
+     "mesh",
+     "words"
+    ],
+    "events": 1,
+    "commitments": 0,
+    "missedBids": 0
+   }
+  },
+  {
+   "ts": "2026-10-21T18:27:18.403Z",
+   "agent": "followUp",
+   "level": "info",
+   "message": "follow-up drafted",
+   "data": {
+    "hooksUsed": [
+     "frames",
+     "tonight"
+    ]
+   }
+  },
+  {
+   "ts": "2026-10-21T18:27:18.403Z",
+   "agent": "nlp",
+   "level": "info",
+   "message": "signals classified; detector agrees with Muse Spark on 3 of 4 questions",
+   "data": {
+    "questions": 4,
+    "followUps": 2
+   }
+  },
+  {
+   "ts": "2026-10-21T18:27:18.403Z",
+   "agent": "pattern",
+   "level": "info",
+   "message": "Your follow-up questions rose from 0 to 2 per conversation over your last 10 conversations.",
+   "data": null
+  },
+  {
+   "ts": "2026-10-21T18:27:18.403Z",
+   "agent": "coach",
+   "level": "info",
+   "message": "note drafted",
+   "data": null
+  },
+  {
+   "ts": "2026-10-21T18:27:18.403Z",
+   "agent": "review",
+   "level": "info",
+   "message": "reviewer: pass",
+   "data": null
+  },
+  {
+   "ts": "2026-10-21T18:29:18.403Z",
+   "agent": "vision",
+   "level": "info",
+   "message": "face cues aligned: 463 frames, face in 100% (synthetic)",
+   "data": {
+    "afterFollowUps": {
+     "n": 2,
+     "smileDelta": 0.08,
+     "nods": 0
+    },
+    "afterOther": {
+     "n": 3,
+     "smileDelta": 0.08,
+     "nods": 0
+    },
+    "missedBidReactions": []
+   }
+  },
+  {
+   "ts": "2026-10-21T19:49:29.403Z",
+   "agent": "followUp",
+   "level": "info",
+   "message": "sent to Prat",
+   "data": null
+  },
+  {
+   "ts": "2026-10-22T15:41:25.036Z",
+   "agent": "transcribe",
+   "level": "info",
+   "message": "10 turns, speakers A/B; audio discarded (synthetic)",
+   "data": null
+  },
+  {
+   "ts": "2026-10-22T15:42:10.036Z",
+   "agent": "nlp",
+   "level": "info",
+   "message": "hooks extracted",
+   "data": {
+    "topics": [
+     "Voice",
+     "diarization",
+     "Muse",
+     "interrupt",
+     "demo"
+    ],
+    "events": 1,
+    "commitments": 1,
+    "missedBids": 0
+   }
+  },
+  {
+   "ts": "2026-10-22T15:42:10.036Z",
+   "agent": "followUp",
+   "level": "info",
+   "message": "follow-up drafted",
+   "data": {
+    "hooksUsed": [
+     "Voice",
+     "interrupt",
+     "demo",
+     "on friday",
+     "I'll bring my laptop on Friday and…"
+    ]
+   }
+  },
+  {
+   "ts": "2026-10-22T15:42:10.036Z",
+   "agent": "nlp",
+   "level": "info",
+   "message": "signals classified; detector agrees with Muse Spark on 4 of 4 questions",
+   "data": {
+    "questions": 4,
+    "followUps": 3
+   }
+  },
+  {
+   "ts": "2026-10-22T15:42:10.036Z",
+   "agent": "pattern",
+   "level": "info",
+   "message": "Your follow-up questions rose from 0 to 3 per conversation over your last 11 conversations.",
+   "data": null
+  },
+  {
+   "ts": "2026-10-22T15:42:10.036Z",
+   "agent": "coach",
+   "level": "info",
+   "message": "note drafted",
+   "data": null
+  },
+  {
+   "ts": "2026-10-22T15:42:10.036Z",
+   "agent": "review",
+   "level": "info",
+   "message": "reviewer: pass",
+   "data": null
+  },
+  {
+   "ts": "2026-10-22T15:44:10.036Z",
+   "agent": "vision",
+   "level": "info",
+   "message": "face cues aligned: 421 frames, face in 100% (synthetic)",
+   "data": {
+    "afterFollowUps": {
+     "n": 3,
+     "smileDelta": 0.07,
+     "nods": 0
+    },
+    "afterOther": {
+     "n": 2,
+     "smileDelta": 0.09,
+     "nods": 0
+    },
+    "missedBidReactions": []
+   }
+  },
+  {
+   "ts": "2026-10-22T17:11:21.036Z",
+   "agent": "followUp",
+   "level": "info",
+   "message": "sent to Priya",
+   "data": null
+  },
+  {
+   "ts": "2026-10-23T10:16:22.803Z",
+   "agent": "transcribe",
+   "level": "info",
+   "message": "10 turns, speakers A/B; audio discarded (synthetic)",
+   "data": null
+  },
+  {
+   "ts": "2026-10-23T10:17:07.803Z",
+   "agent": "nlp",
+   "level": "info",
+   "message": "hooks extracted",
+   "data": {
+    "topics": [
+     "date",
+     "palette",
+     "evening",
+     "tasks",
+     "yesterday"
+    ],
+    "events": 0,
+    "commitments": 1,
+    "missedBids": 2
+   }
+  },
+  {
+   "ts": "2026-10-23T10:17:07.803Z",
+   "agent": "followUp",
+   "level": "info",
+   "message": "follow-up drafted",
+   "data": {
+    "hooksUsed": [
+     "date",
+     "I'll send you the repro steps tonight…"
+    ]
+   }
+  },
+  {
+   "ts": "2026-10-23T10:17:07.803Z",
+   "agent": "nlp",
+   "level": "info",
+   "message": "signals classified; detector agrees with Muse Spark on 2 of 2 questions",
+   "data": {
+    "questions": 2,
+    "followUps": 0
+   }
+  },
+  {
+   "ts": "2026-10-23T10:17:07.803Z",
+   "agent": "pattern",
+   "level": "info",
+   "message": "Your follow-up questions held steady from 0 to 0 per conversation over your last 12 conversations.",
+   "data": null
+  },
+  {
+   "ts": "2026-10-23T10:17:07.803Z",
+   "agent": "coach",
+   "level": "info",
+   "message": "note drafted",
+   "data": null
+  },
+  {
+   "ts": "2026-10-23T10:17:07.803Z",
+   "agent": "review",
+   "level": "info",
+   "message": "reviewer: pass",
+   "data": null
+  },
+  {
+   "ts": "2026-10-23T10:19:07.803Z",
+   "agent": "vision",
+   "level": "info",
+   "message": "face cues aligned: 410 frames, face in 100% (synthetic)",
+   "data": {
+    "afterFollowUps": {
+     "n": 0,
+     "smileDelta": null,
+     "nods": null
+    },
+    "afterOther": {
+     "n": 5,
+     "smileDelta": -0.02,
+     "nods": 0
+    },
+    "missedBidReactions": [
+     {
+      "turnId": 4,
+      "smileDelta": -0.06
+     },
+     {
+      "turnId": 6,
+      "smileDelta": -0.06
+     }
+    ]
+   }
+  },
+  {
+   "ts": "2026-10-24T21:31:30.113Z",
+   "agent": "transcribe",
+   "level": "info",
+   "message": "10 turns, speakers A/B; audio discarded (synthetic)",
+   "data": null
+  },
+  {
+   "ts": "2026-10-24T21:32:15.113Z",
+   "agent": "nlp",
+   "level": "info",
+   "message": "hooks extracted",
+   "data": {
+    "topics": [
+     "dashboard",
+     "live",
+     "view",
+     "works",
+     "realtime"
+    ],
+    "events": 1,
+    "commitments": 1,
+    "missedBids": 0
+   }
+  },
+  {
+   "ts": "2026-10-24T21:32:15.113Z",
+   "agent": "followUp",
+   "level": "info",
+   "message": "follow-up drafted",
+   "data": {
+    "hooksUsed": [
+     "dashboard",
+     "tomorrow",
+     "I'll send you the deck tonight so you…"
+    ]
+   }
+  },
+  {
+   "ts": "2026-10-24T21:32:15.113Z",
+   "agent": "nlp",
+   "level": "info",
+   "message": "signals classified; detector agrees with Muse Spark on 3 of 3 questions",
+   "data": {
+    "questions": 3,
+    "followUps": 2
+   }
+  },
+  {
+   "ts": "2026-10-24T21:32:15.113Z",
+   "agent": "pattern",
+   "level": "info",
+   "message": "Your follow-up questions rose from 0 to 2 per conversation over your last 13 conversations.",
+   "data": null
+  },
+  {
+   "ts": "2026-10-24T21:32:15.113Z",
+   "agent": "coach",
+   "level": "info",
+   "message": "note drafted",
+   "data": null
+  },
+  {
+   "ts": "2026-10-24T21:32:15.113Z",
+   "agent": "review",
+   "level": "info",
+   "message": "reviewer: pass",
+   "data": null
+  },
+  {
+   "ts": "2026-10-24T21:34:15.113Z",
+   "agent": "vision",
+   "level": "info",
+   "message": "face cues aligned: 446 frames, face in 100% (synthetic)",
+   "data": {
+    "afterFollowUps": {
+     "n": 2,
+     "smileDelta": 0.08,
+     "nods": 0
+    },
+    "afterOther": {
+     "n": 3,
+     "smileDelta": 0.08,
+     "nods": 0
+    },
+    "missedBidReactions": []
+   }
+  },
+  {
+   "ts": "2026-10-25T08:00:00.000Z",
+   "agent": "pattern",
+   "level": "info",
+   "message": "Your follow-up questions rose from 0 to 2 per conversation over your last 13 conversations.",
+   "data": null
+  }
+ ]
+}

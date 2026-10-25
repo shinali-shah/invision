@@ -40,6 +40,7 @@ function toConversation(row) {
     otherName: row.other_name,
     createdAt: row.created_at,
     seeded: row.seeded === 1,
+    synthetic: row.synthetic === 1,
     turns: parse(row.turns),
     userLabel: row.user_label,
     reflection: row.reflection,
@@ -62,15 +63,17 @@ export function openStore(path = ':memory:') {
   // Databases from before hooks/follow-ups existed just get the new columns.
   const have = new Set(db.prepare('PRAGMA table_info(conversations)').all().map(c => c.name));
   for (const col of ['hooks', 'follow_up', 'recording', 'behavior', 'insight']) if (!have.has(col)) db.exec(`ALTER TABLE conversations ADD COLUMN ${col} TEXT`);
+  // Demo rows made by src/synthetic are marked so nothing mistakes them for a real recording.
+  if (!have.has('synthetic')) db.exec('ALTER TABLE conversations ADD COLUMN synthetic INTEGER NOT NULL DEFAULT 0');
 
   const getConversation = id => toConversation(db.prepare('SELECT * FROM conversations WHERE id = ?').get(id));
   const getStep = id => toStep(db.prepare('SELECT * FROM next_steps WHERE id = ?').get(id));
 
   return {
-    createConversation({ tag, otherName, seeded = false }) {
-      const id = randomUUID();
-      db.prepare('INSERT INTO conversations (id, tag, other_name, created_at, seeded) VALUES (?, ?, ?, ?, ?)')
-        .run(id, tag, otherName, new Date().toISOString(), seeded ? 1 : 0);
+    // `id` and `synthetic` are for the demo builder, which needs the same ids on every run.
+    createConversation({ tag, otherName, seeded = false, synthetic = false, id = randomUUID() }) {
+      db.prepare('INSERT INTO conversations (id, tag, other_name, created_at, seeded, synthetic) VALUES (?, ?, ?, ?, ?, ?)')
+        .run(id, tag, otherName, new Date().toISOString(), seeded ? 1 : 0, synthetic ? 1 : 0);
       return getConversation(id);
     },
 

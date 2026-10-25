@@ -57,17 +57,21 @@ function classify({ userLabel, turns, questions } = {}) {
 }
 
 // Most-mentioned capitalized word the other person said mid-sentence: usually a place or a name.
+const WEEKDAYS = /^(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday|lunes|martes|miércoles|jueves|viernes|sábado|domingo)$/i;
+
 function topicFrom(turns, userLabel, avoid) {
   const counts = new Map();
   const bump = w => counts.set(w, (counts.get(w) ?? 0) + 1);
-  const others = turns.filter(t => t.speaker !== userLabel);
+  // The coach gets speakers as 'you' / 'them' and no userLabel, so 'you' counts as the user too.
+  const others = turns.filter(t => t.speaker !== userLabel && t.speaker !== 'you');
 
   for (const t of others) {
     const tokens = String(t.text ?? '').split(/\s+/);
     tokens.forEach((raw, i) => {
       const w = raw.replace(/^[^\p{L}]+|[^\p{L}]+$/gu, '');
       const sentenceStart = i === 0 || /[.!?]["')]?$/.test(tokens[i - 1]);
-      if (!sentenceStart && w.length >= 4 && /^\p{Lu}/u.test(w) && !STOPWORDS.has(w.toLowerCase())) bump(w);
+      // Contractions ("I'll") and weekdays are capitalized but are never what the talk was about.
+      if (!sentenceStart && w.length >= 4 && /^\p{Lu}/u.test(w) && !/['’]/.test(w) && !WEEKDAYS.test(w) && !STOPWORDS.has(w.toLowerCase())) bump(w);
     });
   }
   // Nothing capitalized? Fall back to the longest repeated-ish content word.
@@ -93,7 +97,7 @@ const SUGGESTIONS = {
     : 'Send a short follow-up message today that mentions something they told you.',
 };
 
-function coach({ tag, signals, turns, userLabel, lastNotes } = {}) {
+function coach({ tag, signals, turns, userLabel, lastNotes, hooks } = {}) {
   const s = signals ?? {};
   const ts = Array.isArray(turns) ? turns : [];
   const q = Number.isFinite(s.userQuestions) ? s.userQuestions : 0;
@@ -113,7 +117,9 @@ function coach({ tag, signals, turns, userLabel, lastNotes } = {}) {
   // Don't keep suggesting the same topic as the last few notes did
   const avoid = (Array.isArray(lastNotes) ? lastNotes : [])
     .flatMap(n => words(typeof n === 'string' ? n : `${n?.text ?? ''} ${n?.suggestion ?? ''}`));
-  const suggestion = (SUGGESTIONS[tag] ?? SUGGESTIONS.friend)(topicFrom(ts, userLabel, avoid));
+  // The measured topics are what they talked about most; a capitalized word is the fallback.
+  const topic = (hooks?.topics ?? []).map(t => t.term).find(t => !avoid.includes(t.toLowerCase())) ?? topicFrom(ts, userLabel, avoid);
+  const suggestion = (SUGGESTIONS[tag] ?? SUGGESTIONS.friend)(topic);
 
   const known = new Set(ts.map(t => t.turnId));
   let cited = (Array.isArray(s.questions) ? s.questions : []).filter(x => x.isFollowUp).map(x => x.turnId);
@@ -166,7 +172,7 @@ function followUp({ otherName, hooks, tag } = {}) {
   const promise = hooks?.commitments?.[0];
   const parts = [`${tag === 'family' ? 'Hola' : 'Hey'}${name ? ` ${name}` : ''}! ${topic ? `Loved hearing about ${topic}.` : 'Really enjoyed talking today.'}`];
   if (event) parts.push(eventLine(event));
-  if (promise) parts.push(`And like I said, ${promise.text.replace(/[.!?]*$/, '.')}`);
+  if (promise) parts.push(`And like I said, ${promise.text.replace(/[\s,;:.!?…]*$/, '.')}`);
   return { text: parts.join(' '), hooksUsed: [topic, event?.when, promise?.text].filter(Boolean) };
 }
 
@@ -185,7 +191,10 @@ function insight({ note, stats, turns, hooks, rewriteCandidates } = {}) {
   const other = stats?.afterOther;
   const backed = fu?.n && fu.smileDelta != null && (other?.smileDelta == null || fu.smileDelta > other.smileDelta);
   const rewrites = (Array.isArray(rewriteCandidates) ? rewriteCandidates : []).slice(0, 2).map(c => {
-    const pick = [...contentWords(c.theySaid)].sort((a, b) => b.length - a.length)[0] ?? 'that';
+    // A topic they kept coming back to beats the longest word ("the thinking part").
+    const said = contentWords(c.theySaid);
+    const pick = (hooks?.topics ?? []).map(t => t.term.toLowerCase()).find(t => said.has(t))
+      ?? [...said].sort((a, b) => b.length - a.length)[0] ?? 'that';
     return { turnId: c.turnId, title: 'Stay with their story', tryInstead: `Wait, tell me more about the ${pick} part?`, because: 'Asking about what they just said keeps them talking before you switch to yourself.' };
   });
   return {

@@ -222,9 +222,11 @@ function buildMonth(year, month, states) {
   });
 }
 
+// Today doesn't break the streak until it's over: with nothing yet today, count back from yesterday.
 function streak(states) {
   let n = 0;
   const d = today();
+  if (!stateFor(dayKey(d), states)) d.setDate(d.getDate() - 1);
   for (let i = 0; i < 400; i++) {
     if (!stateFor(dayKey(d), states)) break;
     n++;

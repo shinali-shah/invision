@@ -79,33 +79,43 @@ ngrok http 3000         # Safari only allows the mic and camera over https
 | `MUSE_ASR_MODEL` | `muse-voice-transcribe-1.0` | |
 | `PORT` / `DB_PATH` / `RECORDINGS_DIR` | `3000` / `data/playback.db` / `data/recordings` | |
 
-## Synthetic account
+## Synthetic demo account
 
-To see the app the way it looks after a few weeks of use, build the synthetic account:
+To see the app the way it looks after two weeks of use, build the demo account. It is clearly labelled
+synthetic: every conversation has `synthetic: true`, and the database is marked as a synthetic dataset.
 
 ```bash
-npm run synthetic       # writes data/synthetic.db and data/synthetic-recordings/
-npm run dev:synthetic   # serves it (mock mode) on http://localhost:3000
+npm run synthetic       # writes data/demo.db (never data/playback.db)
+npm run dev:synthetic   # serves it: PLAYBACK_DB=demo, mock mode, http://localhost:3000
 ```
 
-It covers the first of last month to today (39 conversations when built on Oct 25), with about a third
-of days left empty the way a real calendar would be (more of them at weekends),
-in English, Spanish and both mixed, with eleven people: Abuela, Mamá, Papá, Tía Lupe and Diego (family);
-Jordan, Priya, Marcus, Ana, Kevin and Sam (friends); Daniel, Elena, Maya, Luis and Professor Hale
-(networking). Twelve are the long, connected ones in `src/synthetic/conversations.js`; the rest are
-everyday calls from `src/synthetic/everyday.js` on most of the other days, each written to land on the calendar as went well,
-a few bumps or a rough one (gossip, cutting in, short replies). Every field is filled in: diarized turns
-with lip-lock sources (including bystander lines filtered out), signals, hooks, awkward flags, coaching
-notes, follow-up messages (sent, edited, and drafts for the last two days), face cues and Replay takeaways,
-plus the trend, three weekly goals (changed, dismissed, accepted) and the agent logs. About two thirds come
-with a stand-in video (drawn with ffmpeg, captions only) and per-frame face data, so Replay's timeline and
-player work too.
+It holds 13 conversations, one a day from Oct 12 to Oct 24 2026, with teammates Prat, Priya and Parth
+in strict rotation, all about building Playback. The calendar goes from rough to alright to good, with one
+outlier in each stretch:
 
-The transcripts and Muse Spark's answers are written by hand;
-`src/synthetic/build.js` runs them through the real pipeline, so anything an agent would reject falls back
-the same way it would live (the build lists any that do). It never touches `data/playback.db`, and the two
-sample Abuela calls are not added on top. `fixtures/synthetic/playback.json` is a snapshot of the rows,
-rebuilt with `node src/synthetic/cli.js --no-video --snapshot --db data/snap.db --recordings data/snap-rec`.
+| Date | Person | Colour | What happens | Outlier |
+|---|---|---|---|---|
+| Oct 12 | Prat | red | Scope creep: three cut-ins on the Replay timeline, skips past the lip lock struggle | |
+| Oct 13 | Priya | red | Rate-limit panic: interrupts the queue explanation, undersells the fallback notes twice | |
+| Oct 14 | Parth | yellow | Merge conflict: hedges and one cut-in | |
+| Oct 15 | Prat | green | Mock-mode fallback: one strong open question, promises the Replay mockup Thursday | yes |
+| Oct 16 | Priya | yellow | Lip-lock filter debate: misses the diarization news, cuts back in | |
+| Oct 17 | Parth | green | Mac Live tab: balanced, a follow-up that lands; judging on Saturday | |
+| Oct 18 | Prat | yellow | Who presents: two cut-ins and an aside about another team, taken back | |
+| Oct 19 | Priya | red | Late night: curt on the face-cue calibration, never asks back | yes |
+| Oct 20 | Parth | green | Splitting the work: follow-ups on the palette, promises the heatmap by Friday | |
+| Oct 21 | Prat | green | Replay overlay: asks first, listens, summarizes back | |
+| Oct 22 | Priya | green | Muse Voice walkthrough: picks up the Friday sponsor demo, offers to help | |
+| Oct 23 | Parth | yellow | Rushed bug triage: two cut-ins, a one-word reply | yes |
+| Oct 24 | Prat | green | Wrap-up: promises the deck, Prat lights up about realtime dashboards | |
+
+The transcripts are hand-written in `src/synthetic/conversations.js`. `src/synthetic/build.js` runs them
+through the real pipeline with the offline mock agents, so signals, awkward flags, colours, notes, follow-ups
+and takeaways are all measured; only the "try instead" rewrites for Oct 12, 15 and 19 are hand-written.
+One mulberry32 seed, fixed dates, fixed ids and a fixed clock make every build identical. There is no video;
+face cues are generated from each conversation's tone and stored per turn. `fixtures/synthetic/demo.json` is
+a snapshot of the data (`node src/synthetic/cli.js --db data/snap.db --snapshot`), and
+`test/synthetic.test.js` checks the dates, rotation, colours, streak, pending promises and determinism.
 
 ## How it fits together
 
