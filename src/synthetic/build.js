@@ -392,6 +392,8 @@ export async function buildSynthetic({ store, recordingsDir, now = Date.now(), v
   const canRender = videos && recordingsDir && ffmpegAvailable();
   if (videos && recordingsDir && !canRender) problems.push('ffmpeg not found: recordings have metadata and face cues but no video file to play');
   if (recordingsDir) mkdirSync(recordingsDir, { recursive: true });
+  // Marked up front: a server that opens the database mid-build must not add the two sample calls.
+  store.setKv('dataset', { name: 'synthetic', building: true });
 
   clock.install();
   try {
